@@ -7,9 +7,11 @@ import {
   CircleHelp,
   Factory,
   LayoutDashboard,
+  QrCode,
   RefreshCw,
   Search,
   ShieldCheck,
+  TableProperties,
 } from 'lucide-react';
 import { fetchAssets, fetchIncidents } from './api';
 import { AssetOverview } from './components/AssetOverview';
@@ -17,10 +19,17 @@ import { MaintenancePanel } from './components/MaintenancePanel';
 import { VoiceControls } from './components/VoiceControls';
 import { ConversationTimeline } from './components/ConversationTimeline';
 import { DashboardMetrics } from './components/DashboardMetrics';
+import { IncidentDetailModal } from './components/IncidentDetailModal';
+import { IncidentsDrawer } from './components/IncidentsDrawer';
+import { QrScannerModal } from './components/QrScannerModal';
 import { useVoiceSession } from './voice/useVoiceSession';
 
 export function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [viewIncidentId, setViewIncidentId] = useState<string | null>(null);
+  const [isIncidentsDrawerOpen, setIsIncidentsDrawerOpen] = useState(false);
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+
   const voice = useVoiceSession(setSelectedId);
   const [search, setSearch] = useState('');
   const assets = useQuery({
@@ -63,6 +72,24 @@ export function App() {
           <LayoutDashboard size={15} /> Technician workspace
         </div>
         <div className="topbar-right">
+          <button
+            type="button"
+            className="topbar-action-btn"
+            onClick={() => setIsIncidentsDrawerOpen(true)}
+            title="Open cross-plant incident register"
+          >
+            <TableProperties size={14} />
+            <span>Incidents ({incidents.data?.length ?? 0})</span>
+          </button>
+          <button
+            type="button"
+            className="topbar-action-btn topbar-qr-btn"
+            onClick={() => setIsQrScannerOpen(true)}
+            title="Scan equipment QR barcode tag"
+          >
+            <QrCode size={14} />
+            <span>Scan QR</span>
+          </button>
           <span className="plant">
             <Factory size={15} />
             Plant Alpha
@@ -79,15 +106,25 @@ export function App() {
             <span>EQUIPMENT</span>
             <span className="count">{assets.data?.length ?? '—'}</span>
           </div>
-          <label className="search-box">
-            <Search size={15} />
-            <input
-              aria-label="Search equipment"
-              placeholder="Find an asset…"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </label>
+          <div className="sidebar-search-row">
+            <label className="search-box">
+              <Search size={15} />
+              <input
+                aria-label="Search equipment"
+                placeholder="Find an asset…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="scan-qr-sidebar-btn"
+              onClick={() => setIsQrScannerOpen(true)}
+              title="Scan machine tag barcode/QR"
+            >
+              <QrCode size={16} />
+            </button>
+          </div>
           <div className="asset-list">
             {assets.isPending && (
               <p className="sidebar-message" role="status">
@@ -146,23 +183,36 @@ export function App() {
                 Every asset. Every repair. Your team’s knowledge, connected.
               </p>
             </div>
-            <button
-              className="icon-button"
-              aria-label="Refresh equipment"
-              disabled={assets.isFetching}
-              onClick={() => void assets.refetch()}
-            >
-              <RefreshCw
-                size={17}
-                className={assets.isFetching ? 'spin' : ''}
-              />
-            </button>
+            <div className="page-heading-actions">
+              <button
+                type="button"
+                className="secondary-action-btn"
+                onClick={() => setIsIncidentsDrawerOpen(true)}
+                title="View plant incident register"
+              >
+                <TableProperties size={15} />
+                <span>All Incidents</span>
+              </button>
+              <button
+                className="icon-button"
+                aria-label="Refresh equipment"
+                disabled={assets.isFetching}
+                onClick={() => void assets.refetch()}
+              >
+                <RefreshCw
+                  size={17}
+                  className={assets.isFetching ? 'spin' : ''}
+                />
+              </button>
+            </div>
           </div>
           <VoiceControls voice={voice} />
           <DashboardMetrics
             assets={assets.data ?? []}
             incidents={incidents.data ?? []}
             onSelectAsset={setSelectedId}
+            onSelectIncident={setViewIncidentId}
+            onOpenIncidents={() => setIsIncidentsDrawerOpen(true)}
           />
           <div className="main-columns">
             <div>
@@ -196,7 +246,12 @@ export function App() {
                   </p>
                 </div>
               )}
-              {selected && <MaintenancePanel assetId={selected.id} />}
+              {selected && (
+                <MaintenancePanel
+                  assetId={selected.id}
+                  onSelectIncident={setViewIncidentId}
+                />
+              )}
             </div>
             <ConversationTimeline voice={voice} />
           </div>
@@ -211,6 +266,32 @@ export function App() {
           </footer>
         </main>
       </div>
+
+      {/* Incident Detail Modal */}
+      <IncidentDetailModal
+        incidentId={viewIncidentId}
+        onClose={() => setViewIncidentId(null)}
+        onSelectAsset={setSelectedId}
+      />
+
+      {/* Cross-Plant Incidents Register Drawer */}
+      <IncidentsDrawer
+        isOpen={isIncidentsDrawerOpen}
+        onClose={() => setIsIncidentsDrawerOpen(false)}
+        incidents={incidents.data ?? []}
+        onSelectIncident={(id) => {
+          setIsIncidentsDrawerOpen(false);
+          setViewIncidentId(id);
+        }}
+      />
+
+      {/* QR Barcode Scanner Modal */}
+      <QrScannerModal
+        isOpen={isQrScannerOpen}
+        onClose={() => setIsQrScannerOpen(false)}
+        assets={assets.data ?? []}
+        onSelectAsset={setSelectedId}
+      />
     </div>
   );
 }

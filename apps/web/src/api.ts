@@ -468,11 +468,71 @@ export interface DashboardIncident {
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'open' | 'investigating' | 'escalated' | 'resolved' | 'closed';
   assetId: string;
+  asset?: {
+    id: string;
+    assetTag: string;
+    name: string;
+    location: string;
+  };
   openedAt: string;
   resolvedAt: string | null;
   rootCause: string | null;
   actionTaken: string | null;
   escalations: Array<{ id: string; reason: string; status: string }>;
+}
+
+export interface IncidentDetail {
+  id: string;
+  incidentNumber: string;
+  title: string;
+  description: string;
+  faultCode: string | null;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  status: 'open' | 'investigating' | 'escalated' | 'resolved' | 'closed';
+  assetId: string;
+  asset?: {
+    id: string;
+    assetTag: string;
+    name: string;
+    location: string;
+  };
+  openedAt: string;
+  resolvedAt: string | null;
+  rootCause: string | null;
+  actionTaken: string | null;
+  resolutionSummary: string | null;
+  openedBy?: { id: string; name: string };
+  assignedTo?: { id: string; name: string } | null;
+  notes: Array<{
+    id: string;
+    note: string;
+    createdAt: string;
+    source: string;
+    author?: { name: string } | null;
+  }>;
+  measurements: Array<{
+    id: string;
+    measurementType: string;
+    value: number;
+    unit: string;
+    recordedAt: string;
+    notes?: string | null;
+  }>;
+  maintenanceRecord?: {
+    id: string;
+    symptom: string;
+    rootCause: string;
+    actionTaken: string;
+    verification: string;
+    performedAt: string;
+    technician?: { name: string } | null;
+  } | null;
+  escalations: Array<{
+    id: string;
+    reason: string;
+    status: string;
+    createdAt: string;
+  }>;
 }
 
 export async function fetchIncidents(): Promise<DashboardIncident[]> {
@@ -482,4 +542,14 @@ export async function fetchIncidents(): Promise<DashboardIncident[]> {
   if (!response.ok) return [];
   const json = await response.json();
   return json.data ?? [];
+}
+
+export async function fetchIncidentDetail(id: string): Promise<IncidentDetail> {
+  const response = await fetch(`${baseUrl}/incidents/${id}`, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error('Incident details are unavailable.');
+  const json = await response.json();
+  return json.data;
 }

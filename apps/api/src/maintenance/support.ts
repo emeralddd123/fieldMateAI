@@ -11,6 +11,9 @@ import type { MeasurementFields } from './dto';
 export const DEMO_TECHNICIAN_ID = '00000000-0000-4000-8000-000000000001';
 export const activeStatuses = ['open', 'investigating', 'escalated'] as const;
 export const incidentInclude = {
+  asset: {
+    select: { id: true, assetTag: true, name: true, location: true },
+  },
   openedBy: { select: { id: true, name: true } },
   assignedTo: { select: { id: true, name: true } },
   notes: {

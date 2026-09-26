@@ -12,12 +12,16 @@ interface DashboardMetricsProps {
   assets: Asset[];
   incidents: DashboardIncident[];
   onSelectAsset?: (assetId: string) => void;
+  onSelectIncident?: (incidentId: string) => void;
+  onOpenIncidents?: () => void;
 }
 
 export function DashboardMetrics({
   assets,
   incidents,
   onSelectAsset,
+  onSelectIncident,
+  onOpenIncidents,
 }: DashboardMetricsProps) {
   const activeIncidents = incidents.filter((i) =>
     ['open', 'investigating', 'escalated'].includes(i.status),
@@ -64,7 +68,11 @@ export function DashboardMetrics({
                     <button
                       type="button"
                       className="link-button"
-                      onClick={() => onSelectAsset?.(inc.assetId)}
+                      onClick={() => {
+                        onSelectAsset?.(inc.assetId);
+                        onSelectIncident?.(inc.id);
+                      }}
+                      title="Inspect escalation and diagnostic record"
                     >
                       {inc.incidentNumber}
                     </button>
@@ -78,8 +86,11 @@ export function DashboardMetrics({
       )}
 
       <div className="metrics-grid">
-        <article
-          className={`metric-card ${activeIncidents.length > 0 ? 'metric-warn' : ''}`}
+        <button
+          type="button"
+          className={`metric-card metric-card-btn ${activeIncidents.length > 0 ? 'metric-warn' : ''}`}
+          onClick={() => onOpenIncidents?.()}
+          title="Open plant maintenance incident register"
         >
           <div className="metric-header">
             <span>ACTIVE INCIDENTS</span>
@@ -93,7 +104,7 @@ export function DashboardMetrics({
                 ? `${activeIncidents.filter((i) => i.priority === 'high' || i.priority === 'critical').length} high priority`
                 : 'No active downtime'}
           </div>
-        </article>
+        </button>
 
         <article
           className={`metric-card ${downAssets.length > 0 ? 'metric-down' : ''}`}
