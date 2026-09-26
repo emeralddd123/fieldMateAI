@@ -4,11 +4,13 @@
 
 FieldMate is a voice-first maintenance copilot that gives field technicians access to equipment knowledge and maintenance history, then turns repair conversations into structured records.
 
-## Current build: Phase 1
+## Current build: Phase 2
 
-The foundation includes a pnpm monorepo, React equipment workspace, NestJS API, PostgreSQL database, Prisma migration and seed, and the complete Docker Compose deployment path.
+The build includes the pnpm monorepo, equipment workspace, NestJS maintenance API, PostgreSQL migrations and seed, and the complete Docker Compose deployment path.
 
-The dashboard reads real database records. Five simulated assets are included, with detailed specifications and an installed drive for M-204. Voice, incidents, measurements, and maintenance history will be implemented in subsequent phases; the UI does not simulate successful voice actions.
+The dashboard displays real equipment, incident, reading, and repair records. The backend supports approved fault knowledge, gated procedures, incident notes/escalation, and atomic repair completion. Five simulated assets and two previous M-204/F0003 repairs are seeded. Voice integration is the next phase.
+
+See [the maintenance API walkthrough](docs/maintenance-api.md) for request examples, integrity rules, and demo reset commands.
 
 ## Stack
 
@@ -35,7 +37,7 @@ docker compose up --build -d
 docker compose exec api pnpm prisma:seed
 ```
 
-Startup applies committed migrations automatically. Seeding is explicit and idempotent: it creates missing demo assets without overwriting existing records. Before seeding, the dashboard displays its empty state. No AssemblyAI key is needed for Phase 1.
+Startup applies committed migrations automatically. Seeding is explicit and idempotent: it creates missing demo assets without overwriting existing records. Before seeding, the dashboard displays its empty state. No AssemblyAI key is needed for the maintenance backend.
 
 | Service            | Local URL                           |
 | ------------------ | ----------------------------------- |
@@ -114,6 +116,22 @@ pnpm test:e2e
 Integration checks cover database health, canonical asset data, asset details, normalized search, missing assets, and input validation against the running PostgreSQL-backed API. Set `TEST_API_URL` to test another API origin.
 
 Browser checks cover desktop/mobile asset selection, empty data, API failure and recovery, and horizontal overflow. Set `TEST_WEB_URL` to test another frontend origin, or `PLAYWRIGHT_CHANNEL=chrome` to use an installed Google Chrome instead of bundled Chromium.
+
+## Isolated maintenance tests
+
+The maintenance suite writes records and injects a PostgreSQL failure to prove rollback. It requires a freshly seeded separate test database; never point it at the working demo.
+
+```sh
+cp .env.test.example .env.test
+docker compose build
+docker compose --env-file .env.test -p fieldmate-test -f docker-compose.yml -f docker-compose.test.yml up -d --no-build --wait
+docker compose --env-file .env.test -p fieldmate-test -f docker-compose.yml -f docker-compose.test.yml exec api pnpm seed:reset --confirm
+pnpm test:maintenance
+# Remove only the test containers and test volume when finished:
+docker compose --env-file .env.test -p fieldmate-test -f docker-compose.yml -f docker-compose.test.yml down -v
+```
+
+Tests exercise the canonical repair, concurrent incident numbers, identical completion retries, cross-asset validation, other active incidents, approved-knowledge gates, simulated escalation, and rollback after an injected database error. Test ports are 53000 (API), 55173 (web), and 55432 (PostgreSQL).
 
 ## Demo and next phases
 

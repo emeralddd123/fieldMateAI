@@ -1,5 +1,28 @@
 import { expect, test } from '@playwright/test';
 
+test('shows seeded equipment memory and switches history with the asset', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const memory = page.getByRole('region', { name: 'Equipment memory' });
+  await expect(
+    memory.getByRole('heading', { name: 'Repair history' }),
+  ).toBeVisible();
+  await expect(
+    memory.getByText('Inspect L2 supply terminal if fault repeats.'),
+  ).toBeVisible();
+  await expect(
+    memory.getByText('Source: M-204 maintenance records'),
+  ).toBeVisible();
+  await page.getByRole('button', { name: /P-101 Cooling Water Pump/ }).click();
+  await expect(
+    memory.getByText('Source: P-101 maintenance records'),
+  ).toBeVisible();
+  await expect(
+    memory.getByText('Inspect L2 supply terminal if fault repeats.'),
+  ).toHaveCount(0);
+});
+
 test('loads seeded equipment and switches asset context', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));

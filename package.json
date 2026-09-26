@@ -16,7 +16,9 @@
     "db:migrate": "pnpm --filter @fieldmate/api prisma:migrate",
     "db:seed": "pnpm --filter @fieldmate/api seed",
     "test:integration": "pnpm --filter @fieldmate/api test:integration",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "demo:api": "node scripts/demo.mjs",
+    "test:maintenance": "node --env-file=.env.test --test apps/api/test/maintenance.integration.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

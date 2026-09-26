@@ -7,7 +7,11 @@ import { RepairsService } from './repairs.service';
 
 @Module({
   controllers: [MaintenanceController],
-  providers: [IncidentsService, KnowledgeService, RecordsService, RepairsService],
+  providers: [
+    IncidentsService,
+    KnowledgeService,
+    RecordsService,
+    RepairsService,
+  ],
 })
 export class MaintenanceModule {}
-

@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
 import type { MeasurementFields } from './dto';
 
@@ -7,7 +12,10 @@ export const activeStatuses = ['open', 'investigating', 'escalated'] as const;
 export const incidentInclude = {
   openedBy: { select: { id: true, name: true } },
   assignedTo: { select: { id: true, name: true } },
-  notes: { orderBy: { createdAt: 'asc' }, include: { author: { select: { name: true } } } },
+  notes: {
+    orderBy: { createdAt: 'asc' },
+    include: { author: { select: { name: true } } },
+  },
   measurements: { orderBy: { recordedAt: 'desc' } },
   maintenanceRecord: { include: { technician: { select: { name: true } } } },
   escalations: { orderBy: { createdAt: 'desc' } },
@@ -20,26 +28,40 @@ export function conflict(code: string, message: string): never {
   throw new ConflictException({ code, message });
 }
 export async function requireAsset(tx: Prisma.TransactionClient, id: string) {
-  const asset = await tx.asset.findUnique({ where: { id }, include: { components: true } });
+  const asset = await tx.asset.findUnique({
+    where: { id },
+    include: { components: true },
+  });
   if (!asset) missing('ASSET_NOT_FOUND', 'No asset matched that ID.');
   return asset;
 }
 // All writes concerning one asset take this lock first, including completion and incident creation.
 export async function lockAsset(tx: Prisma.TransactionClient, id: string) {
-  const rows = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM assets WHERE id = ${id}::uuid FOR UPDATE`;
+  const rows = await tx.$queryRaw<
+    Array<{ id: string }>
+  >`SELECT id FROM assets WHERE id = ${id}::uuid FOR UPDATE`;
   if (!rows.length) missing('ASSET_NOT_FOUND', 'No asset matched that ID.');
 }
 export async function lockIncident(tx: Prisma.TransactionClient, id: string) {
-  const initial = await tx.incident.findUnique({ where: { id }, select: { assetId: true } });
+  const initial = await tx.incident.findUnique({
+    where: { id },
+    select: { assetId: true },
+  });
   if (!initial) missing('INCIDENT_NOT_FOUND', 'No incident matched that ID.');
   await lockAsset(tx, initial.assetId);
-  const incident = await tx.incident.findUnique({ where: { id }, include: incidentInclude });
+  const incident = await tx.incident.findUnique({
+    where: { id },
+    include: incidentInclude,
+  });
   if (!incident) missing('INCIDENT_NOT_FOUND', 'No incident matched that ID.');
   return incident;
 }
 export async function requireTechnician(tx: Prisma.TransactionClient) {
-  if (!await tx.user.findUnique({ where: { id: DEMO_TECHNICIAN_ID } })) {
-    throw new ServiceUnavailableException({ code: 'DEMO_NOT_SEEDED', message: 'Demo technician has not been seeded.' });
+  if (!(await tx.user.findUnique({ where: { id: DEMO_TECHNICIAN_ID } }))) {
+    throw new ServiceUnavailableException({
+      code: 'DEMO_NOT_SEEDED',
+      message: 'Demo technician has not been seeded.',
+    });
   }
   return DEMO_TECHNICIAN_ID;
 }
@@ -48,9 +70,13 @@ export function normalizeFaultCode(value: string) {
   return value.trim().toUpperCase().replace(/\s+/g, '');
 }
 export function validateMeasurement(value: MeasurementFields) {
-  const expected = { line_voltage: 'V', motor_current: 'A' }[value.measurementType];
+  const expected = { line_voltage: 'V', motor_current: 'A' }[
+    value.measurementType
+  ];
   if (expected && (value.unit !== expected || value.value < 0)) {
-    throw new BadRequestException({ code: 'INVALID_MEASUREMENT', message: `${value.measurementType} requires a nonnegative reading in ${expected}.` });
+    throw new BadRequestException({
+      code: 'INVALID_MEASUREMENT',
+      message: `${value.measurementType} requires a nonnegative reading in ${expected}.`,
+    });
   }
 }
-

@@ -1,0 +1,8 @@
+# Use with docker-compose.yml, .env.test, and the separate fieldmate-test project.
+services:
+  api:
+    image: fieldmate-api:latest
+    environment:
+      APP_ENV: test
+  web:
+    image: fieldmate-web:latest

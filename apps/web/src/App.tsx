@@ -13,15 +13,19 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
-  Wrench,
 } from 'lucide-react';
 import { fetchAssets } from './api';
 import { AssetOverview } from './components/AssetOverview';
+import { MaintenancePanel } from './components/MaintenancePanel';
 
 export function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const assets = useQuery({ queryKey: ['assets'], queryFn: fetchAssets });
+  const assets = useQuery({
+    queryKey: ['assets'],
+    queryFn: fetchAssets,
+    refetchInterval: 5000,
+  });
   const selected =
     assets.data?.find((asset) => asset.id === selectedId) ??
     assets.data?.find((asset) => asset.assetTag === 'M-204') ??
@@ -178,19 +182,7 @@ export function App() {
                   </p>
                 </div>
               )}
-              <section className="memory-card">
-                <span className="memory-icon">
-                  <Wrench size={19} />
-                </span>
-                <div>
-                  <h3>Every repair has a story.</h3>
-                  <p>
-                    Maintenance history and repair records will appear here as
-                    the maintenance workflow is connected.
-                  </p>
-                </div>
-                <span className="subtle-tag">UP NEXT</span>
-              </section>
+              {selected && <MaintenancePanel assetId={selected.id} />}
             </div>
             <aside className="activity-panel" aria-label="Session activity">
               <div className="activity-heading">

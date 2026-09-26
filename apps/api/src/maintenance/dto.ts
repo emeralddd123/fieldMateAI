@@ -1,23 +1,50 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayUnique, IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsString, IsUUID, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
+import {
+  ArrayMaxSize,
+  ArrayUnique,
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
 
 function Text(max: number, example: string, optional = false) {
   return applyDecorators(
     ApiProperty({ example, maxLength: max, required: !optional }),
-    Transform(({ value }: { value: unknown }) => typeof value === 'string' ? value.trim() : value),
+    Transform(({ value }: { value: unknown }) =>
+      typeof value === 'string' ? value.trim() : value,
+    ),
     ...(optional ? [ValidateIf((_object, value) => value !== undefined)] : []),
-    IsString(), IsNotEmpty(), MaxLength(max),
+    IsString(),
+    IsNotEmpty(),
+    MaxLength(max),
   );
 }
 function OptionalUuid() {
-  return applyDecorators(ApiPropertyOptional({ format: 'uuid' }), ValidateIf((_object, value) => value !== undefined), IsUUID());
+  return applyDecorators(
+    ApiPropertyOptional({ format: 'uuid' }),
+    ValidateIf((_object, value) => value !== undefined),
+    IsUUID(),
+  );
 }
 
 export class PageQuery {
   @ApiPropertyOptional({ default: 50, minimum: 1, maximum: 100 })
-  @Type(() => Number) @IsInt() @Min(1) @Max(100)
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
   limit = 50;
 }
 export class HistoryQuery extends PageQuery {
@@ -25,7 +52,9 @@ export class HistoryQuery extends PageQuery {
 }
 export class IncidentQuery extends PageQuery {
   @OptionalUuid() assetId?: string;
-  @ApiPropertyOptional({ enum: ['open', 'investigating', 'escalated', 'resolved', 'closed'] })
+  @ApiPropertyOptional({
+    enum: ['open', 'investigating', 'escalated', 'resolved', 'closed'],
+  })
   @ValidateIf((_object, value) => value !== undefined)
   @IsIn(['open', 'investigating', 'escalated', 'resolved', 'closed'])
   status?: 'open' | 'investigating' | 'escalated' | 'resolved' | 'closed';
@@ -33,8 +62,11 @@ export class IncidentQuery extends PageQuery {
 export class ProcedureQuery {
   @ApiProperty({ format: 'uuid' }) @IsUUID() assetId!: string;
   @ApiPropertyOptional({ default: false })
-  @Transform(({ value }: { value: unknown }) => value === 'true' ? true : value === 'false' ? false : value)
-  @IsBoolean() safeStateConfirmed = false;
+  @Transform(({ value }: { value: unknown }) =>
+    value === 'true' ? true : value === 'false' ? false : value,
+  )
+  @IsBoolean()
+  safeStateConfirmed = false;
 }
 export class FaultParams {
   @ApiProperty({ format: 'uuid' }) @IsUUID() assetId!: string;
@@ -46,15 +78,28 @@ export class ProcedureParams {
 export class CreateIncidentDto {
   @ApiProperty({ format: 'uuid' }) @IsUUID() assetId!: string;
   @Text(200, 'VFD F0003 undervoltage fault') title!: string;
-  @Text(4000, 'Motor stopped during production; drive reported F0003.') description!: string;
+  @Text(4000, 'Motor stopped during production; drive reported F0003.')
+  description!: string;
   @Text(32, 'F0003', true) faultCode?: string;
-  @ApiProperty({ enum: ['low', 'medium', 'high', 'critical'], default: 'medium' })
-  @IsIn(['low', 'medium', 'high', 'critical']) priority: 'low' | 'medium' | 'high' | 'critical' = 'medium';
+  @ApiProperty({
+    enum: ['low', 'medium', 'high', 'critical'],
+    default: 'medium',
+  })
+  @IsIn(['low', 'medium', 'high', 'critical'])
+  priority: 'low' | 'medium' | 'high' | 'critical' = 'medium';
   @ApiProperty({ enum: ['down', 'warning', 'maintenance'], default: 'down' })
-  @IsIn(['down', 'warning', 'maintenance']) assetStatus: 'down' | 'warning' | 'maintenance' = 'down';
-  @ApiPropertyOptional({ type: [String], description: 'Unassigned readings on this asset to attach to the new incident.' })
+  @IsIn(['down', 'warning', 'maintenance'])
+  assetStatus: 'down' | 'warning' | 'maintenance' = 'down';
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      'Unassigned readings on this asset to attach to the new incident.',
+  })
   @ValidateIf((_object, value) => value !== undefined)
-  @IsArray() @ArrayUnique() @ArrayMaxSize(20) @IsUUID(undefined, { each: true })
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(20)
+  @IsUUID(undefined, { each: true })
   measurementIds?: string[];
 }
 export class UpdateIncidentDto {
@@ -62,22 +107,34 @@ export class UpdateIncidentDto {
   @Text(4000, 'Updated observations', true) description?: string;
   @ApiPropertyOptional({ enum: ['low', 'medium', 'high', 'critical'] })
   @ValidateIf((_object, value) => value !== undefined)
-  @IsIn(['low', 'medium', 'high', 'critical']) priority?: 'low' | 'medium' | 'high' | 'critical';
-  @ApiPropertyOptional({ enum: ['investigating', 'closed'], description: 'Close only after resolution; resolve through the repair endpoint.' })
+  @IsIn(['low', 'medium', 'high', 'critical'])
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  @ApiPropertyOptional({
+    enum: ['investigating', 'closed'],
+    description:
+      'Close only after resolution; resolve through the repair endpoint.',
+  })
   @ValidateIf((_object, value) => value !== undefined)
-  @IsIn(['investigating', 'closed']) status?: 'investigating' | 'closed';
+  @IsIn(['investigating', 'closed'])
+  status?: 'investigating' | 'closed';
   @OptionalUuid() assignedToId?: string;
 }
 export class NoteDto {
   @Text(4000, 'Incoming voltage measured at 347 V.') note!: string;
   @ApiProperty({ enum: ['voice', 'manual'], default: 'manual' })
-  @IsIn(['voice', 'manual']) source: 'voice' | 'manual' = 'manual';
+  @IsIn(['voice', 'manual'])
+  source: 'voice' | 'manual' = 'manual';
 }
 export class MeasurementFields {
   @Text(64, 'line_voltage') measurementType!: string;
-  @ApiProperty({ example: 347, description: 'Finite numeric reading, up to six decimal places.' })
+  @ApiProperty({
+    example: 347,
+    description: 'Finite numeric reading, up to six decimal places.',
+  })
   @IsNumber({ allowNaN: false, allowInfinity: false, maxDecimalPlaces: 6 })
-  @Min(-999999999) @Max(999999999) value!: number;
+  @Min(-999999999)
+  @Max(999999999)
+  value!: number;
   @Text(24, 'V') unit!: string;
   @Text(2000, 'Measured at drive input', true) notes?: string;
 }
@@ -92,22 +149,32 @@ export class CompleteRepairDto {
   @Text(4000, 'Motor running normally at 12.4 A') verificationSummary!: string;
   @ApiPropertyOptional({ type: MeasurementFields })
   @ValidateIf((_object, value) => value !== undefined)
-  @ValidateNested() @Type(() => MeasurementFields)
+  @ValidateNested()
+  @Type(() => MeasurementFields)
   verificationMeasurement?: MeasurementFields;
-  @ApiProperty({ enum: ['operational', 'warning', 'maintenance', 'down'], default: 'operational' })
+  @ApiProperty({
+    enum: ['operational', 'warning', 'maintenance', 'down'],
+    default: 'operational',
+  })
   @IsIn(['operational', 'warning', 'maintenance', 'down'])
-  assetStatus: 'operational' | 'warning' | 'maintenance' | 'down' = 'operational';
+  assetStatus: 'operational' | 'warning' | 'maintenance' | 'down' =
+    'operational';
   @ApiProperty({ enum: ['voice', 'manual'], default: 'manual' })
-  @IsIn(['voice', 'manual']) source: 'voice' | 'manual' = 'manual';
+  @IsIn(['voice', 'manual'])
+  source: 'voice' | 'manual' = 'manual';
 }
 export class EscalateDto {
-  @Text(4000, 'No approved troubleshooting procedure available') reason!: string;
-  @ApiProperty({ enum: ['supervisor_review', 'urgent'], default: 'supervisor_review' })
-  @IsIn(['supervisor_review', 'urgent']) severity: 'supervisor_review' | 'urgent' = 'supervisor_review';
+  @Text(4000, 'No approved troubleshooting procedure available')
+  reason!: string;
+  @ApiProperty({
+    enum: ['supervisor_review', 'urgent'],
+    default: 'supervisor_review',
+  })
+  @IsIn(['supervisor_review', 'urgent'])
+  severity: 'supervisor_review' | 'urgent' = 'supervisor_review';
 }
 export class CreateMaintenanceRecordDto extends CompleteRepairDto {
   @OptionalUuid() incidentId?: string;
   @Text(32, 'F0003', true) faultCode?: string;
   @Text(4000, 'Drive tripped and motor stopped') symptom!: string;
 }
-
