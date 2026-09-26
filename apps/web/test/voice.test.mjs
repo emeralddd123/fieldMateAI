@@ -410,3 +410,119 @@ test('asset executor validates arguments, rejects unknown tools and distinguishe
   assert.equal(result.isError, true);
   assert.equal(JSON.stringify(result).includes('private upstream'), false);
 });
+
+test('knowledge tools validate identifiers and limits, preserve fault codes and report source data', async () => {
+  const { createToolExecutor, LookupError } =
+    await import('../src/voice/tools.ts');
+  const id = '20400000-0000-4000-8000-000000000001';
+  let calls = 0,
+    captured;
+  const signal = new AbortController().signal;
+  const history = {
+    assetId: id,
+    assetTag: 'M-204',
+    totalMatchingIncidents: 0,
+    incidents: [],
+    maintenanceRecords: [],
+  };
+  const execute = createToolExecutor(async () => [], {
+    fault: async (assetId, faultCode) => {
+      calls++;
+      captured = faultCode;
+      return {
+        found: false,
+        assetId,
+        faultCode,
+        message: 'No verified definition exists.',
+      };
+    },
+    history: async (args) => {
+      calls++;
+      captured = args;
+      return history;
+    },
+  });
+  for (const args of [
+    { asset_id: 'M-204', fault_code: 'F0003' },
+    { asset_id: id, fault_code: '' },
+    { asset_id: id, fault_code: 'F0003', extra: true },
+  ])
+    assert.equal(
+      (await execute('lookup_fault_code', args, signal)).isError,
+      true,
+    );
+  for (const limit of [0, 11, '5', 1.5])
+    assert.equal(
+      (
+        await execute(
+          'get_maintenance_history',
+          { asset_id: id, limit },
+          signal,
+        )
+      ).isError,
+      true,
+    );
+  assert.equal(calls, 0);
+  const missing = await execute(
+    'lookup_fault_code',
+    { asset_id: id, fault_code: 'F0003' },
+    signal,
+  );
+  assert.equal(missing.isError, false);
+  assert.equal(missing.result.found, false);
+  assert.equal(captured, 'F0003');
+  const empty = await execute(
+    'get_maintenance_history',
+    { asset_id: id },
+    signal,
+  );
+  assert.equal(empty.isError, false);
+  assert.equal(captured.limit, 5);
+  assert.equal(empty.result.totalMatchingIncidents, 0);
+  assert.match(empty.source, /M-204 maintenance records/);
+  for (const code of ['AMBIGUOUS_FAULT', 'ASSET_NOT_FOUND', 'UNAVAILABLE']) {
+    const failing = createToolExecutor(async () => [], {
+      fault: async () => {
+        throw new LookupError(code);
+      },
+      history: async () => {
+        throw new Error('private details');
+      },
+    });
+    assert.equal(
+      (
+        await failing(
+          'lookup_fault_code',
+          { asset_id: id, fault_code: 'F0003' },
+          signal,
+        )
+      ).isError,
+      true,
+    );
+    assert.equal(
+      JSON.stringify(
+        await failing('get_maintenance_history', { asset_id: id }, signal),
+      ).includes('private details'),
+      false,
+    );
+  }
+  const wrongAsset = createToolExecutor(async () => [], {
+    fault: async () => ({ found: false, assetId: 'another' }),
+    history: async () => ({ ...history, assetId: 'another' }),
+  });
+  assert.equal(
+    (
+      await wrongAsset(
+        'lookup_fault_code',
+        { asset_id: id, fault_code: 'F0003' },
+        signal,
+      )
+    ).isError,
+    true,
+  );
+  assert.equal(
+    (await wrongAsset('get_maintenance_history', { asset_id: id }, signal))
+      .isError,
+    true,
+  );
+});

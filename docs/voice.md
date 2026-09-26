@@ -2,7 +2,7 @@
 
 Open http://localhost:5173, select **Start voice session**, allow microphone access, and talk to FieldMate. Live transcripts appear beside the equipment workspace. Mute keeps the session connected; End session releases the microphone and ends the provider session. Starting again opens a fresh conversation.
 
-Say “Find P-101” or “Find M-204” to search the live equipment register. A unique match selects the asset in the workspace and returns its metadata to FieldMate. Multiple matches require a more specific tag; no match or a failed lookup leaves the selection unchanged. Visible lookup cards show progress and results. Voice does not yet retrieve faults, procedures, or maintenance history, or change maintenance records. Manual sidebar selection is not sent to the agent; identify equipment by tag in conversation. Transcripts remain in browser memory until a new session or page reload; they are not persisted to PostgreSQL.
+Say “Find P-101” or “Find M-204” to search the live equipment register. A unique match selects the asset in the workspace and returns its metadata to FieldMate. Multiple matches require a more specific tag; no match or a failed lookup leaves the selection unchanged. Visible lookup cards show progress and results. Voice can now retrieve verified fault definitions and previous maintenance history, including technician notes. It does not yet retrieve approved procedure steps or change maintenance records. Manual sidebar selection is not sent to the agent; identify equipment by tag in conversation. Transcripts remain in browser memory until a new session or page reload; they are not persisted to PostgreSQL.
 
 ## Configuration
 
@@ -38,6 +38,8 @@ PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e
 pnpm test:voice:live
 # Also exercise a live tool call using a synthetic text request:
 pnpm test:voice:live --lookup
+# Verify all three tools against the canonical seeded M-204 history:
+pnpm test:voice:live --knowledge
 ```
 
 The voice unit suite covers token protection, provider failures, rate limits, PCM resampling, transcript reconciliation, cancellation, muted frames, interruption, audio queue cleanup, and connection backpressure. Browser checks use mocked provider events with real AudioWorklet capture on desktop and mobile Chromium emulation. They cover permission denial and cancellation as well as the successful session flow.
@@ -61,3 +63,14 @@ The live smoke checks actual token minting, session readiness, microphone frame 
 Tool calls are deduplicated by call ID within a session. Results are JSON strings returned at the idle reply boundary described in AssemblyAI’s [client-side tool guide](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/client-side-tools). New speech holds pending results; interruption and session teardown abort pending requests and discard late responses. Unknown tools and invalid arguments return structured errors. Client-side execution keeps the local API reachable from the browser without exposing it publicly to the provider.
 
 Try “Find conveyor” to test ambiguity, “Find ZZZ-9999” for an empty result, and “Find P-101” for a unique match. The `--lookup` live check mutes synthetic microphone input and supplies an explicit lookup instruction through `reply.create` to trigger the provider tool; recognition of spoken asset tags still needs a real-microphone check.
+
+## Fault definitions and maintenance history
+
+After identifying equipment, say “What does F0003 mean on M-204?” or “Has this motor had F0003 before?” The agent obtains the asset UUID with `find_asset`, then uses:
+
+- `lookup_fault_code`: `{ "asset_id": "<UUID>", "fault_code": "F0003" }`. Returns the installed model's verified definition, source and safety level. Unknown faults return `found: false`; ambiguous installed models require clarification. No procedure steps are exposed by this tool.
+- `get_maintenance_history`: `{ "asset_id": "<UUID>", "fault_code": "F0003", "limit": 5 }`. The fault filter is optional; the limit defaults to 5 and must be 1–10. Returns incident counts, previous incidents, repair records and technician notes. Counts refer to all matching incidents; the record arrays are limited.
+
+Tool arguments and API responses are validated. Leading zeros in fault codes are preserved. Failed lookups return errors rather than invented answers, and cancelled calls cannot display late results. Lookup cards display source information and retrieved details. Historical notes describe past work; they are not approved procedures or evidence that the present fault has the same cause.
+
+The `--knowledge` check uses an explicit synthetic instruction, a muted fake microphone, and the real provider and local database. It expects the original two M-204/F0003 incidents including the L2 note. It does not write or reset data. For manual QA, test a known fault, an unknown fault such as F999999, a fault with no history, and “Tell me the previous technician’s note.”

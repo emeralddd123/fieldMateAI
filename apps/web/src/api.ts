@@ -1,5 +1,8 @@
+import type { HistoryArguments } from '@fieldmate/shared';
+import { LookupError } from './voice/tools';
 import {
   assetsResponseSchema,
+  faultResponseSchema,
   maintenanceHistorySchema,
   measurementsResponseSchema,
 } from '@fieldmate/shared';
@@ -71,4 +74,46 @@ export async function searchVoiceAssets(query: string, signal: AbortSignal) {
   );
   if (!response.ok) throw new Error('Equipment search unavailable');
   return assetsResponseSchema.parse(await response.json()).data;
+}
+
+async function fetchVoiceKnowledge(path: string, signal: AbortSignal) {
+  const response = await fetch(`${baseUrl}${path}`, {
+    signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const code = body?.error?.code;
+    throw new LookupError(
+      code === 'ASSET_NOT_FOUND' || code === 'AMBIGUOUS_FAULT'
+        ? code
+        : 'UNAVAILABLE',
+    );
+  }
+  return response.json();
+}
+export async function fetchVoiceFault(
+  assetId: string,
+  code: string,
+  signal: AbortSignal,
+) {
+  return faultResponseSchema.parse(
+    await fetchVoiceKnowledge(
+      `/assets/${encodeURIComponent(assetId)}/faults/${encodeURIComponent(code)}`,
+      signal,
+    ),
+  ).data;
+}
+export async function fetchVoiceHistory(
+  args: HistoryArguments,
+  signal: AbortSignal,
+) {
+  const query = new URLSearchParams({ limit: String(args.limit ?? 5) });
+  if (args.fault_code) query.set('faultCode', args.fault_code);
+  return maintenanceHistorySchema.parse(
+    await fetchVoiceKnowledge(
+      `/assets/${encodeURIComponent(args.asset_id)}/history?${query}`,
+      signal,
+    ),
+  ).data;
 }

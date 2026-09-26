@@ -4,11 +4,11 @@
 
 FieldMate is a voice-first maintenance copilot that gives field technicians access to equipment knowledge and maintenance history, then turns repair conversations into structured records.
 
-## Current build: Phase 4 — equipment lookup
+## Current build: Phase 4 — equipment knowledge
 
 The build includes the pnpm monorepo, equipment workspace, NestJS maintenance API, PostgreSQL migrations and seed, and the complete Docker Compose deployment path.
 
-The dashboard displays real equipment, incident, reading, and repair records. The backend supports approved fault knowledge, gated procedures, incident notes/escalation, and atomic repair completion. Five simulated assets and two previous M-204/F0003 repairs are seeded. Voice now connects to AssemblyAI with browser microphone capture, streamed audio, live transcripts, mute, and interruption handling. The first voice tool, `find_asset`, searches the live equipment register and selects a unique match. Fault lookup, maintenance history, and write tools are next.
+The dashboard displays real equipment, incident, reading, and repair records. The backend supports approved fault knowledge, gated procedures, incident notes/escalation, and atomic repair completion. Five simulated assets and two previous M-204/F0003 repairs are seeded. Voice now connects to AssemblyAI with browser microphone capture, streamed audio, live transcripts, mute, and interruption handling. Voice tools now search equipment, retrieve verified model-specific fault definitions, and read maintenance history with technician notes. Lookup cards show the returned facts and sources. Approved procedure retrieval and write tools are next.
 
 See [voice setup and testing](docs/voice.md) and [the maintenance API walkthrough](docs/maintenance-api.md) for request examples, integrity rules, and demo reset commands.
 

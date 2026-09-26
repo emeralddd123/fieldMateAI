@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrowserVoiceAudio } from './audio';
 import { VoiceSession, type VoiceSnapshot } from './session';
-import { fetchVoiceToken, searchVoiceAssets } from '../api';
+import {
+  fetchVoiceToken,
+  searchVoiceAssets,
+  fetchVoiceFault,
+  fetchVoiceHistory,
+} from '../api';
 import { createToolExecutor } from './tools';
 
 export function useVoiceSession(onAssetFound: (id: string) => void) {
@@ -17,7 +22,10 @@ export function useVoiceSession(onAssetFound: (id: string) => void) {
   useEffect(() => {
     const session = new VoiceSession(setState, {
       token: fetchVoiceToken,
-      executeTool: createToolExecutor(searchVoiceAssets),
+      executeTool: createToolExecutor(searchVoiceAssets, {
+        fault: fetchVoiceFault,
+        history: fetchVoiceHistory,
+      }),
       assetFound: onAssetFound,
       socket: (url) => new WebSocket(url),
       audio: (changed) => {

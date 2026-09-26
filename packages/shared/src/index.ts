@@ -90,7 +90,12 @@ export type MaintenanceHistory = z.infer<
 >['data'];
 
 export {
+  lookupFaultArgumentsSchema,
+  historyArgumentsSchema,
+  faultResponseSchema,
   findAssetArgumentsSchema,
   voiceToolDefinitionSchema,
   voiceTools,
 } from './voice';
+
+export type { FaultDefinition, HistoryArguments } from './voice';

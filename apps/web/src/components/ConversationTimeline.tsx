@@ -70,6 +70,10 @@ export function ConversationTimeline({ voice }: { voice: VoiceControlsState }) {
                       : 'Unavailable'}
               </strong>
               <span>{tool.summary}</span>
+              {tool.details?.map((detail, index) => (
+                <span key={index}>{detail}</span>
+              ))}
+              {tool.source && <small>Source: {tool.source}</small>}
             </p>
           ))}
         </section>

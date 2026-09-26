@@ -236,3 +236,89 @@ for (const scenario of ['unique', 'ambiguous', 'missing', 'unavailable']) {
     ).toBeVisible();
   });
 }
+
+for (const scenario of ['fault', 'unknown', 'history', 'empty', 'failure']) {
+  test(`voice maintenance knowledge: ${scenario}`, async ({
+    page,
+    request,
+  }) => {
+    const response = await request.get('/api/v1/assets/search?q=M204');
+    const asset = (await response.json()).data[0];
+    let socket: WebSocketRoute | undefined;
+    const results: { is_error: boolean; result: string }[] = [];
+    await page.route('**/api/v1/voice/token', (route) =>
+      route.fulfill({ json: { data: credential } }),
+    );
+    if (scenario === 'failure')
+      await page.route('**/api/v1/assets/*/faults/*', (route) =>
+        route.fulfill({
+          status: 503,
+          json: { error: { code: 'UNAVAILABLE' } },
+        }),
+      );
+    await page.routeWebSocket('wss://agents.assemblyai.com/v1/ws?*', (ws) => {
+      socket = ws;
+      ws.onMessage((raw) => {
+        const event = JSON.parse(String(raw));
+        if (event.type === 'session.update')
+          ws.send(
+            JSON.stringify({ type: 'session.ready', session_id: 'knowledge' }),
+          );
+        if (event.type === 'tool.result') results.push(event);
+        if (event.type === 'session.end')
+          ws.send(JSON.stringify({ type: 'session.ended' }));
+      });
+    });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Start voice session' }).click();
+    await expect(
+      page
+        .getByRole('region', { name: 'Voice session', exact: true })
+        .getByRole('status'),
+    ).toHaveText('Listening');
+    const send = (event: object) => socket!.send(JSON.stringify(event));
+    send({ type: 'reply.started', reply_id: 'fc-knowledge' });
+    send({
+      type: 'tool.call',
+      call_id: 'knowledge',
+      name: ['history', 'empty'].includes(scenario)
+        ? 'get_maintenance_history'
+        : 'lookup_fault_code',
+      arguments: {
+        asset_id: asset.id,
+        fault_code: ['unknown', 'empty'].includes(scenario)
+          ? 'F999999'
+          : 'F0003',
+      },
+    });
+    send({ type: 'reply.done', reply_id: 'fc-knowledge', status: 'completed' });
+    await expect.poll(() => results.length).toBe(1);
+    const data = JSON.parse(results[0].result);
+    const activity = page.getByRole('region', { name: 'Equipment lookups' });
+    if (scenario === 'fault') {
+      expect(data.found).toBe(true);
+      await expect(activity).toContainText('Undervoltage');
+      await expect(activity).toContainText('Source:');
+    }
+    if (scenario === 'unknown') {
+      expect(data.found).toBe(false);
+      await expect(activity).toContainText('no verified definition');
+    }
+    if (scenario === 'history') {
+      expect(data.totalMatchingIncidents).toBe(2);
+      await expect(activity).toContainText('Inspect L2 supply terminal');
+      await expect(activity).toContainText('Source: M-204 maintenance records');
+    }
+    if (scenario === 'empty') {
+      expect(data.totalMatchingIncidents).toBe(0);
+      await expect(activity).toContainText('0 matching incidents');
+    }
+    expect(results[0].is_error).toBe(scenario === 'failure');
+    if (scenario === 'failure')
+      await expect(activity).toContainText('temporarily unavailable');
+    await page.getByRole('button', { name: 'End session' }).click();
+    await expect(
+      page.getByRole('button', { name: 'Start voice session' }),
+    ).toBeVisible();
+  });
+}
