@@ -45,8 +45,11 @@ export function createToolExecutor(
   search: (query: string, signal: AbortSignal) => Promise<Asset[]>,
   knowledge?: KnowledgeLookups,
   procedure?: (args: unknown, signal: AbortSignal) => Promise<ToolOutcome>,
+  writes?: ExecuteTool,
 ): ExecuteTool {
   return async (name, args, signal) => {
+    if (writes && ['record_measurement', 'create_incident'].includes(name))
+      return writes(name, args, signal);
     if (name === 'get_approved_procedure' && procedure)
       return procedure(args, signal);
     if (name === 'lookup_fault_code' || name === 'get_maintenance_history') {
@@ -145,7 +148,7 @@ export function createToolExecutor(
         isError: true,
         result: {
           error:
-            'This tool is unavailable. Only equipment and approved knowledge tools are connected. No records were changed.',
+            'This tool is unavailable. This action is not connected. No records were changed.',
         },
         summary: 'Requested action unavailable.',
       };
@@ -204,7 +207,7 @@ export interface ToolActivity {
 export class VoiceToolQueue {
   private pending = new Map<
     string,
-    { abort: AbortController; outcome?: ToolOutcome }
+    { abort: AbortController; outcome?: ToolOutcome; name: string }
   >();
   private seen = new Set<string>();
   private idle = false;
@@ -217,8 +220,9 @@ export class VoiceToolQueue {
     if (this.seen.has(id)) return;
     if (this.seen.size >= 100) throw new Error('Too many tool calls');
     this.seen.add(id);
-    const entry = { abort: new AbortController() } as {
+    const entry = { abort: new AbortController(), name } as {
       abort: AbortController;
+      name: string;
       outcome?: ToolOutcome;
     };
     this.pending.set(id, entry);
@@ -294,7 +298,13 @@ export class VoiceToolQueue {
     this.idle = false;
     for (const [id, entry] of this.pending) {
       entry.abort.abort();
-      this.changed({ id, status: 'cancelled', summary: 'Lookup cancelled.' });
+      this.changed({
+        id,
+        status: 'cancelled',
+        summary: ['record_measurement', 'create_incident'].includes(entry.name)
+          ? 'Voice request stopped. Submitted saves may still finish; check Maintenance save results.'
+          : 'Lookup cancelled.',
+      });
     }
     this.pending.clear();
   }

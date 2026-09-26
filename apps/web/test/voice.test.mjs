@@ -634,3 +634,123 @@ test('confirmation rejects concurrent requests, aborts, expires, and cannot reus
   );
   assert.equal(shown, null);
 });
+
+test('voice writes require confirmation, validate units and survive cancellation after dispatch', async () => {
+  const { VoiceWrites } = await import('../src/voice/writes.ts');
+  const id = '20400000-0000-4000-8000-000000000001';
+  const args = {
+    asset_id: id,
+    measurement_type: 'line_voltage',
+    value: 347,
+    unit: 'V',
+  };
+  let storage = null,
+    accepted = false,
+    submitted = 0,
+    done;
+  const notices = [];
+  const deps = {
+    storage: {
+      getItem: () => storage,
+      setItem: (_key, value) => {
+        storage = value;
+      },
+    },
+    preview: async () => ({ title: 'Review', details: ['347 V'] }),
+    confirm: async () => accepted,
+    uuid: () => id,
+    changed: (notice) => notices.push(notice),
+    saved() {},
+    submit: async () => {
+      submitted++;
+      return new Promise((resolve) => {
+        done = resolve;
+      });
+    },
+  };
+  const writer = new VoiceWrites(deps);
+  const abort = new AbortController();
+  await writer.execute('record_measurement', args, abort.signal);
+  assert.equal(submitted, 0);
+  accepted = true;
+  assert.equal(
+    (
+      await writer.execute(
+        'record_measurement',
+        { ...args, unit: 'A' },
+        abort.signal,
+      )
+    ).isError,
+    true,
+  );
+  assert.equal(
+    (
+      await writer.execute(
+        'record_measurement',
+        { ...args, confirmed: true },
+        abort.signal,
+      )
+    ).isError,
+    true,
+  );
+  assert.equal(submitted, 0);
+  const pending = writer.execute('record_measurement', args, abort.signal);
+  await new Promise(setImmediate);
+  assert.equal(submitted, 1);
+  abort.abort();
+  done({ id, assetId: id, requestId: id, value: 347, unit: 'V' });
+  assert.equal((await pending).result.success, true);
+  assert.equal(notices.at(-1).status, 'saved');
+  assert.equal(storage, '[]');
+});
+
+test('unknown writes retain a durable retry key across reloads and retry clicks coalesce', async () => {
+  const { VoiceWrites } = await import('../src/voice/writes.ts');
+  const id = '20400000-0000-4000-8000-000000000001';
+  let storage = null,
+    finish;
+  const keys = [];
+  const notices = [];
+  const deps = {
+    storage: {
+      getItem: () => storage,
+      setItem: (_key, value) => {
+        storage = value;
+      },
+    },
+    preview: async () => ({ title: 'Review', details: ['347 V'] }),
+    confirm: async () => true,
+    uuid: () => id,
+    changed: (notice) => notices.push(notice),
+    saved() {},
+    submit: async (_request, requestId) => {
+      keys.push(requestId);
+      throw new Error('Response lost');
+    },
+  };
+  const first = new VoiceWrites(deps);
+  const outcome = await first.execute(
+    'record_measurement',
+    { asset_id: id, measurement_type: 'line_voltage', value: 347, unit: 'V' },
+    new AbortController().signal,
+  );
+  assert.equal(outcome.isError, true);
+  assert.equal(notices.at(-1).status, 'unknown');
+  const restored = new VoiceWrites({
+    ...deps,
+    submit: async (_request, requestId) => {
+      keys.push(requestId);
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    },
+  });
+  restored.restore();
+  assert.equal(notices.at(-1).status, 'unknown');
+  const a = restored.retry(id),
+    b = restored.retry(id);
+  finish({ id, assetId: id, requestId: id, value: 347, unit: 'V' });
+  await Promise.all([a, b]);
+  assert.deepEqual(keys, [id, id]);
+  assert.equal(storage, '[]');
+});

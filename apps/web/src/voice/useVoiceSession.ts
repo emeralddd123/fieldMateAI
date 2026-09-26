@@ -1,3 +1,6 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { VoiceWrites } from './writes';
+import type { WritePrompt, WriteNotice } from './writes';
 import { SafetyConfirmation, createProcedureExecutor } from './procedure';
 import type { SafetyPrompt } from './procedure';
 import { useEffect, useRef, useState } from 'react';
@@ -9,10 +12,19 @@ import {
   fetchVoiceFault,
   fetchVoiceHistory,
   fetchVoiceProcedure,
+  previewVoiceWrite,
+  submitVoiceWrite,
 } from '../api';
 import { createToolExecutor } from './tools';
 
 export function useVoiceSession(onAssetFound: (id: string) => void) {
+  const queryClient = useQueryClient();
+  const [writePrompt, setWritePrompt] = useState<WritePrompt | null>(null);
+  const [writeNotices, setWriteNotices] = useState<WriteNotice[]>([]);
+  const writeConfirmation = useRef<SafetyConfirmation<WritePrompt> | null>(
+    null,
+  );
+  const writeController = useRef<VoiceWrites | null>(null);
   const [safetyPrompt, setSafetyPrompt] = useState<SafetyPrompt | null>(null);
   const confirmation = useRef<SafetyConfirmation | null>(null);
   const [state, setState] = useState<VoiceSnapshot>({
@@ -25,6 +37,33 @@ export function useVoiceSession(onAssetFound: (id: string) => void) {
   });
   const controller = useRef<VoiceSession | null>(null);
   useEffect(() => {
+    const approveWrite = new SafetyConfirmation<WritePrompt>(setWritePrompt);
+    writeConfirmation.current = approveWrite;
+    const writes = new VoiceWrites({
+      storage: {
+        getItem: (key) => localStorage.getItem(key),
+        setItem: (key, value) => localStorage.setItem(key, value),
+      },
+      uuid: () => crypto.randomUUID(),
+      preview: previewVoiceWrite,
+      submit: submitVoiceWrite,
+      confirm: (prompt, signal) => approveWrite.request(prompt, signal),
+      changed: (notice) =>
+        setWriteNotices((items) =>
+          [
+            ...items.filter((item) => item.requestId !== notice.requestId),
+            notice,
+          ].slice(-20),
+        ),
+      saved: (assetId) => {
+        void queryClient.invalidateQueries({ queryKey: ['assets'] });
+        void queryClient.invalidateQueries({
+          queryKey: ['maintenance', assetId],
+        });
+      },
+    });
+    writeController.current = writes;
+    writes.restore();
     const safety = new SafetyConfirmation(setSafetyPrompt);
     confirmation.current = safety;
     const session = new VoiceSession(setState, {
@@ -38,6 +77,7 @@ export function useVoiceSession(onAssetFound: (id: string) => void) {
         createProcedureExecutor(fetchVoiceProcedure, (prompt, signal) =>
           safety.request(prompt, signal),
         ),
+        (name, args, signal) => writes.execute(name, args, signal),
       ),
       assetFound: onAssetFound,
       socket: (url) => new WebSocket(url),
@@ -62,13 +102,22 @@ export function useVoiceSession(onAssetFound: (id: string) => void) {
       window.removeEventListener('pagehide', hide);
       session.dispose();
       safety.answer(false);
+      approveWrite.answer(false);
+      writeConfirmation.current = null;
+      writeController.current = null;
       confirmation.current = null;
       controller.current = null;
     };
-  }, [onAssetFound]);
+  }, [onAssetFound, queryClient]);
   return {
     ...state,
     safetyPrompt,
+    writePrompt,
+    writeNotices,
+    confirmWrite: (accepted: boolean) =>
+      writeConfirmation.current?.answer(accepted),
+    retryWrite: (requestId: string) =>
+      void writeController.current?.retry(requestId),
     confirmSafety: (accepted: boolean) =>
       confirmation.current?.answer(accepted),
     connect: () => void controller.current?.connect(),

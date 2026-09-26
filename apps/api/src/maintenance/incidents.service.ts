@@ -8,6 +8,8 @@ import type {
   UpdateIncidentDto,
 } from './dto';
 import {
+  lockCreationRequest,
+  verifyCreationRetry,
   activeStatuses,
   conflict,
   DEMO_TECHNICIAN_ID,
@@ -42,6 +44,18 @@ export class IncidentsService {
   }
   async create(dto: CreateIncidentDto) {
     return this.prisma.$transaction(async (tx) => {
+      const requestHash = await lockCreationRequest(tx, 'incident', dto);
+      if (dto.requestId) {
+        const existing = await tx.incident.findUnique({
+          where: { requestId: dto.requestId },
+          include: incidentInclude,
+        });
+        if (existing) {
+          verifyCreationRetry(existing.requestHash, requestHash);
+          return existing;
+        }
+      }
+
       await lockAsset(tx, dto.assetId);
       await requireTechnician(tx);
       const { measurementIds = [], assetStatus, ...data } = dto;
@@ -62,6 +76,7 @@ export class IncidentsService {
       const incident = await tx.incident.create({
         data: {
           ...data,
+          requestHash,
           faultCode: dto.faultCode ? normalizeFaultCode(dto.faultCode) : null,
           openedById: DEMO_TECHNICIAN_ID,
         },

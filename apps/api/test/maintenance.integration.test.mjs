@@ -423,3 +423,107 @@ test('escalation is persisted and simulated, and linked work logs complete repai
   assert.equal(completed.escalations[0].status, 'resolved');
   await request('POST', `/incidents/${incident.id}/escalate`, dto, 409);
 });
+
+test('voice measurement retries are durable and concurrent creates do not duplicate', async () => {
+  const body = {
+    assetId: pump.id,
+    measurementType: 'line_voltage',
+    value: 347,
+    unit: 'V',
+    source: 'voice',
+    requestId: crypto.randomUUID(),
+  };
+  const [a, b] = await Promise.all([
+    request('POST', '/measurements', body, 201),
+    request('POST', '/measurements', body, 201),
+  ]);
+  assert.equal(a.id, b.id);
+  assert.equal(a.source, 'voice');
+  assert.equal(a.requestHash, undefined);
+  assert.equal(
+    (await request('POST', '/measurements', { ...body, value: 348 }, 409)).code,
+    'REQUEST_ID_REUSED',
+  );
+  assert.equal(
+    (
+      await request(
+        'POST',
+        '/measurements',
+        { ...body, assetId: motor.id },
+        409,
+      )
+    ).code,
+    'REQUEST_ID_REUSED',
+  );
+  await request(
+    'POST',
+    '/measurements',
+    { ...body, requestId: undefined },
+    400,
+  );
+  const linked = await create(pump.id, { measurementIds: [a.id] });
+  const retry = await request('POST', '/measurements', body, 201);
+  assert.equal(retry.id, a.id);
+  assert.equal(retry.incidentId, linked.id);
+  const rows = await pool.query(
+    'SELECT count(*)::int AS n FROM measurements WHERE request_id=$1',
+    [body.requestId],
+  );
+  assert.equal(rows.rows[0].n, 1);
+});
+
+test('voice incident retries keep one incident and do not repeat status changes or reading links', async () => {
+  const measurement = await request(
+    'POST',
+    '/measurements',
+    {
+      assetId: pump.id,
+      measurementType: 'motor_current',
+      value: 12.4,
+      unit: 'A',
+    },
+    201,
+  );
+  const body = {
+    assetId: pump.id,
+    title: 'Voice incident',
+    description: 'Reported by technician',
+    priority: 'high',
+    assetStatus: 'down',
+    measurementIds: [measurement.id],
+    source: 'voice',
+    requestId: crypto.randomUUID(),
+  };
+  const [a, b] = await Promise.all([
+    request('POST', '/incidents', body, 201),
+    request('POST', '/incidents', body, 201),
+  ]);
+  assert.equal(a.id, b.id);
+  assert.equal(a.incidentNumber, b.incidentNumber);
+  assert.equal(a.source, 'voice');
+  assert.equal(a.requestHash, undefined);
+  assert.equal(a.measurements[0].id, measurement.id);
+  assert.equal(
+    (await request('POST', '/incidents', { ...body, title: 'Changed' }, 409))
+      .code,
+    'REQUEST_ID_REUSED',
+  );
+  const updated = await request('PATCH', `/incidents/${a.id}`, {
+    status: 'investigating',
+  });
+  const retry = await request('POST', '/incidents', body, 201);
+  assert.equal(retry.status, updated.status);
+  const invalidId = crypto.randomUUID();
+  await request(
+    'POST',
+    '/incidents',
+    { ...body, requestId: invalidId, measurementIds: [crypto.randomUUID()] },
+    409,
+  );
+  const rows = await pool.query(
+    'SELECT count(*)::int AS n FROM incidents WHERE request_id=$1',
+    [invalidId],
+  );
+  assert.equal(rows.rows[0].n, 0);
+  await request('POST', '/incidents', { ...body, requestId: undefined }, 400);
+});

@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateMeasurementDto, HistoryQuery, PageQuery } from './dto';
 import {
+  lockCreationRequest,
+  verifyCreationRetry,
   activeStatuses,
   conflict,
   DEMO_TECHNICIAN_ID,
@@ -70,6 +72,17 @@ export class RecordsService {
   async recordMeasurement(dto: CreateMeasurementDto) {
     validateMeasurement(dto);
     return this.prisma.$transaction(async (tx) => {
+      const requestHash = await lockCreationRequest(tx, 'measurement', dto);
+      if (dto.requestId) {
+        const existing = await tx.measurement.findUnique({
+          where: { requestId: dto.requestId },
+        });
+        if (existing) {
+          verifyCreationRetry(existing.requestHash, requestHash);
+          return existing;
+        }
+      }
+
       await lockAsset(tx, dto.assetId);
       await requireTechnician(tx);
       if (dto.incidentId) {
@@ -90,7 +103,7 @@ export class RecordsService {
           );
       }
       return tx.measurement.create({
-        data: { ...dto, recordedById: DEMO_TECHNICIAN_ID },
+        data: { ...dto, requestHash, recordedById: DEMO_TECHNICIAN_ID },
       });
     });
   }

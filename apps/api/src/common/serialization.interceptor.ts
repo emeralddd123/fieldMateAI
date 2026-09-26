@@ -15,7 +15,7 @@ function serialize(value: unknown): unknown {
   if (value !== null && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value)
-        .filter(([key]) => key !== 'completionPayload')
+        .filter(([key]) => key !== 'completionPayload' && key !== 'requestHash')
         .map(([key, item]) => [key, serialize(item)]),
     );
   }

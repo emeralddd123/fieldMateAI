@@ -103,3 +103,11 @@ export {
 export type { FaultDefinition, HistoryArguments } from './voice';
 
 export type { ProcedureResult, ProcedureRequest } from './voice';
+
+export {
+  measurementArgumentsSchema,
+  incidentArgumentsSchema,
+  writeRequestSchema,
+  writeResultSchema,
+} from './writes';
+export type { WriteRequest, WriteResult } from './writes';

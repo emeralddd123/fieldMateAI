@@ -34,11 +34,13 @@ test('mints a bounded single-use credential without exposing the permanent key',
       'lookup_fault_code',
       'get_maintenance_history',
       'get_approved_procedure',
+      'record_measurement',
+      'create_incident',
     ],
   );
   assert.match(
     result.sessionConfig.system_prompt,
-    /Write actions are not available/,
+    /Repair completion and escalation are not connected/,
   );
 });
 test('missing credentials and disallowed browser origins never contact the provider', async () => {

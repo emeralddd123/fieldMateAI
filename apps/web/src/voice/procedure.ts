@@ -8,13 +8,13 @@ export interface SafetyPrompt {
   source: string;
   message: string;
 }
-export class SafetyConfirmation {
+export class SafetyConfirmation<T = SafetyPrompt> {
   private finish?: (accepted: boolean) => void;
   constructor(
-    private changed: (prompt: SafetyPrompt | null) => void,
+    private changed: (prompt: T | null) => void,
     private timeoutMs = 60_000,
   ) {}
-  request(prompt: SafetyPrompt, signal: AbortSignal): Promise<boolean> {
+  request(prompt: T, signal: AbortSignal): Promise<boolean> {
     // Concurrent requests cannot share or replace an existing confirmation.
     if (this.finish || signal.aborted) return Promise.resolve(false);
     return new Promise((resolve) => {

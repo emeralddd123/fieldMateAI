@@ -76,6 +76,20 @@ export class ProcedureParams {
   @Text(100, 'vfd-undervoltage-check') key!: string;
 }
 export class CreateIncidentDto {
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'Stable creation request ID. Required for voice writes; reuse for identical retries.',
+  })
+  @ValidateIf(
+    (object, value) => object.source === 'voice' || value !== undefined,
+  )
+  @IsUUID()
+  requestId?: string;
+  @ApiProperty({ enum: ['voice', 'manual'], default: 'manual' })
+  @IsIn(['voice', 'manual'])
+  source: 'voice' | 'manual' = 'manual';
+
   @ApiProperty({ format: 'uuid' }) @IsUUID() assetId!: string;
   @Text(200, 'VFD F0003 undervoltage fault') title!: string;
   @Text(4000, 'Motor stopped during production; drive reported F0003.')
@@ -139,6 +153,20 @@ export class MeasurementFields {
   @Text(2000, 'Measured at drive input', true) notes?: string;
 }
 export class CreateMeasurementDto extends MeasurementFields {
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'Stable creation request ID. Required for voice writes; reuse for identical retries.',
+  })
+  @ValidateIf(
+    (object, value) => object.source === 'voice' || value !== undefined,
+  )
+  @IsUUID()
+  requestId?: string;
+  @ApiProperty({ enum: ['voice', 'manual'], default: 'manual' })
+  @IsIn(['voice', 'manual'])
+  source: 'voice' | 'manual' = 'manual';
+
   @ApiProperty({ format: 'uuid' }) @IsUUID() assetId!: string;
   @OptionalUuid() incidentId?: string;
 }

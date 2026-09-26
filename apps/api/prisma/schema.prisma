@@ -152,6 +152,9 @@ model FaultDefinition {
 }
 
 model Incident {
+  requestId         String?            @unique @map("request_id") @db.Uuid
+  requestHash       String?            @map("request_hash")
+  source            RecordSource       @default(manual)
   id                String             @id @default(uuid()) @db.Uuid
   incidentNumber    String             @unique @default(dbgenerated("('INC-'::text || (nextval('incident_number_seq'::regclass))::text)")) @map("incident_number")
   assetId           String             @map("asset_id") @db.Uuid
@@ -198,18 +201,21 @@ model IncidentNote {
 }
 
 model Measurement {
-  id              String    @id @default(uuid()) @db.Uuid
-  assetId         String    @map("asset_id") @db.Uuid
-  asset           Asset     @relation(fields: [assetId], references: [id])
-  incidentId      String?   @map("incident_id") @db.Uuid
-  incident        Incident? @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  measurementType String    @map("measurement_type")
-  value           Decimal   @db.Decimal(16, 6)
+  requestId       String?      @unique @map("request_id") @db.Uuid
+  requestHash     String?      @map("request_hash")
+  source          RecordSource @default(manual)
+  id              String       @id @default(uuid()) @db.Uuid
+  assetId         String       @map("asset_id") @db.Uuid
+  asset           Asset        @relation(fields: [assetId], references: [id])
+  incidentId      String?      @map("incident_id") @db.Uuid
+  incident        Incident?    @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  measurementType String       @map("measurement_type")
+  value           Decimal      @db.Decimal(16, 6)
   unit            String
   notes           String?
-  recordedById    String?   @map("recorded_by") @db.Uuid
-  recordedBy      User?     @relation(fields: [recordedById], references: [id])
-  recordedAt      DateTime  @default(now()) @map("recorded_at")
+  recordedById    String?      @map("recorded_by") @db.Uuid
+  recordedBy      User?        @relation(fields: [recordedById], references: [id])
+  recordedAt      DateTime     @default(now()) @map("recorded_at")
 
   @@index([assetId, recordedAt])
   @@index([incidentId])

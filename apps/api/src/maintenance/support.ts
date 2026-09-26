@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -79,4 +80,41 @@ export function validateMeasurement(value: MeasurementFields) {
       message: `${value.measurementType} requires a nonnegative reading in ${expected}.`,
     });
   }
+}
+
+export async function lockCreationRequest(
+  tx: Prisma.TransactionClient,
+  kind: string,
+  dto: { requestId?: string },
+) {
+  if (!dto.requestId) return undefined;
+  // Serialize same-key retries across assets/processes before acquiring the asset lock.
+  const key = `${kind}:${dto.requestId.toLowerCase()}`;
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))::text`;
+  const ordered = (value: unknown): unknown =>
+    Array.isArray(value)
+      ? value.map(ordered)
+      : value && typeof value === 'object'
+        ? Object.fromEntries(
+            Object.entries(value)
+              .filter(
+                ([key, item]) => key !== 'requestId' && item !== undefined,
+              )
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([key, item]) => [key, ordered(item)]),
+          )
+        : value;
+  return createHash('sha256')
+    .update(JSON.stringify(ordered(dto)))
+    .digest('hex');
+}
+export function verifyCreationRetry(
+  storedHash: string | null,
+  hash: string | undefined,
+) {
+  if (storedHash !== hash)
+    conflict(
+      'REQUEST_ID_REUSED',
+      'This request ID was already used for different data. Review the original request.',
+    );
 }

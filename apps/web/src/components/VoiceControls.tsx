@@ -73,6 +73,61 @@ export function VoiceControls({ voice }: { voice: VoiceControlsState }) {
           )}
         </div>
       </section>
+      {voice.writePrompt && (
+        <section
+          className="state-card safety-confirmation"
+          aria-label="Review maintenance write"
+        >
+          <h2>{voice.writePrompt.title}</h2>
+          {voice.writePrompt.details.map((detail, index) => (
+            <p key={index}>{detail}</p>
+          ))}
+          <p>
+            Saving creates a maintenance record in this demo database. Ending
+            voice after submission does not undo a save.
+          </p>
+          <div className="voice-actions">
+            <button
+              className="secondary-button"
+              onClick={() => voice.confirmWrite(false)}
+            >
+              Cancel save
+            </button>
+            <button
+              className="voice-button"
+              onClick={() => voice.confirmWrite(true)}
+            >
+              Confirm and save
+            </button>
+          </div>
+        </section>
+      )}
+      {voice.writeNotices.length > 0 && (
+        <section
+          className="tool-activity"
+          aria-label="Maintenance save results"
+        >
+          {voice.writeNotices.map((notice) => (
+            <article key={notice.requestId}>
+              <h3>{notice.title}</h3>
+              <p role="status">{notice.message}</p>
+              {notice.details.map((detail, index) => (
+                <small key={index} style={{ display: 'block' }}>
+                  {detail}
+                </small>
+              ))}
+              {notice.status === 'unknown' && (
+                <button
+                  className="secondary-button"
+                  onClick={() => voice.retryWrite(notice.requestId)}
+                >
+                  Check save
+                </button>
+              )}
+            </article>
+          ))}
+        </section>
+      )}
       {voice.safetyPrompt && (
         <section
           className="state-card safety-confirmation"
