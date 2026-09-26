@@ -44,8 +44,11 @@ interface KnowledgeLookups {
 export function createToolExecutor(
   search: (query: string, signal: AbortSignal) => Promise<Asset[]>,
   knowledge?: KnowledgeLookups,
+  procedure?: (args: unknown, signal: AbortSignal) => Promise<ToolOutcome>,
 ): ExecuteTool {
   return async (name, args, signal) => {
+    if (name === 'get_approved_procedure' && procedure)
+      return procedure(args, signal);
     if (name === 'lookup_fault_code' || name === 'get_maintenance_history') {
       const parsed =
         name === 'lookup_fault_code'
@@ -82,7 +85,7 @@ export function createToolExecutor(
               ? [
                   data.description,
                   `${data.manufacturer} · ${data.model}`,
-                  `Safety: ${data.safetyLevel}. Procedure steps are not connected to voice yet.`,
+                  `Safety: ${data.safetyLevel}. Request the approved procedure before any steps; required safety confirmation happens in the workspace.`,
                 ]
               : [data.message],
           };
@@ -142,7 +145,7 @@ export function createToolExecutor(
         isError: true,
         result: {
           error:
-            'This tool is unavailable. Only equipment search, fault lookup and maintenance history are connected. No records were changed.',
+            'This tool is unavailable. Only equipment and approved knowledge tools are connected. No records were changed.',
         },
         summary: 'Requested action unavailable.',
       };

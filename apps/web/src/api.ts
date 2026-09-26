@@ -3,6 +3,7 @@ import { LookupError } from './voice/tools';
 import {
   assetsResponseSchema,
   faultResponseSchema,
+  procedureResponseSchema,
   maintenanceHistorySchema,
   measurementsResponseSchema,
 } from '@fieldmate/shared';
@@ -113,6 +114,21 @@ export async function fetchVoiceHistory(
   return maintenanceHistorySchema.parse(
     await fetchVoiceKnowledge(
       `/assets/${encodeURIComponent(args.asset_id)}/history?${query}`,
+      signal,
+    ),
+  ).data;
+}
+
+export async function fetchVoiceProcedure(
+  args: import('@fieldmate/shared').ProcedureRequest,
+  confirmed: boolean,
+  signal: AbortSignal,
+) {
+  const query = new URLSearchParams({ assetId: args.asset_id });
+  if (confirmed) query.set('safeStateConfirmed', 'true');
+  return procedureResponseSchema.parse(
+    await fetchVoiceKnowledge(
+      `/procedures/${encodeURIComponent(args.procedure_key)}?${query}`,
       signal,
     ),
   ).data;

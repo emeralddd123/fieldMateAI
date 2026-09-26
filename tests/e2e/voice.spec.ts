@@ -322,3 +322,112 @@ for (const scenario of ['fault', 'unknown', 'history', 'empty', 'failure']) {
     ).toBeVisible();
   });
 }
+
+for (const action of ['confirm', 'decline', 'end', 'interrupt', 'missing']) {
+  test(`approved voice procedure: ${action}`, async ({ page, request }) => {
+    const asset = (
+      await (await request.get('/api/v1/assets/search?q=M204')).json()
+    ).data[0];
+    let socket: WebSocketRoute | undefined;
+    const results: { result: string; is_error: boolean }[] = [];
+    const approvedRequests: string[] = [];
+    page.on('request', (req) => {
+      if (req.url().includes('safeStateConfirmed=true'))
+        approvedRequests.push(req.url());
+    });
+    await page.route('**/api/v1/voice/token', (route) =>
+      route.fulfill({ json: { data: credential } }),
+    );
+    await page.routeWebSocket('wss://agents.assemblyai.com/v1/ws?*', (ws) => {
+      socket = ws;
+      ws.onMessage((raw) => {
+        const event = JSON.parse(String(raw));
+        if (event.type === 'session.update')
+          ws.send(
+            JSON.stringify({ type: 'session.ready', session_id: 'procedure' }),
+          );
+        if (event.type === 'tool.result') results.push(event);
+        if (event.type === 'session.end')
+          ws.send(JSON.stringify({ type: 'session.ended' }));
+      });
+    });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Start voice session' }).click();
+    await expect(
+      page
+        .getByRole('region', { name: 'Voice session', exact: true })
+        .getByRole('status'),
+    ).toHaveText('Listening');
+    const send = (event: object) => socket!.send(JSON.stringify(event));
+    send({ type: 'reply.started', reply_id: 'fc-procedure' });
+    send({
+      type: 'tool.call',
+      call_id: 'procedure',
+      name: 'get_approved_procedure',
+      arguments: {
+        asset_id: asset.id,
+        procedure_key:
+          action === 'missing'
+            ? 'nonexistent-procedure'
+            : 'vfd-undervoltage-check',
+      },
+    });
+    send({ type: 'reply.done', reply_id: 'fc-procedure', status: 'completed' });
+    const gate = page.getByRole('region', {
+      name: 'Procedure safety confirmation',
+    });
+    if (action === 'missing') {
+      await expect.poll(() => results.length).toBe(1);
+      expect(JSON.parse(results[0].result).found).toBe(false);
+      await expect(gate).toHaveCount(0);
+    } else {
+      await expect(gate).toBeVisible();
+      await expect(gate).toContainText('M-204');
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+      expect(results.length).toBe(0);
+      expect(approvedRequests.length).toBe(0);
+      if (action === 'confirm') {
+        await gate
+          .getByRole('button', {
+            name: 'Confirm safe maintenance state',
+            exact: true,
+          })
+          .click();
+        await expect.poll(() => results.length).toBe(1);
+        expect(
+          JSON.parse(results[0].result).procedure.steps.length,
+        ).toBeGreaterThan(0);
+        expect(approvedRequests.length).toBe(1);
+        await expect(
+          page.getByRole('region', { name: 'Equipment lookups' }),
+        ).toContainText('Source:');
+      } else if (action === 'decline') {
+        await gate.getByRole('button', { name: /Not ready/ }).click();
+        await expect.poll(() => results.length).toBe(1);
+        expect(JSON.parse(results[0].result).requiresSafetyConfirmation).toBe(
+          true,
+        );
+        expect(JSON.parse(results[0].result).procedure).toBeUndefined();
+      } else if (action === 'end')
+        await page.getByRole('button', { name: 'End session' }).click();
+      else
+        send({
+          type: 'reply.done',
+          reply_id: 'fc-procedure',
+          status: 'interrupted',
+        });
+      await expect(gate).toHaveCount(0);
+    }
+    if (action !== 'end')
+      await page.getByRole('button', { name: 'End session' }).click();
+    await expect(
+      page.getByRole('button', { name: 'Start voice session' }),
+    ).toBeVisible();
+    if (action !== 'confirm') expect(approvedRequests.length).toBe(0);
+    if (['end', 'interrupt'].includes(action)) expect(results.length).toBe(0);
+  });
+}

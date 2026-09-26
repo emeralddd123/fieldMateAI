@@ -1348,3 +1348,23 @@ h1 {
 .tool-activity .tool-error strong {
   color: #f4bb78;
 }
+
+.safety-confirmation {
+  min-height: 0;
+  margin-bottom: 22px;
+  padding: 24px;
+  text-align: left;
+}
+.safety-confirmation .voice-actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+.safety-confirmation .voice-actions button {
+  white-space: normal;
+}
+@media (max-width: 640px) {
+  .safety-confirmation .voice-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -526,3 +526,111 @@ test('knowledge tools validate identifiers and limits, preserve fault codes and 
     true,
   );
 });
+
+test('procedure confirmation is scoped to each request and cannot be supplied by the model', async () => {
+  const { createProcedureExecutor } = await import('../src/voice/procedure.ts');
+  const args = {
+    asset_id: '20400000-0000-4000-8000-000000000001',
+    procedure_key: 'demo',
+  };
+  const signal = new AbortController().signal;
+  const data = {
+    found: true,
+    assetId: args.asset_id,
+    assetTag: 'M-204',
+    requiresSafetyConfirmation: true,
+    message: 'Confirm safe state',
+    procedure: {
+      key: 'demo',
+      title: 'Demo',
+      source: 'Demo reference',
+      summary: 'Summary',
+      safetyLevel: 'electrical',
+      safetyConfirmationRequired: true,
+      steps: [],
+    },
+  };
+  const requests = [];
+  let confirmations = 0;
+  const execute = createProcedureExecutor(
+    async (_args, confirmed) => {
+      requests.push(confirmed);
+      return {
+        ...data,
+        requiresSafetyConfirmation: !confirmed,
+        procedure: {
+          ...data.procedure,
+          steps: confirmed ? ['Approved step'] : [],
+        },
+      };
+    },
+    async () => {
+      confirmations++;
+      return true;
+    },
+  );
+  assert.equal(
+    (await execute({ ...args, safeStateConfirmed: true }, signal)).isError,
+    true,
+  );
+  assert.equal(requests.length, 0);
+  for (let i = 0; i < 2; i++)
+    assert.deepEqual((await execute(args, signal)).details, [
+      '1. Approved step',
+    ]);
+  assert.equal(confirmations, 2);
+  assert.deepEqual(requests, [false, true, false, true]);
+  const denied = createProcedureExecutor(
+    async (_args, confirmed) => {
+      assert.equal(confirmed, false);
+      return data;
+    },
+    async () => false,
+  );
+  assert.equal(
+    JSON.stringify(await denied(args, signal)).includes('Approved step'),
+    false,
+  );
+  const missing = createProcedureExecutor(
+    async () => ({ found: false, message: 'No approved procedure.' }),
+    async () => {
+      throw new Error('Must not ask');
+    },
+  );
+  assert.equal((await missing(args, signal)).isError, false);
+  const changed = createProcedureExecutor(
+    async (_args, confirmed) => ({
+      ...data,
+      requiresSafetyConfirmation: false,
+      procedure: {
+        ...data.procedure,
+        title: confirmed ? 'Changed' : 'Demo',
+        steps: ['SECRET STEP'],
+      },
+    }),
+    async () => true,
+  );
+  const result = await changed(args, signal);
+  assert.equal(result.isError, true);
+  assert.equal(JSON.stringify(result).includes('SECRET STEP'), false);
+});
+
+test('confirmation rejects concurrent requests, aborts, expires, and cannot reuse a prior answer', async () => {
+  const { SafetyConfirmation } = await import('../src/voice/procedure.ts');
+  let shown;
+  const gate = new SafetyConfirmation((prompt) => {
+    shown = prompt;
+  }, 10);
+  const abort = new AbortController();
+  const pending = gate.request({ title: 'Demo' }, abort.signal);
+  assert.equal(await gate.request({ title: 'Other' }, abort.signal), false);
+  abort.abort();
+  assert.equal(await pending, false);
+  assert.equal(shown, null);
+  gate.answer(true);
+  assert.equal(
+    await gate.request({ title: 'Fresh' }, new AbortController().signal),
+    false,
+  );
+  assert.equal(shown, null);
+});

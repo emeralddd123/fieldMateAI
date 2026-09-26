@@ -75,6 +75,8 @@ export class KnowledgeService {
       procedure.safetyConfirmationRequired && !query.safeStateConfirmed;
     return {
       found: true,
+      assetId: asset.id,
+      assetTag: asset.assetTag,
       requiresSafetyConfirmation,
       procedure: {
         key: procedure.key,

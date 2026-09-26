@@ -49,9 +49,50 @@ export const faultResponseSchema = z.object({
 export type FaultDefinition = z.infer<typeof faultResponseSchema>['data'];
 export type HistoryArguments = z.infer<typeof historyArgumentsSchema>;
 
+export const procedureArgumentsSchema = z
+  .object({
+    asset_id: z.uuid(),
+    procedure_key: z
+      .string()
+      .trim()
+      .min(1)
+      .max(100)
+      .regex(/^[a-zA-Z0-9_-]+$/)
+      .describe('Approved procedure key returned by lookup_fault_code.'),
+  })
+  .strict();
+export const procedureResponseSchema = z.object({
+  data: z.discriminatedUnion('found', [
+    z.object({ found: z.literal(false), message: z.string() }),
+    z.object({
+      found: z.literal(true),
+      assetId: z.uuid(),
+      assetTag: z.string(),
+      requiresSafetyConfirmation: z.boolean(),
+      message: z.string(),
+      procedure: z.object({
+        key: z.string(),
+        title: z.string(),
+        source: z.string(),
+        summary: z.string(),
+        safetyLevel: z.string(),
+        safetyConfirmationRequired: z.boolean(),
+        steps: z.array(z.string()),
+      }),
+    }),
+  ]),
+});
+export type ProcedureResult = z.infer<typeof procedureResponseSchema>['data'];
+export type ProcedureRequest = z.infer<typeof procedureArgumentsSchema>;
+
 export const voiceToolDefinitionSchema = z.object({
   type: z.literal('function'),
-  name: z.enum(['find_asset', 'lookup_fault_code', 'get_maintenance_history']),
+  name: z.enum([
+    'find_asset',
+    'lookup_fault_code',
+    'get_maintenance_history',
+    'get_approved_procedure',
+  ]),
   description: z.string(),
   parameters: z.record(z.string(), z.unknown()),
   execution_mode: z.literal('interactive'),
@@ -84,5 +125,14 @@ export const voiceTools = [
     parameters: z.toJSONSchema(historyArgumentsSchema),
     execution_mode: 'interactive' as const,
     timeout_seconds: 15,
+  },
+  {
+    type: 'function' as const,
+    name: 'get_approved_procedure' as const,
+    description:
+      'Retrieve an approved procedure for the uniquely identified asset using the procedure key returned by lookup_fault_code. Safety-gated procedures wait for the technician to confirm in the workspace. Tell the technician to review the on-screen confirmation; do not claim safety is confirmed or invent steps while waiting. Read only returned approved steps, one at a time. Never supply safety confirmation arguments.',
+    parameters: z.toJSONSchema(procedureArgumentsSchema),
+    execution_mode: 'interactive' as const,
+    timeout_seconds: 90,
   },
 ];

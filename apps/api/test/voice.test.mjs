@@ -29,11 +29,16 @@ test('mints a bounded single-use credential without exposing the permanent key',
   assert.equal(JSON.stringify(result).includes(settings.apiKey), false);
   assert.deepEqual(
     result.sessionConfig.tools.map((tool) => tool.name),
-    ['find_asset', 'lookup_fault_code', 'get_maintenance_history'],
+    [
+      'find_asset',
+      'lookup_fault_code',
+      'get_maintenance_history',
+      'get_approved_procedure',
+    ],
   );
   assert.match(
     result.sessionConfig.system_prompt,
-    /Procedures and write actions are not available/,
+    /Write actions are not available/,
   );
 });
 test('missing credentials and disallowed browser origins never contact the provider', async () => {

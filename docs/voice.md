@@ -2,7 +2,7 @@
 
 Open http://localhost:5173, select **Start voice session**, allow microphone access, and talk to FieldMate. Live transcripts appear beside the equipment workspace. Mute keeps the session connected; End session releases the microphone and ends the provider session. Starting again opens a fresh conversation.
 
-Say “Find P-101” or “Find M-204” to search the live equipment register. A unique match selects the asset in the workspace and returns its metadata to FieldMate. Multiple matches require a more specific tag; no match or a failed lookup leaves the selection unchanged. Visible lookup cards show progress and results. Voice can now retrieve verified fault definitions and previous maintenance history, including technician notes. It does not yet retrieve approved procedure steps or change maintenance records. Manual sidebar selection is not sent to the agent; identify equipment by tag in conversation. Transcripts remain in browser memory until a new session or page reload; they are not persisted to PostgreSQL.
+Say “Find P-101” or “Find M-204” to search the live equipment register. A unique match selects the asset in the workspace and returns its metadata to FieldMate. Multiple matches require a more specific tag; no match or a failed lookup leaves the selection unchanged. Visible lookup cards show progress and results. Voice can now retrieve verified fault definitions and previous maintenance history, including technician notes. Approved procedure steps are available after any required workspace safety confirmation. Voice does not yet change maintenance records. Manual sidebar selection is not sent to the agent; identify equipment by tag in conversation. Transcripts remain in browser memory until a new session or page reload; they are not persisted to PostgreSQL.
 
 ## Configuration
 
@@ -74,3 +74,18 @@ After identifying equipment, say “What does F0003 mean on M-204?” or “Has 
 Tool arguments and API responses are validated. Leading zeros in fault codes are preserved. Failed lookups return errors rather than invented answers, and cancelled calls cannot display late results. Lookup cards display source information and retrieved details. Historical notes describe past work; they are not approved procedures or evidence that the present fault has the same cause.
 
 The `--knowledge` check uses an explicit synthetic instruction, a muted fake microphone, and the real provider and local database. It expects the original two M-204/F0003 incidents including the L2 note. It does not write or reset data. For manual QA, test a known fault, an unknown fault such as F999999, a fault with no history, and “Tell me the previous technician’s note.”
+
+## Approved procedures and safety confirmation
+
+Ask “Show me the approved procedure for F0003 on M-204.” The agent uses the key returned by fault lookup to call `get_approved_procedure` with only `asset_id` and `procedure_key`. Model-supplied confirmation fields are rejected.
+
+The first API request always omits `safeStateConfirmed`. For a gated procedure, the workspace shows its asset tag, title, source and safe-state requirement. Only the technician's **Confirm safe maintenance state** button authorizes a second fetch with confirmation. **Not ready**, a 60-second timeout, session end or interruption keeps steps locked. Every request requires fresh confirmation; concurrent requests cannot reuse it. The 90-second provider tool timeout leaves room for confirmation and the second fetch.
+
+Only approved, model-matching procedures can be retrieved. The client checks that the returned asset and procedure match the request and that identifying metadata did not change between requests. Failed requests never return steps to voice. Sources and approved steps appear in the lookup card after successful retrieval. This remains a demo request-level gate, not authenticated safety auditing or independent verification of physical equipment state.
+
+```sh
+# Live provider test using synthetic requests; declines confirmation, no steps released:
+pnpm test:voice:live --procedure
+```
+
+Browser tests cover simulated confirmation with the real local API, decline, interruption, session end and missing procedures. Unit tests also cover expiration, concurrent requests, forged confirmation fields and changed procedure metadata. Test with your actual microphone and follow your site procedures before confirming any real equipment state.

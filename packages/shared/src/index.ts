@@ -90,6 +90,8 @@ export type MaintenanceHistory = z.infer<
 >['data'];
 
 export {
+  procedureArgumentsSchema,
+  procedureResponseSchema,
   lookupFaultArgumentsSchema,
   historyArgumentsSchema,
   faultResponseSchema,
@@ -99,3 +101,5 @@ export {
 } from './voice';
 
 export type { FaultDefinition, HistoryArguments } from './voice';
+
+export type { ProcedureResult, ProcedureRequest } from './voice';
