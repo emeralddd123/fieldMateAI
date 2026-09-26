@@ -1,0 +1,258 @@
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Activity,
+  ArrowDownLeft,
+  AudioLines,
+  ChevronRight,
+  CircleHelp,
+  Factory,
+  LayoutDashboard,
+  Mic,
+  Radio,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Wrench,
+} from 'lucide-react';
+import { fetchAssets } from './api';
+import { AssetOverview } from './components/AssetOverview';
+
+export function App() {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const assets = useQuery({ queryKey: ['assets'], queryFn: fetchAssets });
+  const selected =
+    assets.data?.find((asset) => asset.id === selectedId) ??
+    assets.data?.find((asset) => asset.assetTag === 'M-204') ??
+    assets.data?.[0];
+  const filtered = assets.data?.filter((asset) =>
+    `${asset.assetTag} ${asset.name} ${asset.location}`
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
+  const operationalCount = assets.data?.filter(
+    (asset) => asset.status === 'operational',
+  ).length;
+
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <a href="/" className="brand" aria-label="FieldMate AI home">
+          <span className="brand-mark">
+            <AudioLines size={24} />
+          </span>
+          <span>
+            FieldMate<span className="brand-ai">AI</span>
+            <small>MAINTENANCE INTELLIGENCE</small>
+          </span>
+        </a>
+        <div className="workspace-label">
+          <LayoutDashboard size={15} /> Technician workspace
+        </div>
+        <div className="topbar-right">
+          <span className="plant">
+            <Factory size={15} />
+            Plant Alpha
+          </span>
+          <span className="demo-badge">DEMO</span>
+          <span className="avatar" title="Demo Technician">
+            DT
+          </span>
+        </div>
+      </header>
+      <div className="workspace">
+        <aside className="sidebar" aria-label="Equipment selection">
+          <div className="sidebar-heading">
+            <span>EQUIPMENT</span>
+            <span className="count">{assets.data?.length ?? '—'}</span>
+          </div>
+          <label className="search-box">
+            <Search size={15} />
+            <input
+              aria-label="Search equipment"
+              placeholder="Find an asset…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <div className="asset-list">
+            {assets.isPending && (
+              <p className="sidebar-message" role="status">
+                Loading equipment…
+              </p>
+            )}
+            {assets.isError && (
+              <p className="sidebar-message">Equipment unavailable</p>
+            )}
+            {filtered?.map((asset) => (
+              <button
+                key={asset.id}
+                className={`asset-button ${selected?.id === asset.id ? 'selected' : ''}`}
+                aria-pressed={selected?.id === asset.id}
+                onClick={() => setSelectedId(asset.id)}
+              >
+                <span className={`status-dot ${asset.status}`} />
+                <span>
+                  <strong>{asset.assetTag}</strong>
+                  <small>{asset.name}</small>
+                </span>
+                <ChevronRight size={14} />
+              </button>
+            ))}
+            {filtered?.length === 0 && (
+              <p className="sidebar-message">No matching equipment.</p>
+            )}
+          </div>
+          <div className="sidebar-bottom">
+            <div className="plant-health">
+              <span className="health-icon">
+                <Activity size={18} />
+              </span>
+              <div>
+                <strong>Plant overview</strong>
+                <small>
+                  {assets.data
+                    ? `${operationalCount} of ${assets.data.length} assets operational`
+                    : 'Waiting for equipment data'}
+                </small>
+              </div>
+            </div>
+            <div className="sidebar-footer">
+              <ShieldCheck size={14} /> Approved knowledge. Safer decisions.
+            </div>
+          </div>
+        </aside>
+        <main className="main-content">
+          <div className="page-heading">
+            <div>
+              <div className="breadcrumb">
+                WORKSPACE <ChevronRight size={11} /> EQUIPMENT
+              </div>
+              <h1>Know your equipment.</h1>
+              <p>
+                Every asset. Every repair. Your team’s knowledge, connected.
+              </p>
+            </div>
+            <button
+              className="icon-button"
+              aria-label="Refresh equipment"
+              disabled={assets.isFetching}
+              onClick={() => void assets.refetch()}
+            >
+              <RefreshCw
+                size={17}
+                className={assets.isFetching ? 'spin' : ''}
+              />
+            </button>
+          </div>
+          <div className="main-columns">
+            <div>
+              {assets.isError ? (
+                <div className="state-card" role="alert">
+                  <CircleHelp size={28} />
+                  <h2>Unable to load equipment</h2>
+                  <p>{assets.error.message}</p>
+                  <button
+                    className="secondary-button"
+                    onClick={() => void assets.refetch()}
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : assets.isPending ? (
+                <div className="state-card" role="status">
+                  <RefreshCw className="spin" size={26} />
+                  <h2>Loading equipment</h2>
+                  <p>Retrieving the Plant Alpha equipment register.</p>
+                </div>
+              ) : selected ? (
+                <AssetOverview asset={selected} />
+              ) : (
+                <div className="state-card">
+                  <Factory size={28} />
+                  <h2>No equipment yet</h2>
+                  <p>
+                    The equipment register is empty. Add demo assets with the
+                    documented seed command.
+                  </p>
+                </div>
+              )}
+              <section className="memory-card">
+                <span className="memory-icon">
+                  <Wrench size={19} />
+                </span>
+                <div>
+                  <h3>Every repair has a story.</h3>
+                  <p>
+                    Maintenance history and repair records will appear here as
+                    the maintenance workflow is connected.
+                  </p>
+                </div>
+                <span className="subtle-tag">UP NEXT</span>
+              </section>
+            </div>
+            <aside className="activity-panel" aria-label="Session activity">
+              <div className="activity-heading">
+                <h2>
+                  <Radio size={16} />
+                  Live activity
+                </h2>
+                <span className="subtle-tag">IDLE</span>
+              </div>
+              <div className="session-empty">
+                <span className="conversation-symbol">
+                  <AudioLines size={29} />
+                </span>
+                <h3>
+                  A little context.
+                  <br />A lot of confidence.
+                </h3>
+                <p>
+                  Your conversation and equipment actions will appear here
+                  during a voice session.
+                </p>
+              </div>
+              <div className="context-card">
+                <span className="context-label">
+                  <ArrowDownLeft size={14} /> CURRENT CONTEXT
+                </span>
+                <strong>{selected?.assetTag ?? 'No asset selected'}</strong>
+                <p>{selected?.name ?? 'Select equipment to get started.'}</p>
+              </div>
+              <div className="activity-footer">
+                <span
+                  className={`status-dot ${assets.isSuccess ? 'operational' : 'warning'}`}
+                />
+                {assets.isSuccess
+                  ? 'Equipment data connected'
+                  : 'Waiting for equipment data'}
+              </div>
+            </aside>
+          </div>
+          <section className="voice-bar" aria-label="Voice session">
+            <div className="voice-icon">
+              <Mic size={23} />
+            </div>
+            <div>
+              <h2>Your hands are busy. Your knowledge isn’t.</h2>
+              <p>Voice assistance will be available soon.</p>
+            </div>
+            <button disabled className="voice-button">
+              <Mic size={15} />
+              Start voice session<span>SOON</span>
+            </button>
+          </section>
+          <footer className="safety-note">
+            <ShieldCheck size={14} />
+            <p>
+              FieldMate provides maintenance decision support using approved
+              equipment data. Always follow site safety procedures and
+              qualified-person requirements.
+            </p>
+          </footer>
+        </main>
+      </div>
+    </div>
+  );
+}

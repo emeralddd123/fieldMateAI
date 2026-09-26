@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+test-results
+playwright-report
+pnpm-lock.yaml
+**/generated
+FIELDMATE_AI_PRODUCT_BUILD_SPEC.md

@@ -1,0 +1,251 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AssetStatus {
+  operational
+  warning
+  down
+  maintenance
+}
+
+model Site {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  code      String   @unique
+  location  String
+  createdAt DateTime @default(now()) @map("created_at")
+  assets    Asset[]
+
+  @@map("sites")
+}
+
+model Asset {
+  id                 String              @id @default(uuid()) @db.Uuid
+  siteId             String              @map("site_id") @db.Uuid
+  site               Site                @relation(fields: [siteId], references: [id])
+  assetTag           String              @unique @map("asset_tag")
+  name               String
+  description        String?
+  equipmentType      String              @map("equipment_type")
+  manufacturer       String
+  model              String
+  serialNumber       String?             @map("serial_number")
+  location           String
+  status             AssetStatus         @default(operational)
+  nominalVoltageV    Decimal?            @map("nominal_voltage_v") @db.Decimal(10, 2)
+  nominalCurrentA    Decimal?            @map("nominal_current_a") @db.Decimal(10, 2)
+  commissionedAt     DateTime?           @map("commissioned_at") @db.Date
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  components         Component[]
+  incidents          Incident[]
+  measurements       Measurement[]
+  maintenanceRecords MaintenanceRecord[]
+
+  @@index([siteId])
+  @@map("assets")
+}
+
+model Component {
+  id            String  @id @default(uuid()) @db.Uuid
+  assetId       String  @map("asset_id") @db.Uuid
+  asset         Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  componentType String  @map("component_type")
+  manufacturer  String
+  model         String
+  identifier    String?
+  metadata      Json    @default("{}")
+
+  @@index([assetId])
+  @@map("components")
+}
+
+enum UserRole {
+  technician
+  supervisor
+  admin
+}
+
+enum IncidentPriority {
+  low
+  medium
+  high
+  critical
+}
+
+enum IncidentStatus {
+  open
+  investigating
+  escalated
+  resolved
+  closed
+}
+
+enum RecordSource {
+  voice
+  manual
+  imported
+}
+
+enum NoteSource {
+  voice
+  manual
+  system
+}
+
+model User {
+  id                 String              @id @default(uuid()) @db.Uuid
+  name               String
+  email              String?             @unique
+  role               UserRole            @default(technician)
+  createdAt          DateTime            @default(now()) @map("created_at")
+  openedIncidents    Incident[]          @relation("OpenedBy")
+  assignedIncidents  Incident[]          @relation("AssignedTo")
+  notes              IncidentNote[]
+  measurements       Measurement[]
+  maintenanceRecords MaintenanceRecord[]
+
+  @@map("users")
+}
+
+model Procedure {
+  id                         String            @id @default(uuid()) @db.Uuid
+  key                        String            @unique
+  title                      String
+  assetType                  String?           @map("asset_type")
+  manufacturer               String?
+  model                      String?
+  safetyLevel                String            @map("safety_level")
+  safetyConfirmationRequired Boolean           @default(true) @map("safety_confirmation_required")
+  summary                    String
+  steps                      Json
+  approved                   Boolean           @default(false)
+  source                     String
+  createdAt                  DateTime          @default(now()) @map("created_at")
+  faults                     FaultDefinition[]
+
+  @@map("procedures")
+}
+
+model FaultDefinition {
+  id           String     @id @default(uuid()) @db.Uuid
+  manufacturer String
+  model        String
+  faultCode    String     @map("fault_code")
+  title        String
+  description  String
+  safetyLevel  String     @map("safety_level")
+  source       String
+  procedureId  String?    @map("procedure_id") @db.Uuid
+  procedure    Procedure? @relation(fields: [procedureId], references: [id])
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  @@unique([manufacturer, model, faultCode])
+  @@map("fault_definitions")
+}
+
+model Incident {
+  id                String             @id @default(uuid()) @db.Uuid
+  incidentNumber    String             @unique @default(dbgenerated("('INC-'::text || (nextval('incident_number_seq'::regclass))::text)")) @map("incident_number")
+  assetId           String             @map("asset_id") @db.Uuid
+  asset             Asset              @relation(fields: [assetId], references: [id])
+  openedById        String             @map("opened_by") @db.Uuid
+  openedBy          User               @relation("OpenedBy", fields: [openedById], references: [id])
+  assignedToId      String?            @map("assigned_to") @db.Uuid
+  assignedTo        User?              @relation("AssignedTo", fields: [assignedToId], references: [id])
+  faultCode         String?            @map("fault_code")
+  title             String
+  description       String
+  priority          IncidentPriority   @default(medium)
+  status            IncidentStatus     @default(open)
+  rootCause         String?            @map("root_cause")
+  actionTaken       String?            @map("action_taken")
+  resolutionSummary String?            @map("resolution_summary")
+  completionPayload Json?              @map("completion_payload")
+  openedAt          DateTime           @default(now()) @map("opened_at")
+  resolvedAt        DateTime?          @map("resolved_at")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  notes             IncidentNote[]
+  measurements      Measurement[]
+  maintenanceRecord MaintenanceRecord?
+  escalations       Escalation[]
+
+  @@index([assetId, faultCode, openedAt])
+  @@index([status])
+  @@map("incidents")
+}
+
+model IncidentNote {
+  id         String     @id @default(uuid()) @db.Uuid
+  incidentId String     @map("incident_id") @db.Uuid
+  incident   Incident   @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  authorId   String?    @map("author_id") @db.Uuid
+  author     User?      @relation(fields: [authorId], references: [id])
+  note       String
+  source     NoteSource @default(manual)
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  @@index([incidentId, createdAt])
+  @@map("incident_notes")
+}
+
+model Measurement {
+  id              String    @id @default(uuid()) @db.Uuid
+  assetId         String    @map("asset_id") @db.Uuid
+  asset           Asset     @relation(fields: [assetId], references: [id])
+  incidentId      String?   @map("incident_id") @db.Uuid
+  incident        Incident? @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  measurementType String    @map("measurement_type")
+  value           Decimal   @db.Decimal(16, 6)
+  unit            String
+  notes           String?
+  recordedById    String?   @map("recorded_by") @db.Uuid
+  recordedBy      User?     @relation(fields: [recordedById], references: [id])
+  recordedAt      DateTime  @default(now()) @map("recorded_at")
+
+  @@index([assetId, recordedAt])
+  @@index([incidentId])
+  @@map("measurements")
+}
+
+model MaintenanceRecord {
+  id           String       @id @default(uuid()) @db.Uuid
+  assetId      String       @map("asset_id") @db.Uuid
+  asset        Asset        @relation(fields: [assetId], references: [id])
+  incidentId   String?      @unique @map("incident_id") @db.Uuid
+  incident     Incident?    @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  technicianId String?      @map("technician_id") @db.Uuid
+  technician   User?        @relation(fields: [technicianId], references: [id])
+  faultCode    String?      @map("fault_code")
+  symptom      String
+  rootCause    String       @map("root_cause")
+  actionTaken  String       @map("action_taken")
+  verification String
+  source       RecordSource @default(manual)
+  performedAt  DateTime     @default(now()) @map("performed_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  @@index([assetId, performedAt])
+  @@map("maintenance_records")
+}
+
+model Escalation {
+  id         String   @id @default(uuid()) @db.Uuid
+  incidentId String   @map("incident_id") @db.Uuid
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  reason     String
+  severity   String
+  status     String   @default("pending")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([incidentId])
+  @@map("escalations")
+}

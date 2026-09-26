@@ -1,0 +1,51 @@
+{
+  "name": "@fieldmate/api",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.34.5",
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "seed": "prisma db seed",
+    "prisma:seed": "prisma db seed",
+    "test:integration": "node --test test/assets.integration.test.mjs",
+    "seed:reset": "tsx prisma/reset.ts",
+    "test:maintenance": "node --test test/maintenance.integration.test.mjs"
+  },
+  "dependencies": {
+    "@fieldmate/shared": "workspace:*",
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/core": "^11.1.0",
+    "@nestjs/platform-express": "^11.1.0",
+    "@nestjs/swagger": "^11.2.0",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "dotenv": "^17.2.0",
+    "pg": "^8.16.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.1.0",
+    "prisma": "7.10.0",
+    "tsx": "^4.20.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "typescript": "~5.9.3"
+  },
+  "files": [
+    "dist",
+    "prisma",
+    "prisma.config.ts",
+    "src/generated"
+  ]
+}
