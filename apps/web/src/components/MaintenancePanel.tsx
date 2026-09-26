@@ -50,11 +50,18 @@ export function MaintenancePanel({ assetId }: { assetId: string }) {
         <div className="active-incidents">
           <h3>Active incidents</h3>
           {active.map((incident) => (
-            <article key={incident.id}>
+            <article
+              key={incident.id}
+              className={
+                incident.status === 'escalated' ? 'incident-escalated' : ''
+              }
+            >
               <div className="repair-meta">
                 <strong>{incident.incidentNumber}</strong>
-                <span>
-                  {incident.priority} · {incident.status}
+                <span className={`status-pill status-${incident.status}`}>
+                  {incident.status === 'escalated'
+                    ? '⚠️ Supervisor Review'
+                    : `${incident.priority} · ${incident.status}`}
                 </span>
               </div>
               <h4>{incident.title}</h4>
@@ -69,17 +76,26 @@ export function MaintenancePanel({ assetId }: { assetId: string }) {
             No repairs recorded for this asset yet.
           </p>
         ) : (
-          history.maintenanceRecords.map((record) => (
-            <article key={record.id}>
+          history.maintenanceRecords.map((record, index) => (
+            <article
+              key={record.id}
+              className={index === 0 ? 'repair-card-latest' : ''}
+            >
               <div className="repair-meta">
                 <time dateTime={record.performedAt}>
                   {date(record.performedAt)}
                 </time>
-                <span>{record.faultCode ?? 'Maintenance'}</span>
+                <div className="repair-tags">
+                  {index === 0 && (
+                    <span className="latest-repair-badge">LATEST REPAIR</span>
+                  )}
+                  <span>{record.faultCode ?? 'Maintenance'}</span>
+                </div>
               </div>
               <h4>{record.rootCause}</h4>
               <p>{record.actionTaken}</p>
               <p className="verification">{record.verification}</p>
+
               <small>
                 {record.technician?.name ?? 'Technician not recorded'}
               </small>

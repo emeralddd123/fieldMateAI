@@ -57,6 +57,7 @@ export function useVoiceSession(onAssetFound: (id: string) => void) {
         ),
       saved: (assetId) => {
         void queryClient.invalidateQueries({ queryKey: ['assets'] });
+        void queryClient.invalidateQueries({ queryKey: ['incidents'] });
         void queryClient.invalidateQueries({
           queryKey: ['maintenance', assetId],
         });

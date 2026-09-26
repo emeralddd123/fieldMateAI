@@ -1368,3 +1368,246 @@ h1 {
     align-items: stretch;
   }
 }
+
+/* Dashboard Metrics & Escalation Alert */
+.metrics-container {
+  margin-top: 18px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.escalation-alert-banner {
+  background: #2a1515;
+  border: 1px solid #783535;
+  border-left: 4px solid #ef4444;
+  border-radius: 6px;
+  padding: 14px 18px;
+  animation: fadeIn 0.3s ease-out;
+}
+.escalation-alert-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.escalation-pulse-icon {
+  color: #f87171;
+  display: grid;
+  place-items: center;
+  animation: pulse-slow 2s infinite ease-in-out;
+}
+.escalation-alert-content strong {
+  font-size: 13px;
+  color: #fca5a5;
+  display: block;
+}
+.escalation-alert-content p {
+  font-size: 12px;
+  color: #d1d5db;
+  margin-top: 3px;
+}
+.escalation-item {
+  margin-right: 12px;
+}
+.link-button {
+  background: none;
+  border: none;
+  color: #79d8e9;
+  text-decoration: underline;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+}
+.link-button:hover {
+  color: #a5f3fc;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 500px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.metric-card {
+  background: #11212c;
+  border: 1px solid #233744;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s;
+}
+.metric-card:hover {
+  border-color: #3b5a6f;
+}
+.metric-card.metric-warn {
+  border-color: #5a4020;
+}
+.metric-card.metric-down {
+  border-color: #612a2a;
+}
+.metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #8b9ea9;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.metric-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 6px 0 2px;
+  font-variant-numeric: tabular-nums;
+}
+.metric-value-sm {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.metric-card.metric-warn .metric-value {
+  color: #fbbf24;
+}
+.metric-card.metric-down .metric-value {
+  color: #f87171;
+}
+.metric-subtext {
+  font-size: 10px;
+  color: #879ca8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status Pills & Badges */
+.status-pill {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: capitalize;
+  display: inline-block;
+}
+.status-pill.status-open {
+  background: #1e3a47;
+  color: #79d8e9;
+  border: 1px solid #2e596e;
+}
+.status-pill.status-investigating {
+  background: #2b3925;
+  color: #86efac;
+  border: 1px solid #3c5a31;
+}
+.status-pill.status-escalated {
+  background: #451a1a;
+  color: #fca5a5;
+  border: 1px solid #7f2323;
+  font-weight: 700;
+  animation: pulse-slow 2s infinite ease-in-out;
+}
+.status-pill.status-resolved {
+  background: #14352a;
+  color: #6ee7b7;
+  border: 1px solid #1f5742;
+}
+
+.incident-escalated {
+  border-left: 3px solid #ef4444 !important;
+  background: #191c22 !important;
+}
+
+.latest-repair-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #6ee7b7;
+  background: #0f3327;
+  border: 1px solid #1a563f;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-right: 6px;
+}
+.repair-card-latest {
+  border-left: 3px solid #10b981 !important;
+}
+
+/* Audio Waveform Animation */
+.voice-waveform {
+  position: absolute;
+  bottom: 4px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+.voice-icon {
+  position: relative;
+}
+.voice-waveform span {
+  width: 2px;
+  height: 4px;
+  background: #79d8e9;
+  border-radius: 1px;
+}
+.wave-speaking span {
+  animation: soundwave 0.6s infinite ease-in-out;
+}
+.wave-speaking span:nth-child(1) {
+  animation-delay: 0s;
+}
+.wave-speaking span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.wave-speaking span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.wave-speaking span:nth-child(4) {
+  animation-delay: 0.45s;
+}
+.wave-listening span {
+  animation: pulse-slow 1.2s infinite ease-in-out;
+  background: #38bdf8;
+}
+
+@keyframes soundwave {
+  0%,
+  100% {
+    height: 3px;
+  }
+  50% {
+    height: 12px;
+  }
+}
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

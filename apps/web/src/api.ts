@@ -458,3 +458,28 @@ export async function submitVoiceWrite(
   }
   throw new Error('Unknown write request');
 }
+
+export interface DashboardIncident {
+  id: string;
+  incidentNumber: string;
+  title: string;
+  description: string;
+  faultCode: string | null;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  status: 'open' | 'investigating' | 'escalated' | 'resolved' | 'closed';
+  assetId: string;
+  openedAt: string;
+  resolvedAt: string | null;
+  rootCause: string | null;
+  actionTaken: string | null;
+  escalations: Array<{ id: string; reason: string; status: string }>;
+}
+
+export async function fetchIncidents(): Promise<DashboardIncident[]> {
+  const response = await fetch(`${baseUrl}/incidents`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) return [];
+  const json = await response.json();
+  return json.data ?? [];
+}

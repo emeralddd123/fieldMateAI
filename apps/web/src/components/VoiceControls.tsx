@@ -22,7 +22,16 @@ export function VoiceControls({ voice }: { voice: VoiceControlsState }) {
       >
         <div className="voice-icon" aria-hidden="true">
           {voice.muted ? <MicOff size={23} /> : <Mic size={23} />}
+          {active && !voice.muted && (
+            <div className={`voice-waveform wave-${voice.status}`}>
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+          )}
         </div>
+
         <div className="voice-summary">
           <h2 role="status">
             {voice.muted ? 'Microphone muted' : voiceLabels[voice.status]}

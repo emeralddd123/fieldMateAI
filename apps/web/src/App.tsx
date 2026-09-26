@@ -11,11 +11,12 @@ import {
   Search,
   ShieldCheck,
 } from 'lucide-react';
-import { fetchAssets } from './api';
+import { fetchAssets, fetchIncidents } from './api';
 import { AssetOverview } from './components/AssetOverview';
 import { MaintenancePanel } from './components/MaintenancePanel';
 import { VoiceControls } from './components/VoiceControls';
 import { ConversationTimeline } from './components/ConversationTimeline';
+import { DashboardMetrics } from './components/DashboardMetrics';
 import { useVoiceSession } from './voice/useVoiceSession';
 
 export function App() {
@@ -27,10 +28,16 @@ export function App() {
     queryFn: fetchAssets,
     refetchInterval: 5000,
   });
+  const incidents = useQuery({
+    queryKey: ['incidents'],
+    queryFn: fetchIncidents,
+    refetchInterval: 5000,
+  });
   const selected =
     assets.data?.find((asset) => asset.id === selectedId) ??
     assets.data?.find((asset) => asset.assetTag === 'M-204') ??
     assets.data?.[0];
+
   const filtered = assets.data?.filter((asset) =>
     `${asset.assetTag} ${asset.name} ${asset.location}`
       .toLowerCase()
@@ -152,6 +159,11 @@ export function App() {
             </button>
           </div>
           <VoiceControls voice={voice} />
+          <DashboardMetrics
+            assets={assets.data ?? []}
+            incidents={incidents.data ?? []}
+            onSelectAsset={setSelectedId}
+          />
           <div className="main-columns">
             <div>
               {assets.isError ? (
