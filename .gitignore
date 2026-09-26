@@ -1,0 +1,57 @@
+# Local product specification
+/FIELDMATE_AI_PRODUCT_BUILD_SPEC.md
+
+# Dependencies and package-manager caches
+node_modules/
+.pnpm-store/
+.npm/
+
+# Build outputs and tool caches (Vite, NestJS, TypeScript)
+dist/
+build/
+.vite/
+.cache/
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# Local environment and secrets; keep documented examples trackable
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Generated Prisma clients; keep schemas, migrations, and seeds trackable
+**/generated/prisma/
+
+# Test coverage and browser-test artifacts
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Logs and runtime files
+logs/
+*.log
+*.pid
+*.pid.lock
+
+# Local PostgreSQL data and backups (if bind mounts are used)
+/postgres-data/
+/pgdata/
+/backups/
+
+# Editor and OS files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.swp
+*.swo
+*~
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
