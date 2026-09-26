@@ -1,3 +1,5 @@
+import { VoiceToolQueue } from './tools';
+import type { ExecuteTool, ToolActivity } from './tools';
 import { encodePcm } from './pcm';
 import { parseEvent, updateTranscript } from './protocol';
 import type { TranscriptItem, VoiceCredential } from './protocol';
@@ -17,8 +19,11 @@ export interface VoiceSnapshot {
   error: string | null;
   sessionId: string | null;
   transcript: TranscriptItem[];
+  tools: ToolActivity[];
 }
 export interface VoiceDependencies {
+  executeTool?: ExecuteTool;
+  assetFound?: (id: string) => void;
   token(signal: AbortSignal): Promise<VoiceCredential>;
   socket(url: string): WebSocket;
   audio(onPlayback: (active: boolean) => void): VoiceAudio;
@@ -29,11 +34,13 @@ const initial = (): VoiceSnapshot => ({
   error: null,
   sessionId: null,
   transcript: [],
+  tools: [],
 });
 
 export class VoiceSession {
   snapshot = initial();
   private socket?: WebSocket;
+  private tools?: VoiceToolQueue;
   private audio?: VoiceAudio;
   private abort?: AbortController;
   private timeout?: ReturnType<typeof setTimeout>;
@@ -113,6 +120,39 @@ export class VoiceSession {
       if (epoch !== this.epoch) return;
       const url = new URL('wss://agents.assemblyai.com/v1/ws');
       url.searchParams.set('token', credential.token);
+      this.tools = new VoiceToolQueue(
+        this.deps.executeTool ??
+          (async () => ({
+            result: { error: 'Tool unavailable' },
+            isError: true,
+            summary: 'Action unavailable.',
+          })),
+        (event) => {
+          if (
+            epoch !== this.epoch ||
+            this.ending ||
+            !this.ready ||
+            this.socket?.readyState !== 1
+          )
+            throw new Error('Session ended');
+          this.socket.send(JSON.stringify(event));
+        },
+        (activity, assetId) => {
+          if (epoch !== this.epoch) return;
+          const existing = this.snapshot.tools.some(
+            (item) => item.id === activity.id,
+          );
+          this.emit({
+            tools: (existing
+              ? this.snapshot.tools.map((item) =>
+                  item.id === activity.id ? activity : item,
+                )
+              : [...this.snapshot.tools, activity]
+            ).slice(-50),
+          });
+          if (assetId) this.deps.assetFound?.(assetId);
+        },
+      );
       const socket = this.deps.socket(url.href);
       this.socket = socket;
       this.timeout = setTimeout(
@@ -145,6 +185,7 @@ export class VoiceSession {
             this.emit({ sessionId: event.session_id });
             this.refreshStatus();
           } else if (event.type === 'input.speech.started') {
+            this.tools?.busy();
             this.userSpeaking = true;
             this.thinking = false;
             this.refreshStatus();
@@ -153,6 +194,7 @@ export class VoiceSession {
             this.thinking = true;
             this.refreshStatus();
           } else if (event.type === 'reply.started') {
+            this.tools?.busy();
             this.activeReply = event.reply_id;
             this.acceptingAudio = true;
             this.thinking = true;
@@ -160,6 +202,7 @@ export class VoiceSession {
           } else if (event.type === 'reply.audio') {
             if (this.acceptingAudio) this.audio?.play(event.data);
           } else if (event.type === 'reply.done') {
+            this.tools?.done(event.status === 'interrupted');
             if (this.activeReply !== event.reply_id) return;
             this.acceptingAudio = false;
             this.thinking = false;
@@ -174,9 +217,8 @@ export class VoiceSession {
               'The voice provider could not continue this session. Please retry.',
             );
           } else if (event.type === 'tool.call') {
-            this.fail(
-              'This session requested an unavailable action. No maintenance records were changed.',
-            );
+            if (this.ready)
+              this.tools?.call(event.call_id, event.name, event.arguments);
           }
         } catch {
           this.fail('Voice received an invalid response. Please reconnect.');
@@ -222,6 +264,7 @@ export class VoiceSession {
     this.ending = true;
     this.emit({ status: 'ending' });
     this.abort?.abort();
+    this.tools?.cancel();
     this.ready = false;
     this.audio?.close();
     clearTimeout(this.timeout);
@@ -244,6 +287,8 @@ export class VoiceSession {
     this.emit({ status: 'disconnected', muted: false });
   }
   dispose() {
+    this.tools?.cancel();
+    this.tools = undefined;
     this.epoch++;
     this.ready = false;
     this.ending = false;

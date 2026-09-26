@@ -26,7 +26,7 @@ export function VoiceControls({ voice }: { voice: VoiceControlsState }) {
         <h2 role="status">
           {voice.muted ? 'Microphone muted' : voiceLabels[voice.status]}
         </h2>
-        <p>Voice conversation · Maintenance actions will be connected next.</p>
+        <p>Find equipment by voice · Say “Find M-204”.</p>
         {voice.error && (
           <p className="voice-error" role="alert">
             {voice.error}

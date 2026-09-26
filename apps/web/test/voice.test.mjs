@@ -246,3 +246,167 @@ test('unexpected disconnect and audio backpressure fail visibly and close the mi
   assert.match(f.session.snapshot.error, /too slow/);
   assert.ok(f.audio.closed > 0);
 });
+
+test('tools wait for reply.done, execute once, and select only after delivery', async (t) => {
+  let executions = 0,
+    selected;
+  const f = fixture(t, {
+    executeTool: async () => {
+      executions++;
+      return {
+        result: { matches: [{ id: 'asset' }] },
+        isError: false,
+        summary: 'Found asset',
+        assetId: 'asset',
+      };
+    },
+    assetFound: (id) => {
+      selected = id;
+    },
+  });
+  await f.session.connect();
+  f.socket.open();
+  f.socket.event({ type: 'session.ready', session_id: 'session' });
+  f.socket.event({ type: 'reply.started', reply_id: 'fc-call' });
+  const call = {
+    type: 'tool.call',
+    call_id: 'call',
+    name: 'find_asset',
+    arguments: { query: 'M204' },
+  };
+  f.socket.event(call);
+  f.socket.event(call);
+  await new Promise(setImmediate);
+  assert.equal(executions, 1);
+  assert.equal(selected, undefined);
+  assert.equal(
+    f.sent.filter((event) => event.type === 'tool.result').length,
+    0,
+  );
+  f.socket.event({
+    type: 'reply.done',
+    reply_id: 'fc-call',
+    status: 'completed',
+  });
+  assert.equal(f.sent.at(-1).call_id, 'call');
+  assert.equal(typeof f.sent.at(-1).result, 'string');
+  assert.equal(selected, 'asset');
+  assert.equal(f.session.snapshot.tools[0].status, 'completed');
+});
+
+test('slow tools hold results during a new turn and drop results after interruption or end', async (t) => {
+  for (const finish of ['completed', 'interrupted', 'end']) {
+    let resolve, signal, selected;
+    const f = fixture(t, {
+      executeTool: (_name, _args, value) => {
+        signal = value;
+        return new Promise((done) => {
+          resolve = done;
+        });
+      },
+      assetFound: (id) => {
+        selected = id;
+      },
+    });
+    await f.session.connect();
+    f.socket.open();
+    f.socket.event({ type: 'session.ready', session_id: 'session' });
+    f.socket.event({ type: 'reply.started', reply_id: 'fc-call' });
+    f.socket.event({
+      type: 'tool.call',
+      call_id: 'call',
+      name: 'find_asset',
+      arguments: { query: 'M204' },
+    });
+    f.socket.event({
+      type: 'reply.done',
+      reply_id: 'fc-call',
+      status: 'completed',
+    });
+    f.socket.event({ type: 'input.speech.started' });
+    resolve({ result: {}, isError: false, summary: 'Found', assetId: 'asset' });
+    await new Promise(setImmediate);
+    assert.equal(
+      f.sent.filter((event) => event.type === 'tool.result').length,
+      0,
+    );
+    if (finish === 'end') f.session.end();
+    else
+      f.socket.event({ type: 'reply.done', reply_id: 'next', status: finish });
+    if (finish === 'completed') assert.equal(selected, 'asset');
+    else {
+      assert.equal(selected, undefined);
+      assert.equal(signal.aborted, true);
+    }
+  }
+});
+
+test('ending a lookup aborts the request and ignores late completion', async (t) => {
+  let resolve, selected;
+  const f = fixture(t, {
+    executeTool: () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+    assetFound: (id) => {
+      selected = id;
+    },
+  });
+  await f.session.connect();
+  f.socket.open();
+  f.socket.event({ type: 'session.ready', session_id: 'session' });
+  f.socket.event({
+    type: 'tool.call',
+    call_id: 'call',
+    name: 'find_asset',
+    arguments: { query: 'M204' },
+  });
+  f.session.end();
+  resolve({ result: {}, isError: false, summary: 'Found', assetId: 'asset' });
+  await new Promise(setImmediate);
+  assert.equal(selected, undefined);
+  assert.equal(
+    f.sent.filter((event) => event.type === 'tool.result').length,
+    0,
+  );
+});
+
+test('asset executor validates arguments, rejects unknown tools and distinguishes empty, ambiguous and failed lookups', async () => {
+  const { createToolExecutor } = await import('../src/voice/tools.ts');
+  let calls = 0;
+  let matches = [];
+  const execute = createToolExecutor(async () => {
+    calls++;
+    return matches;
+  });
+  const signal = new AbortController().signal;
+  for (const args of [
+    { query: '' },
+    { query: 'M204', extra: true },
+    '{"query":"M204"}',
+  ])
+    assert.equal((await execute('find_asset', args, signal)).isError, true);
+  assert.equal((await execute('delete_asset', {}, signal)).isError, true);
+  assert.equal(calls, 0);
+  assert.equal(
+    (await execute('find_asset', { query: 'unknown' }, signal)).result
+      .totalMatches,
+    0,
+  );
+  matches = [{ id: 'motor', assetTag: 'M-204', name: 'Motor' }];
+  assert.equal(
+    (await execute('find_asset', { query: 'M204' }, signal)).assetId,
+    'motor',
+  );
+  matches.push({ id: 'pump', assetTag: 'P-101', name: 'Pump' });
+  assert.equal(
+    (await execute('find_asset', { query: 'production' }, signal)).assetId,
+    undefined,
+  );
+  const failing = createToolExecutor(async () => {
+    throw new Error('private upstream details');
+  });
+  const result = await failing('find_asset', { query: 'M204' }, signal);
+  assert.equal(result.isError, true);
+  assert.equal(JSON.stringify(result).includes('private upstream'), false);
+});

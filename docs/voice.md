@@ -1,8 +1,8 @@
-# Voice connection (Phase 3)
+# Voice connection and equipment lookup
 
 Open http://localhost:5173, select **Start voice session**, allow microphone access, and talk to FieldMate. Live transcripts appear beside the equipment workspace. Mute keeps the session connected; End session releases the microphone and ends the provider session. Starting again opens a fresh conversation.
 
-Voice currently supports conversation only. It does not read the selected asset, retrieve approved procedures, or change maintenance records. Phase 4 will connect those tools to the existing maintenance API. Transcripts remain in browser memory until a new session or page reload; they are not persisted to PostgreSQL.
+Say “Find P-101” or “Find M-204” to search the live equipment register. A unique match selects the asset in the workspace and returns its metadata to FieldMate. Multiple matches require a more specific tag; no match or a failed lookup leaves the selection unchanged. Visible lookup cards show progress and results. Voice does not yet retrieve faults, procedures, or maintenance history, or change maintenance records. Manual sidebar selection is not sent to the agent; identify equipment by tag in conversation. Transcripts remain in browser memory until a new session or page reload; they are not persisted to PostgreSQL.
 
 ## Configuration
 
@@ -36,6 +36,8 @@ PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e
 # Opt-in: requires a configured key, running stack, and installed Chrome.
 # Opens a short billable provider session with a fake microphone; no traces or audio are saved.
 pnpm test:voice:live
+# Also exercise a live tool call using a synthetic text request:
+pnpm test:voice:live --lookup
 ```
 
 The voice unit suite covers token protection, provider failures, rate limits, PCM resampling, transcript reconciliation, cancellation, muted frames, interruption, audio queue cleanup, and connection backpressure. Browser checks use mocked provider events with real AudioWorklet capture on desktop and mobile Chromium emulation. They cover permission denial and cancellation as well as the successful session flow.
@@ -51,3 +53,11 @@ The live smoke checks actual token minting, session readiness, microphone frame 
 5. End while the agent is speaking. Confirm playback stops and the browser microphone indicator clears. Start another session.
 6. Deny microphone permission, restore permission, and retry. Also test disconnecting the network during a session.
 7. Repeat with the intended headset, a phone, and the public HTTPS origin before a demo. Mobile Chromium emulation does not substitute for Safari or physical-device testing.
+
+## Equipment tool protocol
+
+`find_asset` accepts only `{ "query": "P-101" }`, with a trimmed 1–100 character query. It calls the existing `GET /api/v1/assets/search` route and validates the response. Search results include at most 20 matches, the total match count, and the demo source. Only a single match triggers workspace selection. No new write endpoint is exposed.
+
+Tool calls are deduplicated by call ID within a session. Results are JSON strings returned at the idle reply boundary described in AssemblyAI’s [client-side tool guide](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/client-side-tools). New speech holds pending results; interruption and session teardown abort pending requests and discard late responses. Unknown tools and invalid arguments return structured errors. Client-side execution keeps the local API reachable from the browser without exposing it publicly to the provider.
+
+Try “Find conveyor” to test ambiguity, “Find ZZZ-9999” for an empty result, and “Find P-101” for a unique match. The `--lookup` live check mutes synthetic microphone input and supplies an explicit lookup instruction through `reply.create` to trigger the provider tool; recognition of spoken asset tags still needs a real-microphone check.

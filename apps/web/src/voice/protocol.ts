@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { voiceToolDefinitionSchema } from '@fieldmate/shared';
 
 export const voiceTokenSchema = z.object({
   data: z.object({
@@ -16,7 +17,7 @@ export const voiceTokenSchema = z.object({
         voice: z.string(),
         format: z.object({ encoding: z.literal('audio/pcm') }),
       }),
-      tools: z.array(z.never()),
+      tools: z.array(voiceToolDefinitionSchema),
     }),
   }),
 });
@@ -56,7 +57,12 @@ const eventSchema = z.discriminatedUnion('type', [
     code: z.string().optional(),
     message: z.string().optional(),
   }),
-  z.object({ type: z.literal('tool.call') }),
+  z.object({
+    type: z.literal('tool.call'),
+    call_id: z.string().min(1).max(200),
+    name: z.string().max(100),
+    arguments: z.unknown(),
+  }),
 ]);
 export type VoiceEvent = z.infer<typeof eventSchema>;
 export function parseEvent(data: unknown): VoiceEvent | null {

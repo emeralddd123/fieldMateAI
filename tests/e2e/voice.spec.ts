@@ -155,3 +155,84 @@ test('cancels a pending handshake and explicitly ends the provider session', asy
   ).toBeVisible();
   expect(ends).toBe(1);
 });
+
+for (const scenario of ['unique', 'ambiguous', 'missing', 'unavailable']) {
+  test(`voice equipment lookup: ${scenario}`, async ({ page }) => {
+    let socket: WebSocketRoute | undefined;
+    const results: { is_error: boolean; result: string }[] = [];
+    await page.route('**/api/v1/voice/token', (route) =>
+      route.fulfill({ json: { data: credential } }),
+    );
+    if (scenario === 'unavailable')
+      await page.route('**/api/v1/assets/search?*', (route) =>
+        route.fulfill({
+          status: 503,
+          json: { error: { code: 'UNAVAILABLE' } },
+        }),
+      );
+    await page.routeWebSocket('wss://agents.assemblyai.com/v1/ws?*', (ws) => {
+      socket = ws;
+      ws.onMessage((raw) => {
+        const event = JSON.parse(String(raw));
+        if (event.type === 'session.update')
+          ws.send(
+            JSON.stringify({ type: 'session.ready', session_id: 'test' }),
+          );
+        if (event.type === 'tool.result') results.push(event);
+        if (event.type === 'session.end')
+          ws.send(JSON.stringify({ type: 'session.ended' }));
+      });
+    });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Start voice session' }).click();
+    await expect(
+      page
+        .getByRole('region', { name: 'Voice session', exact: true })
+        .getByRole('status'),
+    ).toHaveText('Listening');
+    const send = (event: object) => socket!.send(JSON.stringify(event));
+    send({ type: 'reply.started', reply_id: 'fc-lookup' });
+    send({
+      type: 'tool.call',
+      call_id: 'lookup',
+      name: 'find_asset',
+      arguments: {
+        query:
+          scenario === 'ambiguous'
+            ? 'Conveyor'
+            : scenario === 'missing'
+              ? 'ZZZ-9999'
+              : 'P101',
+      },
+    });
+    send({ type: 'reply.done', reply_id: 'fc-lookup', status: 'completed' });
+    await expect.poll(() => results.length).toBe(1);
+    const lookups = page.getByRole('region', { name: 'Equipment lookups' });
+    if (scenario === 'unique') {
+      await expect(
+        page.getByRole('heading', { name: 'Cooling Water Pump', exact: true }),
+      ).toBeVisible();
+      await expect(lookups).toContainText('Found P-101');
+      expect(JSON.parse(results[0].result).matches[0].assetTag).toBe('P-101');
+    } else {
+      await expect(
+        page.getByRole('heading', {
+          name: 'Conveyor Drive Motor',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(lookups).toContainText(
+        scenario === 'missing'
+          ? 'No equipment matched'
+          : scenario === 'ambiguous'
+            ? 'Specify the asset tag'
+            : 'Equipment search unavailable',
+      );
+    }
+    expect(results[0].is_error).toBe(scenario === 'unavailable');
+    await page.getByRole('button', { name: 'End session' }).click();
+    await expect(
+      page.getByRole('button', { name: 'Start voice session' }),
+    ).toBeVisible();
+  });
+}

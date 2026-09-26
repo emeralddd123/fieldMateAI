@@ -60,3 +60,15 @@ export async function fetchMaintenance(assetId: string) {
     measurements: measurementsResponseSchema.parse(measurements).data,
   };
 }
+
+export async function searchVoiceAssets(query: string, signal: AbortSignal) {
+  const response = await fetch(
+    `${baseUrl}/assets/search?q=${encodeURIComponent(query)}`,
+    {
+      signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
+      cache: 'no-store',
+    },
+  );
+  if (!response.ok) throw new Error('Equipment search unavailable');
+  return assetsResponseSchema.parse(await response.json()).data;
+}

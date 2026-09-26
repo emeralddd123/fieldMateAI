@@ -27,8 +27,14 @@ test('mints a bounded single-use credential without exposing the permanent key',
     'Bearer private-test-key',
   );
   assert.equal(JSON.stringify(result).includes(settings.apiKey), false);
-  assert.deepEqual(result.sessionConfig.tools, []);
-  assert.match(result.sessionConfig.system_prompt, /conversation only/);
+  assert.deepEqual(
+    result.sessionConfig.tools.map((tool) => tool.name),
+    ['find_asset'],
+  );
+  assert.match(
+    result.sessionConfig.system_prompt,
+    /Only equipment search is connected/,
+  );
 });
 test('missing credentials and disallowed browser origins never contact the provider', async () => {
   let calls = 0;

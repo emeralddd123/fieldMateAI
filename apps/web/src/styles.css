@@ -1323,3 +1323,28 @@ h1 {
     flex-basis: calc(100% - 55px);
   }
 }
+
+.tool-activity {
+  border-top: 1px solid #293745;
+  padding: 16px;
+}
+.tool-activity h3 {
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+.tool-activity p {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.tool-activity strong {
+  color: #79d8e9;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.tool-activity .tool-error strong {
+  color: #f4bb78;
+}

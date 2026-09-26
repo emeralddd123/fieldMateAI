@@ -19,8 +19,8 @@ import { ConversationTimeline } from './components/ConversationTimeline';
 import { useVoiceSession } from './voice/useVoiceSession';
 
 export function App() {
-  const voice = useVoiceSession();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const voice = useVoiceSession(setSelectedId);
   const [search, setSearch] = useState('');
   const assets = useQuery({
     queryKey: ['assets'],

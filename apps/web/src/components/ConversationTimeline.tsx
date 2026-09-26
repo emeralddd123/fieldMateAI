@@ -6,7 +6,7 @@ export function ConversationTimeline({ voice }: { voice: VoiceControlsState }) {
   const scroll = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;
-  }, [voice.transcript]);
+  }, [voice.transcript, voice.tools]);
   return (
     <aside
       className="activity-panel conversation-panel"
@@ -55,6 +55,25 @@ export function ConversationTimeline({ voice }: { voice: VoiceControlsState }) {
           </div>
         )}
       </div>
+      {voice.tools.length > 0 && (
+        <section className="tool-activity" aria-label="Equipment lookups">
+          <h3>Equipment lookups</h3>
+          {voice.tools.slice(-5).map((tool) => (
+            <p key={tool.id} role="status" className={`tool-${tool.status}`}>
+              <strong>
+                {tool.status === 'running'
+                  ? 'Searching'
+                  : tool.status === 'completed'
+                    ? 'Result'
+                    : tool.status === 'cancelled'
+                      ? 'Cancelled'
+                      : 'Unavailable'}
+              </strong>
+              <span>{tool.summary}</span>
+            </p>
+          ))}
+        </section>
+      )}
       <div className="activity-footer">
         <span
           className={`status-dot ${voice.status === 'error' ? 'warning' : 'operational'}`}

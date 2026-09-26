@@ -1,20 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrowserVoiceAudio } from './audio';
 import { VoiceSession, type VoiceSnapshot } from './session';
-import { fetchVoiceToken } from '../api';
+import { fetchVoiceToken, searchVoiceAssets } from '../api';
+import { createToolExecutor } from './tools';
 
-export function useVoiceSession() {
+export function useVoiceSession(onAssetFound: (id: string) => void) {
   const [state, setState] = useState<VoiceSnapshot>({
     status: 'disconnected',
     muted: false,
     error: null,
     sessionId: null,
     transcript: [],
+    tools: [],
   });
   const controller = useRef<VoiceSession | null>(null);
   useEffect(() => {
     const session = new VoiceSession(setState, {
       token: fetchVoiceToken,
+      executeTool: createToolExecutor(searchVoiceAssets),
+      assetFound: onAssetFound,
       socket: (url) => new WebSocket(url),
       audio: (changed) => {
         if (
@@ -38,7 +42,7 @@ export function useVoiceSession() {
       session.dispose();
       controller.current = null;
     };
-  }, []);
+  }, [onAssetFound]);
   return {
     ...state,
     connect: () => void controller.current?.connect(),
