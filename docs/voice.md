@@ -1,0 +1,53 @@
+# Voice connection (Phase 3)
+
+Open http://localhost:5173, select **Start voice session**, allow microphone access, and talk to FieldMate. Live transcripts appear beside the equipment workspace. Mute keeps the session connected; End session releases the microphone and ends the provider session. Starting again opens a fresh conversation.
+
+Voice currently supports conversation only. It does not read the selected asset, retrieve approved procedures, or change maintenance records. Phase 4 will connect those tools to the existing maintenance API. Transcripts remain in browser memory until a new session or page reload; they are not persisted to PostgreSQL.
+
+## Configuration
+
+For Docker, set `ASSEMBLYAI_API_KEY` in the root `.env`, then apply the runtime configuration:
+
+```sh
+docker compose up -d --build
+```
+
+For host development, set the key in `apps/api/.env` and restart the API. `ASSEMBLYAI_VOICE` defaults to `alba`. The permanent API key stays on the backend; never use a `VITE_` variable for it. Voice needs localhost or HTTPS and a browser supporting microphone access, Web Audio, and AudioWorklet.
+
+## Authentication and transport
+
+- `GET /api/v1/voice/status` reports whether a key is configured; it does not validate provider access.
+- `POST /api/v1/voice/token` returns a single-use temporary token plus the session configuration with `Cache-Control: no-store`.
+- Tokens expire after 60 seconds; sessions have a 600-second maximum. The backend permits five token requests per minute per observed client IP and checks browser Origin against `FRONTEND_URL`. These demo protections are not user authentication. Behind Nginx, clients share the proxy IP limit.
+- Provider errors are sanitized. Credentials and raw provider responses are not logged by the application.
+- The browser opens the AssemblyAI WebSocket, sends `session.update`, and waits for `session.ready` before transmitting microphone audio.
+- Capture uses the device's AudioContext rate and continuously resamples to mono 24 kHz PCM16 little-endian, sent in 20 ms frames. Playback uses queued 24 kHz audio buffers.
+- User transcript deltas replace partial text; agent deltas build the current reply. Final events replace the partial transcript.
+- An interrupted reply stops all queued playback. A completed reply remains in the speaking state until playback drains.
+- End sends `session.end` and waits for `session.ended`, with a two-second fallback. Navigation makes a best-effort explicit end. Failed connections require an explicit retry.
+
+The implementation follows the official [browser integration](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/browser-integration), [event reference](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/events-reference), and [session configuration](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/session-configuration).
+
+## Automated checks
+
+```sh
+pnpm test:voice
+PLAYWRIGHT_CHANNEL=chrome pnpm test:e2e
+# Opt-in: requires a configured key, running stack, and installed Chrome.
+# Opens a short billable provider session with a fake microphone; no traces or audio are saved.
+pnpm test:voice:live
+```
+
+The voice unit suite covers token protection, provider failures, rate limits, PCM resampling, transcript reconciliation, cancellation, muted frames, interruption, audio queue cleanup, and connection backpressure. Browser checks use mocked provider events with real AudioWorklet capture on desktop and mobile Chromium emulation. They cover permission denial and cancellation as well as the successful session flow.
+
+The live smoke checks actual token minting, session readiness, microphone frame transmission, greeting audio and transcript reception, and confirmed provider session termination. It uses synthetic microphone input; it does not verify speech recognition quality, speaker acoustics, or physical-device barge-in.
+
+## Manual voice QA
+
+1. Start a session and confirm the greeting is audible and matches its transcript.
+2. Say “What can FieldMate help me with?” Confirm your transcript and a relevant spoken answer.
+3. Speak over a response. Confirm queued speech stops promptly and the agent responds to your new turn.
+4. Mute, speak, then unmute. Confirm muted speech does not appear in the transcript.
+5. End while the agent is speaking. Confirm playback stops and the browser microphone indicator clears. Start another session.
+6. Deny microphone permission, restore permission, and retry. Also test disconnecting the network during a session.
+7. Repeat with the intended headset, a phone, and the public HTTPS origin before a demo. Mobile Chromium emulation does not substitute for Safari or physical-device testing.

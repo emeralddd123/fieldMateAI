@@ -1201,3 +1201,125 @@ h1 {
     margin-bottom: 4px;
   }
 }
+
+.main-content > .voice-bar {
+  margin: 0 0 22px;
+}
+.voice-summary {
+  min-width: 0;
+  flex: 1;
+}
+.voice-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.voice-actions button {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin: 0;
+}
+.voice-bar .voice-error {
+  color: #efb19f;
+  line-height: 1.7;
+  max-width: 560px;
+}
+.voice-actions .end-voice {
+  color: #f3b9aa;
+  border-color: #735450;
+  background: #3c2b2c;
+}
+.voice-listening .voice-icon {
+  box-shadow: 0 0 0 5px #28536455;
+}
+.voice-speaking .voice-icon {
+  animation: voice-pulse 1.3s ease-in-out infinite;
+}
+.voice-connecting .voice-icon {
+  opacity: 0.6;
+}
+.conversation-panel {
+  align-self: start;
+  position: sticky;
+  top: 20px;
+  min-height: 420px;
+}
+.conversation-log {
+  max-height: 580px;
+  overflow-y: auto;
+  flex: 1;
+  padding: 12px 18px;
+}
+.transcript-item {
+  margin: 13px 0;
+  padding: 12px;
+  border: 1px solid #2b3f4e;
+  border-radius: 6px;
+  background: #152635;
+}
+.transcript-item strong {
+  display: block;
+  color: #87c9df;
+  font-size: 10px;
+  margin-bottom: 8px;
+}
+.transcript-item p {
+  font-size: 12px;
+  line-height: 1.75;
+  color: #d6e1eb;
+  overflow-wrap: anywhere;
+}
+.transcript-user {
+  background: #1e2c39;
+}
+.transcript-user strong {
+  color: #b9cad9;
+}
+.transcript-item small {
+  display: block;
+  margin-top: 7px;
+  color: #9db2c3;
+  font-size: 9px;
+}
+.conversation-panel .activity-footer {
+  margin-top: auto;
+}
+.voice-actions button:disabled {
+  opacity: 0.5;
+}
+@keyframes voice-pulse {
+  50% {
+    box-shadow: 0 0 0 8px #28536455;
+  }
+}
+@media (max-width: 1180px) {
+  .voice-actions {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+  .voice-actions .voice-button {
+    width: auto;
+  }
+}
+@media (max-width: 940px) {
+  .conversation-panel {
+    position: static;
+  }
+  .conversation-log {
+    max-height: 360px;
+  }
+}
+@media (max-width: 640px) {
+  .voice-actions {
+    justify-content: stretch;
+  }
+  .voice-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+  .voice-summary {
+    flex-basis: calc(100% - 55px);
+  }
+}

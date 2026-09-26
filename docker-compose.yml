@@ -28,6 +28,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-fieldmate}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-fieldmate}?schema=public
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       ASSEMBLYAI_API_KEY: ${ASSEMBLYAI_API_KEY:-}
+      ASSEMBLYAI_VOICE: ${ASSEMBLYAI_VOICE:-alba}
     ports:
       - '127.0.0.1:${API_PORT:-3000}:3000'
     depends_on:

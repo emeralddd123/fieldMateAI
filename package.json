@@ -18,7 +18,9 @@
     "test:integration": "pnpm --filter @fieldmate/api test:integration",
     "test:e2e": "playwright test",
     "demo:api": "node scripts/demo.mjs",
-    "test:maintenance": "node --env-file=.env.test --test apps/api/test/maintenance.integration.test.mjs"
+    "test:maintenance": "node --env-file=.env.test --test apps/api/test/maintenance.integration.test.mjs",
+    "test:voice": "pnpm --filter @fieldmate/api build && pnpm --filter @fieldmate/api exec tsx --test test/voice.test.mjs ../web/test/voice.test.mjs",
+    "test:voice:live": "node scripts/voice-smoke.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

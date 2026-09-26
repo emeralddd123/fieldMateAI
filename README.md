@@ -4,13 +4,13 @@
 
 FieldMate is a voice-first maintenance copilot that gives field technicians access to equipment knowledge and maintenance history, then turns repair conversations into structured records.
 
-## Current build: Phase 2
+## Current build: Phase 3
 
 The build includes the pnpm monorepo, equipment workspace, NestJS maintenance API, PostgreSQL migrations and seed, and the complete Docker Compose deployment path.
 
-The dashboard displays real equipment, incident, reading, and repair records. The backend supports approved fault knowledge, gated procedures, incident notes/escalation, and atomic repair completion. Five simulated assets and two previous M-204/F0003 repairs are seeded. Voice integration is the next phase.
+The dashboard displays real equipment, incident, reading, and repair records. The backend supports approved fault knowledge, gated procedures, incident notes/escalation, and atomic repair completion. Five simulated assets and two previous M-204/F0003 repairs are seeded. Voice now connects to AssemblyAI with browser microphone capture, streamed audio, live transcripts, mute, and interruption handling. Maintenance tool calling is the next phase.
 
-See [the maintenance API walkthrough](docs/maintenance-api.md) for request examples, integrity rules, and demo reset commands.
+See [voice setup and testing](docs/voice.md) and [the maintenance API walkthrough](docs/maintenance-api.md) for request examples, integrity rules, and demo reset commands.
 
 ## Stack
 
@@ -19,7 +19,7 @@ See [the maintenance API walkthrough](docs/maintenance-api.md) for request examp
 - NestJS, Swagger, DTO validation
 - PostgreSQL 17, Prisma 7 with the PostgreSQL driver adapter
 - Docker Compose, Nginx
-- AssemblyAI Voice Agent API (planned)
+- AssemblyAI Voice Agent API
 
 ```text
 apps/web          React equipment workspace + Nginx
@@ -106,6 +106,7 @@ pnpm build
 pnpm typecheck
 pnpm lint
 pnpm format:check
+pnpm test:voice
 # Requires the API running with the demo seed applied:
 pnpm test:integration
 # Against the running frontend (install Chromium once):

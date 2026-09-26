@@ -2,14 +2,11 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Activity,
-  ArrowDownLeft,
   AudioLines,
   ChevronRight,
   CircleHelp,
   Factory,
   LayoutDashboard,
-  Mic,
-  Radio,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -17,8 +14,12 @@ import {
 import { fetchAssets } from './api';
 import { AssetOverview } from './components/AssetOverview';
 import { MaintenancePanel } from './components/MaintenancePanel';
+import { VoiceControls } from './components/VoiceControls';
+import { ConversationTimeline } from './components/ConversationTimeline';
+import { useVoiceSession } from './voice/useVoiceSession';
 
 export function App() {
+  const voice = useVoiceSession();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const assets = useQuery({
@@ -150,6 +151,7 @@ export function App() {
               />
             </button>
           </div>
+          <VoiceControls voice={voice} />
           <div className="main-columns">
             <div>
               {assets.isError ? (
@@ -184,57 +186,9 @@ export function App() {
               )}
               {selected && <MaintenancePanel assetId={selected.id} />}
             </div>
-            <aside className="activity-panel" aria-label="Session activity">
-              <div className="activity-heading">
-                <h2>
-                  <Radio size={16} />
-                  Live activity
-                </h2>
-                <span className="subtle-tag">IDLE</span>
-              </div>
-              <div className="session-empty">
-                <span className="conversation-symbol">
-                  <AudioLines size={29} />
-                </span>
-                <h3>
-                  A little context.
-                  <br />A lot of confidence.
-                </h3>
-                <p>
-                  Your conversation and equipment actions will appear here
-                  during a voice session.
-                </p>
-              </div>
-              <div className="context-card">
-                <span className="context-label">
-                  <ArrowDownLeft size={14} /> CURRENT CONTEXT
-                </span>
-                <strong>{selected?.assetTag ?? 'No asset selected'}</strong>
-                <p>{selected?.name ?? 'Select equipment to get started.'}</p>
-              </div>
-              <div className="activity-footer">
-                <span
-                  className={`status-dot ${assets.isSuccess ? 'operational' : 'warning'}`}
-                />
-                {assets.isSuccess
-                  ? 'Equipment data connected'
-                  : 'Waiting for equipment data'}
-              </div>
-            </aside>
+            <ConversationTimeline voice={voice} />
           </div>
-          <section className="voice-bar" aria-label="Voice session">
-            <div className="voice-icon">
-              <Mic size={23} />
-            </div>
-            <div>
-              <h2>Your hands are busy. Your knowledge isn’t.</h2>
-              <p>Voice assistance will be available soon.</p>
-            </div>
-            <button disabled className="voice-button">
-              <Mic size={15} />
-              Start voice session<span>SOON</span>
-            </button>
-          </section>
+
           <footer className="safety-note">
             <ShieldCheck size={14} />
             <p>

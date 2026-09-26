@@ -30,10 +30,9 @@ test('loads seeded equipment and switches asset context', async ({ page }) => {
   await expect(
     page.getByRole('heading', { name: 'Conveyor Drive Motor', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('Equipment data connected')).toBeVisible();
   await expect(
     page.getByRole('button', { name: /Start voice session/ }),
-  ).toBeDisabled();
+  ).toBeVisible();
   await page.getByRole('button', { name: /P-101 Cooling Water Pump/ }).click();
   await expect(
     page.getByRole('heading', { name: 'Cooling Water Pump', exact: true }),
