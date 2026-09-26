@@ -98,6 +98,18 @@ export class VoiceWrites {
         'Voltage requires V and current requires A. No record was saved.',
       );
     if (
+      request.name === 'resolve_incident' &&
+      request.args.verification_measurement &&
+      request.args.verification_measurement.unit !==
+        (request.args.verification_measurement.measurement_type ===
+        'line_voltage'
+          ? 'V'
+          : 'A')
+    )
+      return this.result(
+        'Verification voltage requires V and current requires A. No record was saved.',
+      );
+    if (
       request.name === 'create_incident' &&
       new Set(request.args.measurement_ids).size !==
         (request.args.measurement_ids?.length ?? 0)
@@ -164,15 +176,23 @@ export class VoiceWrites {
     this.notice(item, 'saving', 'Saving the confirmed request…');
     try {
       const data = await this.deps.submit(item.request, item.requestId);
-      if (
-        data.requestId !== item.requestId ||
-        data.assetId !== item.request.args.asset_id
-      )
+      const expectedAssetId =
+        'asset_id' in item.request.args
+          ? item.request.args.asset_id
+          : data.assetId;
+      if (data.requestId !== item.requestId || data.assetId !== expectedAssetId)
         throw new Error('Invalid save response');
       const message =
         item.request.name === 'create_incident'
           ? `Saved incident ${data.incidentNumber}.`
-          : `Saved reading ${data.value} ${data.unit}.`;
+          : item.request.name === 'record_measurement'
+            ? `Saved reading ${data.value} ${data.unit}.`
+            : item.request.name === 'resolve_incident'
+              ? `Resolved incident ${data.incidentNumber ?? ''}. Equipment marked ${data.status ?? 'operational'}.`
+              : item.request.name === 'escalate_incident'
+                ? `Escalated incident ${data.incidentNumber ?? ''} for supervisor review.`
+                : `Saved note for incident ${data.incidentNumber ?? ''}.`;
+
       // Storage cleanup can fail after a successful write; keeping the old key is safe to retry.
       try {
         this.persist(

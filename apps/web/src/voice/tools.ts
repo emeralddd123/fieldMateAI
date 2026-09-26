@@ -48,8 +48,18 @@ export function createToolExecutor(
   writes?: ExecuteTool,
 ): ExecuteTool {
   return async (name, args, signal) => {
-    if (writes && ['record_measurement', 'create_incident'].includes(name))
+    if (
+      writes &&
+      [
+        'record_measurement',
+        'create_incident',
+        'resolve_incident',
+        'escalate_incident',
+        'add_incident_note',
+      ].includes(name)
+    )
       return writes(name, args, signal);
+
     if (name === 'get_approved_procedure' && procedure)
       return procedure(args, signal);
     if (name === 'lookup_fault_code' || name === 'get_maintenance_history') {

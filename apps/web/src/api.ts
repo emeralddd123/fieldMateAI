@@ -141,12 +141,26 @@ export async function fetchVoiceProcedure(
 export async function previewVoiceWrite(
   request: import('@fieldmate/shared').WriteRequest,
   signal: AbortSignal,
-) {
+): Promise<import('./voice/writes').WritePrompt> {
+  let assetId = 'asset_id' in request.args ? request.args.asset_id : '';
+  let incidentData: {
+    id: string;
+    incidentNumber: string;
+    title: string;
+    status: string;
+    assetId: string;
+  } | null = null;
+  if ('incident_id' in request.args && request.args.incident_id) {
+    const incRes = await fetchVoiceKnowledge(
+      `/incidents/${request.args.incident_id}`,
+      signal,
+    );
+    incidentData = incRes.data;
+    if (!assetId && incidentData) assetId = incidentData.assetId;
+  }
   const asset = assetSchema.parse(
-    (await fetchVoiceKnowledge(`/assets/${request.args.asset_id}`, signal))
-      .data,
+    (await fetchVoiceKnowledge(`/assets/${assetId}`, signal)).data,
   );
-  const args = request.args;
   const details = [`Equipment: ${asset.assetTag} · ${asset.name}`];
   if (request.name === 'record_measurement') {
     details.push(
@@ -154,20 +168,18 @@ export async function previewVoiceWrite(
     );
     if (request.args.notes) details.push(`Notes: ${request.args.notes}`);
     if (request.args.incident_id) {
-      const incident = await fetchVoiceKnowledge(
-        `/incidents/${request.args.incident_id}`,
-        signal,
-      );
       if (
-        incident.data.assetId !== asset.id ||
-        !['open', 'investigating', 'escalated'].includes(incident.data.status)
+        !incidentData ||
+        incidentData.assetId !== asset.id ||
+        !['open', 'investigating', 'escalated'].includes(incidentData.status)
       )
         throw new WriteRejected(
           'The incident must be active and belong to this asset. Nothing was submitted.',
         );
-      details.push(`Attach to incident: ${incident.data.incidentNumber}`);
+      details.push(`Attach to incident: ${incidentData.incidentNumber}`);
     } else details.push('Save as an unassigned reading on this asset.');
-  } else {
+    return { title: 'Review measurement', details };
+  } else if (request.name === 'create_incident') {
     const draft = request.args;
     details.push(
       `Title: ${draft.title}`,
@@ -178,7 +190,7 @@ export async function previewVoiceWrite(
     );
     if (draft.measurement_ids?.length) {
       const readings = await fetchVoiceKnowledge(
-        `/assets/${args.asset_id}/measurements?limit=100`,
+        `/assets/${request.args.asset_id}/measurements?limit=100`,
         signal,
       );
       const validated = z
@@ -209,77 +221,240 @@ export async function previewVoiceWrite(
         );
       }
     } else details.push('No existing readings will be linked.');
+    return { title: 'Review new incident', details };
+  } else if (request.name === 'resolve_incident') {
+    if (
+      !incidentData ||
+      !['open', 'investigating', 'escalated'].includes(incidentData.status)
+    )
+      throw new WriteRejected(
+        'The incident is no longer active. Nothing was submitted.',
+      );
+    details.push(
+      `Incident: ${incidentData.incidentNumber} · ${incidentData.title}`,
+      `Root cause: ${request.args.root_cause}`,
+      `Action taken: ${request.args.action_taken}`,
+      `Verification: ${request.args.resolution_summary}`,
+    );
+    if (request.args.verification_measurement) {
+      const m = request.args.verification_measurement;
+      details.push(
+        `Verification reading: ${m.value} ${m.unit} (${m.measurement_type})`,
+      );
+    }
+    details.push(
+      `Equipment status: ${request.args.asset_status ?? 'operational'}`,
+    );
+    return { title: 'Review repair resolution', details };
+  } else if (request.name === 'escalate_incident') {
+    if (
+      !incidentData ||
+      !['open', 'investigating', 'escalated'].includes(incidentData.status)
+    )
+      throw new WriteRejected(
+        'The incident is no longer active. Nothing was submitted.',
+      );
+    details.push(
+      `Incident: ${incidentData.incidentNumber} · ${incidentData.title}`,
+      `Reason: ${request.args.reason}`,
+      `Severity: ${request.args.severity ?? 'supervisor_review'}`,
+    );
+    return { title: 'Review incident escalation', details };
+  } else if (request.name === 'add_incident_note') {
+    if (
+      !incidentData ||
+      !['open', 'investigating', 'escalated'].includes(incidentData.status)
+    )
+      throw new WriteRejected(
+        'The incident is no longer active. Nothing was submitted.',
+      );
+    details.push(
+      `Incident: ${incidentData.incidentNumber} · ${incidentData.title}`,
+      `Note: ${request.args.note}`,
+    );
+    return { title: 'Review incident note', details };
   }
-  return {
-    title:
-      request.name === 'record_measurement'
-        ? 'Review measurement'
-        : 'Review new incident',
-    details,
-  };
+  throw new Error('Unknown write request');
 }
+
+async function handleWriteError(response: Response): Promise<never> {
+  if ([400, 404, 409].includes(response.status)) {
+    const data = await response.json().catch(() => null);
+    const messages: Record<string, string> = {
+      REQUEST_ID_REUSED:
+        'This save ID belongs to different data. Check the existing record before creating a new request.',
+      INVALID_MEASUREMENT_LINK:
+        'Readings must belong to this asset and be unassigned. Nothing was saved.',
+      ASSET_MISMATCH:
+        'The incident belongs to another asset. Nothing was saved.',
+      INCIDENT_FINISHED: 'The incident is no longer active. Nothing was saved.',
+    };
+    throw new WriteRejected(
+      messages[data?.error?.code] ??
+        'The server rejected this request. Review the asset, incident and reading details. Nothing new was saved.',
+    );
+  }
+  throw new Error('Save outcome unknown');
+}
+
 export async function submitVoiceWrite(
   request: import('@fieldmate/shared').WriteRequest,
   requestId: string,
 ) {
-  const args = request.args;
-  const body =
-    request.name === 'record_measurement'
-      ? {
-          assetId: request.args.asset_id,
-          incidentId: request.args.incident_id,
-          measurementType: request.args.measurement_type,
-          value: request.args.value,
-          unit: request.args.unit,
-          notes: request.args.notes,
-        }
-      : {
-          assetId: args.asset_id,
-          title: request.args.title,
-          description: request.args.description,
-          faultCode: request.args.fault_code,
-          priority: request.args.priority,
-          assetStatus: request.args.asset_status,
-          measurementIds: request.args.measurement_ids,
-        };
-  const response = await fetch(
-    `${baseUrl}/${request.name === 'record_measurement' ? 'measurements' : 'incidents'}`,
-    {
+  if (request.name === 'record_measurement') {
+    const body = {
+      assetId: request.args.asset_id,
+      incidentId: request.args.incident_id,
+      measurementType: request.args.measurement_type,
+      value: request.args.value,
+      unit: request.args.unit,
+      notes: request.args.notes,
+      requestId,
+      source: 'voice',
+    };
+    const response = await fetch(`${baseUrl}/measurements`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...body, requestId, source: 'voice' }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(12_000),
-    },
-  );
-  if (!response.ok) {
-    if ([400, 404, 409].includes(response.status)) {
-      const data = await response.json().catch(() => null);
-      const messages: Record<string, string> = {
-        REQUEST_ID_REUSED:
-          'This save ID belongs to different data. Check the existing record before creating a new request.',
-        INVALID_MEASUREMENT_LINK:
-          'Readings must belong to this asset and be unassigned. Nothing was saved.',
-        ASSET_MISMATCH:
-          'The incident belongs to another asset. Nothing was saved.',
-        INCIDENT_FINISHED:
-          'The incident is no longer active. Nothing was saved.',
-      };
-      throw new WriteRejected(
-        messages[data?.error?.code] ??
-          'The server rejected this request. Review the asset, incident and reading details. Nothing new was saved.',
-      );
-    }
-    throw new Error('Save outcome unknown');
-  }
-  const data = writeResultSchema.parse(await response.json()).data;
-  if (
-    request.name === 'record_measurement' &&
-    (data.value !== request.args.value ||
+    });
+    if (!response.ok) await handleWriteError(response);
+    const data = writeResultSchema.parse(await response.json()).data;
+    if (
+      data.value !== request.args.value ||
       data.unit !== request.args.unit ||
-      data.measurementType !== request.args.measurement_type)
-  )
-    throw new Error('Unexpected saved reading');
-  if (request.name === 'create_incident' && !data.incidentNumber)
-    throw new Error('Missing incident number');
-  return data;
+      data.measurementType !== request.args.measurement_type
+    )
+      throw new Error('Unexpected saved reading');
+    return data;
+  }
+  if (request.name === 'create_incident') {
+    const body = {
+      assetId: request.args.asset_id,
+      title: request.args.title,
+      description: request.args.description,
+      faultCode: request.args.fault_code,
+      priority: request.args.priority,
+      assetStatus: request.args.asset_status,
+      measurementIds: request.args.measurement_ids,
+      requestId,
+      source: 'voice',
+    };
+    const response = await fetch(`${baseUrl}/incidents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!response.ok) await handleWriteError(response);
+    const data = writeResultSchema.parse(await response.json()).data;
+    if (!data.incidentNumber) throw new Error('Missing incident number');
+    return data;
+  }
+  if (request.name === 'resolve_incident') {
+    const incRes = await fetchVoiceKnowledge(
+      `/incidents/${request.args.incident_id}`,
+      AbortSignal.timeout(10_000),
+    );
+    const body = {
+      assetId: incRes.data.assetId,
+      rootCause: request.args.root_cause,
+      actionTaken: request.args.action_taken,
+      verificationSummary: request.args.resolution_summary,
+      verificationMeasurement: request.args.verification_measurement
+        ? {
+            measurementType:
+              request.args.verification_measurement.measurement_type,
+            value: request.args.verification_measurement.value,
+            unit: request.args.verification_measurement.unit,
+            notes: request.args.verification_measurement.notes,
+          }
+        : undefined,
+      assetStatus: request.args.asset_status ?? 'operational',
+      source: 'voice',
+    };
+    const response = await fetch(
+      `${baseUrl}/incidents/${request.args.incident_id}/complete-repair`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(12_000),
+      },
+    );
+    if (!response.ok) await handleWriteError(response);
+    const json = await response.json();
+    const result = json.data;
+    return {
+      id: result.maintenanceRecord.id,
+      assetId: result.asset.id,
+      requestId,
+      source: 'voice' as const,
+      incidentNumber: result.incident.incidentNumber,
+      status: result.asset.status,
+      rootCause: result.incident.rootCause,
+      actionTaken: result.incident.actionTaken,
+    };
+  }
+  if (request.name === 'escalate_incident') {
+    const body = {
+      reason: request.args.reason,
+      severity: request.args.severity ?? 'supervisor_review',
+    };
+    const response = await fetch(
+      `${baseUrl}/incidents/${request.args.incident_id}/escalate`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(12_000),
+      },
+    );
+    if (!response.ok) await handleWriteError(response);
+    const json = await response.json();
+    const inc = await fetchVoiceKnowledge(
+      `/incidents/${request.args.incident_id}`,
+      AbortSignal.timeout(10_000),
+    );
+    return {
+      id: json.data.id,
+      assetId: inc.data.assetId,
+      requestId,
+      source: 'voice' as const,
+      incidentNumber: inc.data.incidentNumber,
+      status: inc.data.status,
+      reason: request.args.reason,
+    };
+  }
+  if (request.name === 'add_incident_note') {
+    const body = {
+      note: request.args.note,
+      source: 'voice',
+    };
+    const response = await fetch(
+      `${baseUrl}/incidents/${request.args.incident_id}/notes`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(12_000),
+      },
+    );
+    if (!response.ok) await handleWriteError(response);
+    const json = await response.json();
+    const inc = await fetchVoiceKnowledge(
+      `/incidents/${request.args.incident_id}`,
+      AbortSignal.timeout(10_000),
+    );
+    return {
+      id: json.data.id,
+      assetId: inc.data.assetId,
+      requestId,
+      source: 'voice' as const,
+      incidentNumber: inc.data.incidentNumber,
+      status: inc.data.status,
+      note: request.args.note,
+    };
+  }
+  throw new Error('Unknown write request');
 }

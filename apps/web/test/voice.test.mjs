@@ -754,3 +754,109 @@ test('unknown writes retain a durable retry key across reloads and retry clicks 
   assert.deepEqual(keys, [id, id]);
   assert.equal(storage, '[]');
 });
+
+test('voice writes support incident resolution with verification reading, notes, and escalation', async () => {
+  const { VoiceWrites } = await import('../src/voice/writes.ts');
+  const incidentId = '10480000-0000-4000-8000-000000000001';
+  const assetId = '20400000-0000-4000-8000-000000000001';
+  let storage = null;
+  const submissions = [];
+  let counter = 0;
+  const deps = {
+    storage: {
+      getItem: () => storage,
+      setItem: (_key, val) => {
+        storage = val;
+      },
+    },
+    preview: async (req) => ({
+      title: `Review ${req.name}`,
+      details: ['Equipment: M-204'],
+    }),
+    confirm: async () => true,
+    uuid: () =>
+      `c0000000-0000-4000-8000-${String(++counter).padStart(12, '0')}`,
+    changed: () => {},
+    saved: () => {},
+    submit: async (req, requestId) => {
+      submissions.push({ req, requestId });
+      return {
+        id: 'rec-0000-4000-8000-000000000001',
+        assetId,
+        requestId,
+        source: 'voice',
+        incidentNumber: 'INC-1048',
+        status: 'operational',
+      };
+    },
+  };
+  const writer = new VoiceWrites(deps);
+  const abort = new AbortController();
+
+  // Test invalid unit on verification measurement
+  const invalidResolve = await writer.execute(
+    'resolve_incident',
+    {
+      incident_id: incidentId,
+      root_cause: 'Loose L2 terminal',
+      action_taken: 'Tightened connection',
+      resolution_summary: 'Normal operation at 12.4 A',
+      verification_measurement: {
+        measurement_type: 'motor_current',
+        value: 12.4,
+        unit: 'V', // should be A!
+      },
+    },
+    abort.signal,
+  );
+  assert.equal(invalidResolve.isError, true);
+  assert.match(invalidResolve.summary, /Verification voltage requires V/);
+
+  // Test valid resolution with 12.4 A measurement
+  const validResolve = await writer.execute(
+    'resolve_incident',
+    {
+      incident_id: incidentId,
+      root_cause: 'Loose L2 terminal',
+      action_taken: 'Tightened connection',
+      resolution_summary: 'Normal operation at 12.4 A',
+      verification_measurement: {
+        measurement_type: 'motor_current',
+        value: 12.4,
+        unit: 'A',
+      },
+      asset_status: 'operational',
+    },
+    abort.signal,
+  );
+  assert.equal(validResolve.isError, false);
+  assert.equal(validResolve.result.success, true);
+  assert.match(validResolve.summary, /Resolved incident INC-1048/);
+  assert.equal(submissions.length, 1);
+  assert.equal(submissions[0].req.name, 'resolve_incident');
+
+  // Test escalation
+  const escalate = await writer.execute(
+    'escalate_incident',
+    {
+      incident_id: incidentId,
+      reason: 'No approved procedure available',
+      severity: 'supervisor_review',
+    },
+    abort.signal,
+  );
+  assert.equal(escalate.isError, false);
+  assert.match(escalate.summary, /Escalated incident INC-1048/);
+
+  // Test note
+  const note = await writer.execute(
+    'add_incident_note',
+    {
+      incident_id: incidentId,
+      note: 'Breaker already checked and confirmed closed.',
+    },
+    abort.signal,
+  );
+  assert.equal(note.isError, false);
+  assert.match(note.summary, /Saved note for incident INC-1048/);
+});

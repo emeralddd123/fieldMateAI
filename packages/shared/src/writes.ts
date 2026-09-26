@@ -21,6 +21,46 @@ export const incidentArgumentsSchema = z
     measurement_ids: z.array(z.uuid()).max(20).optional(),
   })
   .strict();
+export const resolveIncidentArgumentsSchema = z
+  .object({
+    incident_id: z.uuid(),
+    root_cause: text(4000),
+    action_taken: text(4000),
+    resolution_summary: text(4000),
+    verification_measurement: z
+      .object({
+        measurement_type: z.enum(['line_voltage', 'motor_current']),
+        value: z.number().min(0).max(999999999).multipleOf(0.000001),
+        unit: z.enum(['V', 'A']),
+        notes: text(2000).optional(),
+      })
+      .strict()
+      .optional(),
+    asset_status: z
+      .enum(['operational', 'warning', 'maintenance', 'down'])
+      .default('operational')
+      .optional(),
+  })
+  .strict();
+
+export const escalateIncidentArgumentsSchema = z
+  .object({
+    incident_id: z.uuid(),
+    reason: text(4000),
+    severity: z
+      .enum(['supervisor_review', 'urgent'])
+      .default('supervisor_review')
+      .optional(),
+  })
+  .strict();
+
+export const addIncidentNoteArgumentsSchema = z
+  .object({
+    incident_id: z.uuid(),
+    note: text(4000),
+  })
+  .strict();
+
 export const writeRequestSchema = z.discriminatedUnion('name', [
   z.object({
     name: z.literal('record_measurement'),
@@ -29,6 +69,18 @@ export const writeRequestSchema = z.discriminatedUnion('name', [
   z.object({
     name: z.literal('create_incident'),
     args: incidentArgumentsSchema,
+  }),
+  z.object({
+    name: z.literal('resolve_incident'),
+    args: resolveIncidentArgumentsSchema,
+  }),
+  z.object({
+    name: z.literal('escalate_incident'),
+    args: escalateIncidentArgumentsSchema,
+  }),
+  z.object({
+    name: z.literal('add_incident_note'),
+    args: addIncidentNoteArgumentsSchema,
   }),
 ]);
 export type WriteRequest = z.infer<typeof writeRequestSchema>;
@@ -43,6 +95,10 @@ export const writeResultSchema = z.object({
     measurementType: z.string().optional(),
     value: z.number().optional(),
     unit: z.string().optional(),
+    rootCause: z.string().optional(),
+    actionTaken: z.string().optional(),
+    note: z.string().optional(),
+    reason: z.string().optional(),
   }),
 });
 export type WriteResult = z.infer<typeof writeResultSchema>['data'];

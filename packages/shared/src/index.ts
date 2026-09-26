@@ -107,6 +107,9 @@ export type { ProcedureResult, ProcedureRequest } from './voice';
 export {
   measurementArgumentsSchema,
   incidentArgumentsSchema,
+  resolveIncidentArgumentsSchema,
+  escalateIncidentArgumentsSchema,
+  addIncidentNoteArgumentsSchema,
   writeRequestSchema,
   writeResultSchema,
 } from './writes';

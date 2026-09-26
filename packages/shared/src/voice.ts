@@ -1,4 +1,10 @@
-import { measurementArgumentsSchema, incidentArgumentsSchema } from './writes';
+import {
+  measurementArgumentsSchema,
+  incidentArgumentsSchema,
+  resolveIncidentArgumentsSchema,
+  escalateIncidentArgumentsSchema,
+  addIncidentNoteArgumentsSchema,
+} from './writes';
 import { z } from 'zod';
 
 export const findAssetArgumentsSchema = z
@@ -95,6 +101,9 @@ export const voiceToolDefinitionSchema = z.object({
     'get_approved_procedure',
     'record_measurement',
     'create_incident',
+    'resolve_incident',
+    'escalate_incident',
+    'add_incident_note',
   ]),
   description: z.string(),
   parameters: z.record(z.string(), z.unknown()),
@@ -153,6 +162,33 @@ export const voiceTools = [
     description:
       'Prepare a new incident for a known asset UUID with the reported symptom, priority and affected asset status. Link only measurement UUIDs returned from successful record_measurement calls for this asset. Confirm uncertain details with the technician. The workspace requires review before saving and changing asset status. Do not claim success until the tool returns the saved incident number. Unknown outcomes must be checked with the existing pending save, not a new incident.',
     parameters: z.toJSONSchema(incidentArgumentsSchema),
+    execution_mode: 'interactive' as const,
+    timeout_seconds: 90,
+  },
+  {
+    type: 'function' as const,
+    name: 'resolve_incident' as const,
+    description:
+      'Atomically resolve an active incident, record root cause and repair action taken, optionally capture a verification measurement (e.g. motor_current at 12.4 A), create a permanent maintenance record, and return equipment to operational status. Requires the active incident UUID and workspace review before saving. Do not claim success until the tool returns success.',
+    parameters: z.toJSONSchema(resolveIncidentArgumentsSchema),
+    execution_mode: 'interactive' as const,
+    timeout_seconds: 90,
+  },
+  {
+    type: 'function' as const,
+    name: 'escalate_incident' as const,
+    description:
+      'Escalate an active incident to supervisor review when troubleshooting cannot proceed safely, parts are unavailable, or no approved procedure exists. Requires the active incident UUID and a specific reason. Requires workspace review before saving.',
+    parameters: z.toJSONSchema(escalateIncidentArgumentsSchema),
+    execution_mode: 'interactive' as const,
+    timeout_seconds: 90,
+  },
+  {
+    type: 'function' as const,
+    name: 'add_incident_note' as const,
+    description:
+      'Add a field observation, measurement note, or diagnostic finding to an active incident. Requires the active incident UUID. Requires workspace review before saving.',
+    parameters: z.toJSONSchema(addIncidentNoteArgumentsSchema),
     execution_mode: 'interactive' as const,
     timeout_seconds: 90,
   },
