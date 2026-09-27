@@ -39,6 +39,8 @@ import { UserMenu } from './auth/UserMenu';
 import { AdminLayout } from './admin/AdminLayout';
 import { AdminOverviewPage } from './admin/AdminOverviewPage';
 import { AdminUsersPage } from './admin/AdminUsersPage';
+import { AdminSitesPage } from './admin/AdminSitesPage';
+import { AdminAssetsPage } from './admin/AdminAssetsPage';
 
 export function App() {
   return (
@@ -58,6 +60,8 @@ export function App() {
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<AdminOverviewPage />} />
             <Route path="users" element={<AdminUsersPage />} />
+            <Route path="sites" element={<AdminSitesPage />} />
+            <Route path="assets" element={<AdminAssetsPage />} />
             <Route path="*" element={<AdminPlaceholder />} />
           </Route>
         </Route>

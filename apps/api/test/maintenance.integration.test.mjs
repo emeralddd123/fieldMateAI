@@ -83,6 +83,14 @@ before(async () => {
       createHash('sha256').update(supervisorToken).digest('hex'),
     ],
   );
+  await pool.query(`
+    DELETE FROM escalations;
+    DELETE FROM incident_notes WHERE incident_id NOT IN (SELECT id FROM incidents WHERE incident_number IN ('INC-1021', 'INC-1037'));
+    DELETE FROM measurements WHERE incident_id IS NOT NULL AND incident_id NOT IN (SELECT id FROM incidents WHERE incident_number IN ('INC-1021', 'INC-1037'));
+    DELETE FROM maintenance_records WHERE incident_id NOT IN (SELECT id FROM incidents WHERE incident_number IN ('INC-1021', 'INC-1037'));
+    DELETE FROM incidents WHERE incident_number NOT IN ('INC-1021', 'INC-1037');
+    UPDATE assets SET status = 'operational' WHERE asset_tag IN ('M-204', 'P-101');
+  `);
   const cookieName = process.env.SESSION_COOKIE_NAME || 'fieldmate_session';
   techCookie = `${cookieName}=${techToken}`;
   supervisorCookie = `${cookieName}=${supervisorToken}`;

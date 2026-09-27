@@ -128,7 +128,7 @@ export function AdminOverviewPage() {
           <p>
             Configure physical plant locations, code identifiers, and regional operating boundaries.
           </p>
-          <div className="admin-card-tag pending">Phase 5 Next</div>
+          <div className="admin-card-tag">Phase 5 Active</div>
         </Link>
 
         <Link to="/admin/assets" className="admin-nav-card">
@@ -142,7 +142,7 @@ export function AdminOverviewPage() {
           <p>
             Create and maintain critical production machinery, electrical nominal specs, VFDs, and components.
           </p>
-          <div className="admin-card-tag pending">Phase 5 Next</div>
+          <div className="admin-card-tag">Phase 5 Active</div>
         </Link>
 
         <Link to="/admin/faults" className="admin-nav-card">

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { after, before, test } from 'node:test';
+import argon2 from 'argon2';
 import pg from 'pg';
 
 const base = process.env.TEST_API_URL || 'http://localhost:53000';
@@ -53,7 +54,14 @@ before(async () => {
   await pool.query(
     "DELETE FROM users WHERE email = 'invited.phase2@fieldmate.test'",
   );
-  await pool.query("UPDATE users SET status = 'active' WHERE email = $1", [
+  const passwordHash = await argon2.hash(originalPassword, {
+    type: argon2.argon2id,
+    memoryCost: 19456,
+    timeCost: 2,
+    parallelism: 1,
+  });
+  await pool.query("UPDATE users SET status = 'active', password_hash = $1 WHERE email = $2", [
+    passwordHash,
     adminEmail,
   ]);
 });

@@ -4,5 +4,6 @@ services:
     image: fieldmate-api:latest
     environment:
       APP_ENV: test
+      AUTH_RATE_LIMIT_TTL_MS: 1000
   web:
     image: fieldmate-web:latest

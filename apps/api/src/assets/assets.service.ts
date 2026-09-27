@@ -5,7 +5,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { AccessContext } from '../access/access.types';
 import { scopedAssetWhere } from '../access/scoped-query.helpers';
 
-const include = { site: true, components: true } satisfies Prisma.AssetInclude;
+const include = {
+  site: true,
+  components: { where: { archivedAt: null } },
+} satisfies Prisma.AssetInclude;
 type StoredAsset = Prisma.AssetGetPayload<{ include: typeof include }>;
 
 function serialize(asset: StoredAsset): Asset {

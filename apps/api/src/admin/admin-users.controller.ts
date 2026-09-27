@@ -27,11 +27,6 @@ import {
 export class AdminUsersController {
   constructor(private readonly adminUsers: AdminUsersService) {}
 
-  @Get('sites')
-  @ApiOperation({ summary: 'List organization sites for administrative selection' })
-  async listSites(@CurrentAccess() access: AccessContext) {
-    return { data: await this.adminUsers.listSites(access) };
-  }
 
   @Get('users')
   @ApiOperation({ summary: 'List and filter organization users with pagination' })
