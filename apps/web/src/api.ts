@@ -507,6 +507,8 @@ export interface DashboardIncident {
     severity: string;
     status: string;
     createdAt: string;
+    acknowledgedAt: string | null;
+    acknowledgedBy?: { id: string; name: string } | null;
   }>;
 }
 
@@ -559,9 +561,25 @@ export interface IncidentDetail {
   escalations: Array<{
     id: string;
     reason: string;
+    severity: string;
     status: string;
     createdAt: string;
+    acknowledgedAt: string | null;
+    acknowledgedBy?: { id: string; name: string } | null;
   }>;
+}
+
+export interface SupervisorUser {
+  id: string;
+  name: string;
+  role: 'technician' | 'supervisor';
+}
+
+export interface SupervisorReviewInput {
+  acknowledgeEscalation?: boolean;
+  assignedToId?: string | null;
+  priority?: DashboardIncident['priority'];
+  note?: string;
 }
 
 export async function fetchIncidents(): Promise<DashboardIncident[]> {
@@ -581,4 +599,35 @@ export async function fetchIncidentDetail(id: string): Promise<IncidentDetail> {
   if (!response.ok) throw new Error('Incident details are unavailable.');
   const json = await response.json();
   return json.data;
+}
+
+export async function fetchSupervisorUsers(): Promise<SupervisorUser[]> {
+  const response = await fetch(`${baseUrl}/users`, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error('Assignable users are unavailable.');
+  return (await response.json()).data;
+}
+
+export async function submitSupervisorReview(
+  incidentId: string,
+  input: SupervisorReviewInput,
+): Promise<IncidentDetail> {
+  const response = await fetch(
+    `${baseUrl}/incidents/${incidentId}/supervisor-review`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+      signal: AbortSignal.timeout(12_000),
+    },
+  );
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(
+      body?.error?.message ?? 'The supervisor review could not be saved.',
+    );
+  }
+  return (await response.json()).data;
 }

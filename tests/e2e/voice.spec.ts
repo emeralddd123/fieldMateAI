@@ -118,9 +118,11 @@ test('explains microphone permission denial without requesting a token', async (
   });
   await page.goto('/');
   await page.getByRole('button', { name: 'Start voice session' }).click();
-  await expect(page.getByRole('alert')).toContainText(
-    'Microphone access was denied',
-  );
+  await expect(
+    page.getByRole('alert').filter({
+      hasText: 'Microphone access was denied',
+    }),
+  ).toContainText('Microphone access was denied');
   await expect(
     page.getByRole('button', { name: 'Retry voice session' }),
   ).toBeVisible();

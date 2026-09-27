@@ -211,6 +211,24 @@ export class EscalateDto {
   @IsIn(['supervisor_review', 'urgent'])
   severity: 'supervisor_review' | 'urgent' = 'supervisor_review';
 }
+export class SupervisorReviewDto {
+  @ApiPropertyOptional({ default: false })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsBoolean()
+  acknowledgeEscalation?: boolean;
+
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @IsUUID()
+  assignedToId?: string | null;
+
+  @ApiPropertyOptional({ enum: ['low', 'medium', 'high', 'critical'] })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsIn(['low', 'medium', 'high', 'critical'])
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+
+  @Text(4000, 'Supervisor reviewed the escalation.', true) note?: string;
+}
 export class CreateMaintenanceRecordDto extends CompleteRepairDto {
   @OptionalUuid() incidentId?: string;
   @Text(32, 'F0003', true) faultCode?: string;

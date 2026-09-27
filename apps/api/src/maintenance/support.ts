@@ -9,6 +9,7 @@ import { Prisma } from '../generated/prisma/client';
 import type { MeasurementFields } from './dto';
 
 export const DEMO_TECHNICIAN_ID = '00000000-0000-4000-8000-000000000001';
+export const DEMO_SUPERVISOR_ID = '00000000-0000-4000-8000-000000000002';
 export const activeStatuses = ['open', 'investigating', 'escalated'] as const;
 export const incidentInclude = {
   asset: {
@@ -22,7 +23,10 @@ export const incidentInclude = {
   },
   measurements: { orderBy: { recordedAt: 'desc' } },
   maintenanceRecord: { include: { technician: { select: { name: true } } } },
-  escalations: { orderBy: { createdAt: 'desc' } },
+  escalations: {
+    orderBy: { createdAt: 'desc' },
+    include: { acknowledgedBy: { select: { id: true, name: true } } },
+  },
 } satisfies Prisma.IncidentInclude;
 
 export function missing(code: string, message: string): never {
@@ -68,6 +72,18 @@ export async function requireTechnician(tx: Prisma.TransactionClient) {
     });
   }
   return DEMO_TECHNICIAN_ID;
+}
+export async function requireSupervisor(tx: Prisma.TransactionClient) {
+  const supervisor = await tx.user.findUnique({
+    where: { id: DEMO_SUPERVISOR_ID },
+  });
+  if (!supervisor || supervisor.role !== 'supervisor') {
+    throw new ServiceUnavailableException({
+      code: 'DEMO_NOT_SEEDED',
+      message: 'Demo supervisor has not been seeded.',
+    });
+  }
+  return supervisor;
 }
 export function normalizeFaultCode(value: string) {
   // Preserve digits exactly: never turn F3 into F0003 or guess a different fault.

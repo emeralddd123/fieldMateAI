@@ -5,12 +5,28 @@ export async function seedMaintenance(tx: Prisma.TransactionClient) {
     where: { assetTag: 'M-204' },
   });
   const users = [
-    { id: '00000000-0000-4000-8000-000000000001', name: 'Demo Technician' },
-    { id: '00000000-0000-4000-8000-000000000002', name: 'Ibrahim Musa' },
-    { id: '00000000-0000-4000-8000-000000000003', name: 'Grace Okafor' },
+    {
+      id: '00000000-0000-4000-8000-000000000001',
+      name: 'Demo Technician',
+      role: 'technician' as const,
+    },
+    {
+      id: '00000000-0000-4000-8000-000000000002',
+      name: 'Ibrahim Musa',
+      role: 'supervisor' as const,
+    },
+    {
+      id: '00000000-0000-4000-8000-000000000003',
+      name: 'Grace Okafor',
+      role: 'technician' as const,
+    },
   ];
   for (const user of users)
-    await tx.user.upsert({ where: { id: user.id }, update: {}, create: user });
+    await tx.user.upsert({
+      where: { id: user.id },
+      update: { name: user.name, role: user.role },
+      create: user,
+    });
   const procedure = await tx.procedure.upsert({
     where: { key: 'vfd-undervoltage-check' },
     update: {},

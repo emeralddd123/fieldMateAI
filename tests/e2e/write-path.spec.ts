@@ -292,4 +292,35 @@ test('@write completes the canonical maintenance write path through voice tools'
   await expect(
     page.getByRole('button', { name: 'Start voice session' }),
   ).toBeVisible();
+
+  await page.goto('/supervisor');
+  await page
+    .locator('.supervisor-escalation-card')
+    .filter({ hasText: 'INC-1049' })
+    .click();
+  const review = page.getByRole('region', {
+    name: 'Supervisor review actions',
+  });
+  await review
+    .getByLabel('ASSIGN TO')
+    .selectOption({ label: 'Grace Okafor · technician' });
+  await review.getByLabel('PRIORITY').selectOption('critical');
+  await review
+    .getByLabel('SUPERVISOR NOTE')
+    .fill('Acknowledged. Grace to inspect before restart.');
+  await review.getByRole('button', { name: 'Acknowledge and save' }).click();
+  await expect(page.getByRole('dialog')).toContainText(
+    'Escalation Acknowledged',
+  );
+
+  const reviewedResponse = await request.get(
+    `/api/v1/incidents/${unknownFault.id}`,
+  );
+  const reviewed = (await reviewedResponse.json()).data;
+  expect(reviewed.status).toBe('escalated');
+  expect(reviewed.priority).toBe('critical');
+  expect(reviewed.assignedTo.name).toBe('Grace Okafor');
+  expect(reviewed.escalations[0].status).toBe('acknowledged');
+  expect(reviewed.escalations[0].acknowledgedBy.name).toBe('Ibrahim Musa');
+  expect(reviewed.notes.at(-1).note).toContain('Grace to inspect');
 });

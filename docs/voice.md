@@ -2,7 +2,7 @@
 
 Open http://localhost:5173, select **Start voice session**, allow microphone access, and talk to FieldMate. Live transcripts appear beside the equipment workspace. Mute keeps the session connected; End session releases the microphone and ends the provider session. Starting again opens a fresh conversation.
 
-Say “Find P-101” or “Find M-204” to search the live equipment register. A unique match selects the asset in the workspace and returns its metadata to FieldMate. Multiple matches require a more specific tag; no match or a failed lookup leaves the selection unchanged. Visible lookup cards show progress and results. Voice can now retrieve verified fault definitions and previous maintenance history, including technician notes. Approved procedure steps are available after any required workspace safety confirmation. Voice does not yet change maintenance records. Manual sidebar selection is not sent to the agent; identify equipment by tag in conversation. Transcripts remain in browser memory until a new session or page reload; they are not persisted to PostgreSQL.
+Say “Find P-101” or “Find M-204” to search the live equipment register. A unique match selects the asset in the workspace and returns its metadata to FieldMate. Multiple matches require a more specific tag; no match or a failed lookup leaves the selection unchanged. Visible lookup cards show progress and results. Voice can retrieve verified fault definitions, previous maintenance history, and approved safety-gated procedures. It can also prepare measurements, incidents, notes, escalations, and repair resolutions; every write requires an on-screen technician review before submission. Manual sidebar selection is not sent to the agent; identify equipment by tag in conversation. Transcripts remain in browser memory until a new session or page reload; they are not persisted to PostgreSQL.
 
 ## Configuration
 
@@ -23,7 +23,7 @@ For host development, set the key in `apps/api/.env` and restart the API. `ASSEM
 - The browser opens the AssemblyAI WebSocket, sends `session.update`, and waits for `session.ready` before transmitting microphone audio.
 - Capture uses the device's AudioContext rate and continuously resamples to mono 24 kHz PCM16 little-endian, sent in 20 ms frames. Playback uses queued 24 kHz audio buffers.
 - User transcript deltas replace partial text; agent deltas build the current reply. Final events replace the partial transcript.
-- An interrupted reply stops all queued playback. A completed reply remains in the speaking state until playback drains.
+- An interrupted reply stops all queued playback. Ordinary lookups and procedure confirmations are cancelled, while a visible maintenance write review remains available through follow-up questions. A completed reply remains in the speaking state until playback drains.
 - End sends `session.end` and waits for `session.ended`, with a two-second fallback. Navigation makes a best-effort explicit end. Failed connections require an explicit retry.
 
 The implementation follows the official [browser integration](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/browser-integration), [event reference](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/events-reference), and [session configuration](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/session-configuration).
@@ -58,9 +58,15 @@ The live smoke checks actual token minting, session readiness, microphone frame 
 
 ## Equipment tool protocol
 
-`find_asset` accepts only `{ "query": "P-101" }`, with a trimmed 1–100 character query. It calls the existing `GET /api/v1/assets/search` route and validates the response. Search results include at most 20 matches, the total match count, and the demo source. Only a single match triggers workspace selection. No new write endpoint is exposed.
+`find_asset` accepts only `{ "query": "P-101" }`, with a trimmed 1–100 character query. It calls the existing `GET /api/v1/assets/search` route and validates the response. Search results include at most 20 matches, the total match count, and the demo source. Only a single match triggers workspace selection; equipment lookup itself never writes data.
 
-Tool calls are deduplicated by call ID within a session. Results are JSON strings returned at the idle reply boundary described in AssemblyAI’s [client-side tool guide](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/client-side-tools). New speech holds pending results; interruption and session teardown abort pending requests and discard late responses. Unknown tools and invalid arguments return structured errors. Client-side execution keeps the local API reachable from the browser without exposing it publicly to the provider.
+Tool calls are deduplicated by call ID within a session. Results are JSON strings returned at the idle reply boundary described in AssemblyAI’s [client-side tool guide](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/client-side-tools). New speech holds pending results. An interrupted reply cancels lookups but preserves a maintenance review owned by the technician; session teardown cancels any unsubmitted review. Unknown tools and invalid arguments return structured errors. Client-side execution keeps the local API reachable from the browser without exposing it publicly to the provider.
+
+## Voice maintenance writes
+
+`record_measurement`, `create_incident`, `add_incident_note`, `escalate_incident`, and `resolve_incident` validate their arguments and retrieve the referenced database records before showing a review. The technician must select **Confirm and save**; conversation alone cannot authorize a write. Incident and measurement creation use durable request IDs so an unknown response can be checked with the existing request instead of producing a duplicate. Repair resolution atomically stores the verification reading, completes the incident, creates maintenance memory, resolves escalations, and updates the asset when no other active incident prevents it.
+
+Unknown but well-formed fault codes may be recorded and escalated as reported observations. The review labels them unverified, and FieldMate cannot attach a meaning or approved procedure. Invalid arguments are rejected without saving.
 
 Try “Find conveyor” to test ambiguity, “Find ZZZ-9999” for an empty result, and “Find P-101” for a unique match. The `--lookup` live check mutes synthetic microphone input and supplies an explicit lookup instruction through `reply.create` to trigger the provider tool; recognition of spoken asset tags still needs a real-microphone check.
 

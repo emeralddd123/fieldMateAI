@@ -57,17 +57,19 @@ For an automated simulated run (requires Node.js 24 on the host), use `pnpm demo
 
 ## Additional endpoints
 
-| Operation           | Endpoint                                      | Body / query                                                            |
-| ------------------- | --------------------------------------------- | ----------------------------------------------------------------------- |
-| List incidents      | `GET /api/v1/incidents`                       | Optional `assetId`, `status`, `limit`                                   |
-| Incident detail     | `GET /api/v1/incidents/{id}`                  | Includes notes, readings, record, and escalations                       |
-| Update incident     | `PATCH /api/v1/incidents/{id}`                | `title`, `description`, `priority`, `assignedToId`, or allowed `status` |
-| Add note            | `POST /api/v1/incidents/{id}/notes`           | `note`, optional `source` (`manual` or `voice`)                         |
-| Resolve             | `POST /api/v1/incidents/{id}/resolve`         | Same contract and transaction as `complete-repair`                      |
-| Escalate            | `POST /api/v1/incidents/{id}/escalate`        | `reason`, optional `severity` (`supervisor_review` or `urgent`)         |
-| Read measurements   | `GET /api/v1/assets/{id}/measurements`        | Optional `limit`                                                        |
-| Read repair records | `GET /api/v1/assets/{id}/maintenance-records` | Optional `limit`                                                        |
-| Create work log     | `POST /api/v1/maintenance-records`            | Completion fields plus `symptom`; optional `incidentId`, `faultCode`    |
+| Operation           | Endpoint                                        | Body / query                                                             |
+| ------------------- | ----------------------------------------------- | ------------------------------------------------------------------------ |
+| List incidents      | `GET /api/v1/incidents`                         | Optional `assetId`, `status`, `limit`                                    |
+| Incident detail     | `GET /api/v1/incidents/{id}`                    | Includes notes, readings, record, and escalations                        |
+| Update incident     | `PATCH /api/v1/incidents/{id}`                  | `title`, `description`, `priority`, `assignedToId`, or allowed `status`  |
+| Add note            | `POST /api/v1/incidents/{id}/notes`             | `note`, optional `source` (`manual` or `voice`)                          |
+| Resolve             | `POST /api/v1/incidents/{id}/resolve`           | Same contract and transaction as `complete-repair`                       |
+| Escalate            | `POST /api/v1/incidents/{id}/escalate`          | `reason`, optional `severity` (`supervisor_review` or `urgent`)          |
+| List assignees      | `GET /api/v1/users`                             | Demo technicians and supervisors eligible for assignment                 |
+| Supervisor review   | `POST /api/v1/incidents/{id}/supervisor-review` | `acknowledgeEscalation`, optional `assignedToId`, `priority`, and `note` |
+| Read measurements   | `GET /api/v1/assets/{id}/measurements`          | Optional `limit`                                                         |
+| Read repair records | `GET /api/v1/assets/{id}/maintenance-records`   | Optional `limit`                                                         |
+| Create work log     | `POST /api/v1/maintenance-records`              | Completion fields plus `symptom`; optional `incidentId`, `faultCode`     |
 
 ## Integrity rules
 
@@ -79,7 +81,8 @@ For an automated simulated run (requires Node.js 24 on the host), use `pnpm demo
 - `investigating` is allowed from `open`; `closed` is allowed after `resolved`. Resolution always uses the completion transaction. Escalated incidents can be resolved. Closed incidents cannot be edited.
 - A linked maintenance-record request uses the repair transaction and the incident's original symptom. Standalone records document work without resolving incidents or changing asset status.
 - Unknown fault codes never fall back to another model or gain guessed leading zeros. Unapproved or mismatched procedures return `found: false`. Safety confirmation is a request-level gate; authenticated safety auditing is future work.
-- Escalation stores a pending review record and changes incident status. Notifications are simulated; no message is sent externally. Completing the incident resolves its pending escalations.
+- Escalation stores a pending review record and changes incident status. A supervisor review can atomically acknowledge it, record the demo supervisor and timestamp, assign an eligible user, change priority, and add a supervisor-authored note. Acknowledgement does not resolve the incident. Completing the incident resolves pending or acknowledged escalations.
+- Supervisor routes use seeded demo identities and do not provide authentication or production authorization. Notifications are simulated; no message is sent externally.
 - Normal seeding is idempotent and preserves existing work. The initial two histories and all procedures are labeled simulated demo references.
 
 ## Reset demo data

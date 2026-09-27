@@ -101,16 +101,17 @@ enum NoteSource {
 }
 
 model User {
-  id                 String              @id @default(uuid()) @db.Uuid
-  name               String
-  email              String?             @unique
-  role               UserRole            @default(technician)
-  createdAt          DateTime            @default(now()) @map("created_at")
-  openedIncidents    Incident[]          @relation("OpenedBy")
-  assignedIncidents  Incident[]          @relation("AssignedTo")
-  notes              IncidentNote[]
-  measurements       Measurement[]
-  maintenanceRecords MaintenanceRecord[]
+  id                      String              @id @default(uuid()) @db.Uuid
+  name                    String
+  email                   String?             @unique
+  role                    UserRole            @default(technician)
+  createdAt               DateTime            @default(now()) @map("created_at")
+  openedIncidents         Incident[]          @relation("OpenedBy")
+  assignedIncidents       Incident[]          @relation("AssignedTo")
+  notes                   IncidentNote[]
+  measurements            Measurement[]
+  maintenanceRecords      MaintenanceRecord[]
+  acknowledgedEscalations Escalation[]        @relation("EscalationAcknowledgedBy")
 
   @@map("users")
 }
@@ -189,14 +190,14 @@ model Incident {
 model IncidentNote {
   requestId   String?    @unique @map("request_id") @db.Uuid
   requestHash String?    @map("request_hash")
-  id         String     @id @default(uuid()) @db.Uuid
-  incidentId String     @map("incident_id") @db.Uuid
-  incident   Incident   @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  authorId   String?    @map("author_id") @db.Uuid
-  author     User?      @relation(fields: [authorId], references: [id])
-  note       String
-  source     NoteSource @default(manual)
-  createdAt  DateTime   @default(now()) @map("created_at")
+  id          String     @id @default(uuid()) @db.Uuid
+  incidentId  String     @map("incident_id") @db.Uuid
+  incident    Incident   @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  authorId    String?    @map("author_id") @db.Uuid
+  author      User?      @relation(fields: [authorId], references: [id])
+  note        String
+  source      NoteSource @default(manual)
+  createdAt   DateTime   @default(now()) @map("created_at")
 
   @@index([incidentId, createdAt])
   @@map("incident_notes")
@@ -246,14 +247,18 @@ model MaintenanceRecord {
 }
 
 model Escalation {
-  id         String   @id @default(uuid()) @db.Uuid
-  incidentId String   @map("incident_id") @db.Uuid
-  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  reason     String
-  severity   String
-  status     String   @default("pending")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id               String    @id @default(uuid()) @db.Uuid
+  incidentId       String    @map("incident_id") @db.Uuid
+  incident         Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  reason           String
+  severity         String
+  status           String    @default("pending")
+  acknowledgedAt   DateTime? @map("acknowledged_at")
+  acknowledgedById String?   @map("acknowledged_by") @db.Uuid
+  acknowledgedBy   User?     @relation("EscalationAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+  createdAt        DateTime  @default(now()) @map("created_at")
 
   @@index([incidentId])
+  @@index([acknowledgedById])
   @@map("escalations")
 }

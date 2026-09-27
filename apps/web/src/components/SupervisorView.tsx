@@ -48,7 +48,9 @@ export function SupervisorView() {
   const allAssets = assets.data ?? [];
   const active = allIncidents.filter((item) => activeStatuses.has(item.status));
   const escalated = allIncidents
-    .filter((item) => item.status === 'escalated')
+    .filter((item) =>
+      item.escalations.some((escalation) => escalation.status === 'pending'),
+    )
     .sort(
       (a, b) =>
         priorityRank[a.priority] - priorityRank[b.priority] ||
@@ -385,6 +387,8 @@ export function SupervisorView() {
       <IncidentDetailModal
         incidentId={selectedIncident}
         onClose={() => setSelectedIncident(null)}
+        supervisorMode
+        onSupervisorUpdated={refresh}
       />
     </div>
   );

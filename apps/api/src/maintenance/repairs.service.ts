@@ -104,7 +104,7 @@ export class RepairsService {
         },
       });
       await tx.escalation.updateMany({
-        where: { incidentId: id, status: 'pending' },
+        where: { incidentId: id, status: { in: ['pending', 'acknowledged'] } },
         data: { status: 'resolved' },
       });
       const remaining = await tx.incident.count({

@@ -131,13 +131,14 @@ docker compose down -v
 
 ### Local URLs
 
-| Service                   | Local URL                                                                  | Description                                   |
-| :------------------------ | :------------------------------------------------------------------------- | :-------------------------------------------- |
-| **Technician Workspace**  | [http://localhost:5173](http://localhost:5173)                             | Main UI (voice orb, equipment list, timeline) |
-| **REST API**              | [http://localhost:3000/api/v1/assets](http://localhost:3000/api/v1/assets) | Equipment and maintenance API endpoints       |
-| **Swagger Documentation** | [http://localhost:3000/docs](http://localhost:3000/docs)                   | Interactive API explorer                      |
-| **Readiness & Health**    | [http://localhost:3000/health](http://localhost:3000/health)               | Database and API readiness check              |
-| **PostgreSQL**            | `localhost:5432`                                                           | Database port                                 |
+| Service                   | Local URL                                                                  | Description                                              |
+| :------------------------ | :------------------------------------------------------------------------- | :------------------------------------------------------- |
+| **Technician Workspace**  | [http://localhost:5173](http://localhost:5173)                             | Main UI (voice orb, equipment list, timeline)            |
+| **Supervisor Workspace**  | [http://localhost:5173/supervisor](http://localhost:5173/supervisor)       | Escalation queue, assignment, priority, and review notes |
+| **REST API**              | [http://localhost:3000/api/v1/assets](http://localhost:3000/api/v1/assets) | Equipment and maintenance API endpoints                  |
+| **Swagger Documentation** | [http://localhost:3000/docs](http://localhost:3000/docs)                   | Interactive API explorer                                 |
+| **Readiness & Health**    | [http://localhost:3000/health](http://localhost:3000/health)               | Database and API readiness check                         |
+| **PostgreSQL**            | `localhost:5432`                                                           | Database port                                            |
 
 ---
 
@@ -171,7 +172,7 @@ pnpm dev
 FieldMate includes test suites covering contracts, voice protocols, and the canonical repair loop:
 
 ```sh
-# 1. Unit & Voice Tool Tests (21 passing tests)
+# 1. Unit & Voice Tool Tests (22 passing tests)
 pnpm test:voice
 
 # 2. Automated Canonical Demo API Simulation
@@ -216,6 +217,12 @@ pnpm test:e2e:writes
 docker compose --project-name fieldmate-test --env-file .env.test \
   -f docker-compose.yml -f docker-compose.test.yml exec api pnpm seed:reset --confirm
 ```
+
+The supervisor workspace turns a technician escalation into a tracked review. A
+supervisor can acknowledge the pending escalation, assign an eligible user,
+change priority, and add an attributed note without resolving the technician's
+incident. Repair completion remains the only operation that resolves the
+incident and its escalation. See [docs/supervisor.md](docs/supervisor.md).
 
 ### Demo Reset Command
 

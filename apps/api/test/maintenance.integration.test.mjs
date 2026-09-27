@@ -399,6 +399,48 @@ test('escalation is persisted and simulated, and linked work logs complete repai
     (await request('GET', `/incidents/${incident.id}`)).status,
     'escalated',
   );
+  const users = await request('GET', '/users');
+  const supervisor = users.find((user) => user.role === 'supervisor');
+  const assignee = users.find(
+    (user) => user.role === 'technician' && user.name === 'Grace Okafor',
+  );
+  assert.ok(supervisor && assignee);
+  const reviewed = await request(
+    'POST',
+    `/incidents/${incident.id}/supervisor-review`,
+    {
+      acknowledgeEscalation: true,
+      assignedToId: assignee.id,
+      priority: 'critical',
+      note: 'Supervisor acknowledged; Grace to inspect before restart.',
+    },
+    201,
+  );
+  assert.equal(reviewed.status, 'escalated');
+  assert.equal(reviewed.priority, 'critical');
+  assert.equal(reviewed.assignedTo.id, assignee.id);
+  assert.equal(reviewed.escalations[0].status, 'acknowledged');
+  assert.equal(reviewed.escalations[0].acknowledgedBy.id, supervisor.id);
+  assert.ok(reviewed.escalations[0].acknowledgedAt);
+  assert.equal(reviewed.notes.at(-1).author.name, supervisor.name);
+  assert.equal(
+    (
+      await request(
+        'POST',
+        `/incidents/${incident.id}/supervisor-review`,
+        { acknowledgeEscalation: true },
+        409,
+      )
+    ).code,
+    'NO_PENDING_ESCALATION',
+  );
+  const unassigned = await request(
+    'POST',
+    `/incidents/${incident.id}/supervisor-review`,
+    { assignedToId: null },
+    201,
+  );
+  assert.equal(unassigned.assignedTo, null);
   await request(
     'POST',
     '/maintenance-records',

@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Calendar,
@@ -13,7 +13,12 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
-import { fetchIncidentDetail } from '../api';
+import {
+  fetchIncidentDetail,
+  fetchSupervisorUsers,
+  submitSupervisorReview,
+  type IncidentDetail,
+} from '../api';
 
 const formatDateTime = (iso: string) =>
   new Intl.DateTimeFormat('en-GB', {
@@ -24,16 +29,176 @@ const formatDateTime = (iso: string) =>
     minute: '2-digit',
   }).format(new Date(iso));
 
+function SupervisorReviewForm({
+  incident,
+  onUpdated,
+}: {
+  incident: IncidentDetail;
+  onUpdated?: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [assignedToId, setAssignedToId] = useState(
+    incident.assignedTo?.id ?? '',
+  );
+  const [priority, setPriority] = useState<IncidentDetail['priority']>(
+    incident.priority,
+  );
+  const [supervisorNote, setSupervisorNote] = useState('');
+  const [reviewStatus, setReviewStatus] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const [reviewMessage, setReviewMessage] = useState('');
+  const users = useQuery({
+    queryKey: ['supervisor-users'],
+    queryFn: fetchSupervisorUsers,
+  });
+  const pendingEscalation = incident.escalations.find(
+    (escalation) => escalation.status === 'pending',
+  );
+  const originalAssignedToId = incident.assignedTo?.id ?? '';
+  const reviewChanged = Boolean(
+    pendingEscalation ||
+    supervisorNote.trim() ||
+    priority !== incident.priority ||
+    assignedToId !== originalAssignedToId,
+  );
+
+  const saveSupervisorReview = async () => {
+    if (!reviewChanged) return;
+    setReviewStatus('saving');
+    setReviewMessage('');
+    try {
+      const updated = await submitSupervisorReview(incident.id, {
+        acknowledgeEscalation: Boolean(pendingEscalation),
+        assignedToId:
+          assignedToId === originalAssignedToId
+            ? undefined
+            : assignedToId || null,
+        priority: priority === incident.priority ? undefined : priority,
+        note: supervisorNote.trim() || undefined,
+      });
+      queryClient.setQueryData(['incident-detail', incident.id], updated);
+      await queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      setAssignedToId(updated.assignedTo?.id ?? '');
+      setPriority(updated.priority);
+      setSupervisorNote('');
+      setReviewStatus('saved');
+      setReviewMessage(
+        pendingEscalation
+          ? 'Escalation acknowledged and supervisor review saved.'
+          : 'Supervisor review saved.',
+      );
+      onUpdated?.();
+    } catch (error) {
+      setReviewStatus('error');
+      setReviewMessage(
+        error instanceof Error
+          ? error.message
+          : 'The supervisor review could not be saved.',
+      );
+    }
+  };
+
+  return (
+    <section
+      className="supervisor-review-form"
+      aria-label="Supervisor review actions"
+    >
+      <div className="supervisor-review-heading">
+        <div>
+          <span className="panel-kicker">SUPERVISOR ACTION</span>
+          <h3>
+            {pendingEscalation
+              ? 'Acknowledge and route this escalation'
+              : 'Update incident ownership'}
+          </h3>
+        </div>
+        {pendingEscalation && (
+          <span className="count-pill">Pending review</span>
+        )}
+      </div>
+      <div className="supervisor-review-fields">
+        <label>
+          <span>ASSIGN TO</span>
+          <select
+            value={assignedToId}
+            onChange={(event) => setAssignedToId(event.target.value)}
+            disabled={users.isPending || reviewStatus === 'saving'}
+          >
+            <option value="">Unassigned</option>
+            {users.data?.map((user) => (
+              <option value={user.id} key={user.id}>
+                {user.name} · {user.role}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>PRIORITY</span>
+          <select
+            value={priority}
+            onChange={(event) =>
+              setPriority(event.target.value as IncidentDetail['priority'])
+            }
+            disabled={reviewStatus === 'saving'}
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </label>
+      </div>
+      <label className="supervisor-note-field">
+        <span>SUPERVISOR NOTE</span>
+        <textarea
+          value={supervisorNote}
+          onChange={(event) => setSupervisorNote(event.target.value)}
+          placeholder="Add routing instructions or a review note…"
+          maxLength={4000}
+          disabled={reviewStatus === 'saving'}
+        />
+      </label>
+      <div className="supervisor-review-footer">
+        <p
+          className={`supervisor-review-message ${reviewStatus}`}
+          role={reviewStatus === 'error' ? 'alert' : 'status'}
+        >
+          {reviewMessage ||
+            (pendingEscalation
+              ? 'Acknowledgement records the demo supervisor and review time.'
+              : 'Save any assignment, priority, or note changes.')}
+        </p>
+        <button
+          className="voice-button"
+          onClick={() => void saveSupervisorReview()}
+          disabled={!reviewChanged || reviewStatus === 'saving'}
+        >
+          {reviewStatus === 'saving'
+            ? 'Saving review…'
+            : pendingEscalation
+              ? 'Acknowledge and save'
+              : 'Save supervisor update'}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 interface IncidentDetailModalProps {
   incidentId: string | null;
   onClose: () => void;
   onSelectAsset?: (assetId: string) => void;
+  supervisorMode?: boolean;
+  onSupervisorUpdated?: () => void;
 }
 
 export function IncidentDetailModal({
   incidentId,
   onClose,
   onSelectAsset,
+  supervisorMode = false,
+  onSupervisorUpdated,
 }: IncidentDetailModalProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -58,6 +223,10 @@ export function IncidentDetailModal({
   if (!incidentId) return null;
 
   const incident = query.data;
+  const currentEscalation = incident?.escalations[0];
+  const pendingEscalation = incident?.escalations.find(
+    (escalation) => escalation.status === 'pending',
+  );
 
   return (
     <div
@@ -165,19 +334,38 @@ export function IncidentDetailModal({
             </div>
 
             {/* Supervisor Escalation Banner */}
-            {incident.status === 'escalated' && incident.escalations[0] && (
-              <div className="modal-alert-box alert-warning" role="alert">
+            {incident.status === 'escalated' && currentEscalation && (
+              <div
+                className={`modal-alert-box ${pendingEscalation ? 'alert-warning' : 'alert-reviewed'}`}
+                role="status"
+              >
                 <ShieldAlert size={20} />
                 <div>
-                  <strong>Supervisor Review Required</strong>
-                  <p>{incident.escalations[0].reason}</p>
+                  <strong>
+                    {pendingEscalation
+                      ? 'Supervisor Review Required'
+                      : 'Escalation Acknowledged'}
+                  </strong>
+                  <p>{currentEscalation.reason}</p>
                   <small>
-                    Escalated{' '}
-                    {formatDateTime(incident.escalations[0].createdAt)}
+                    {currentEscalation.acknowledgedAt
+                      ? `Reviewed by ${currentEscalation.acknowledgedBy?.name ?? 'Supervisor'} · ${formatDateTime(currentEscalation.acknowledgedAt)}`
+                      : `Escalated ${formatDateTime(currentEscalation.createdAt)}`}
                   </small>
                 </div>
               </div>
             )}
+
+            {supervisorMode &&
+              ['open', 'investigating', 'escalated'].includes(
+                incident.status,
+              ) && (
+                <SupervisorReviewForm
+                  key={incident.id}
+                  incident={incident}
+                  onUpdated={onSupervisorUpdated}
+                />
+              )}
 
             {/* Resolution & Repair Record */}
             {(incident.status === 'resolved' ||

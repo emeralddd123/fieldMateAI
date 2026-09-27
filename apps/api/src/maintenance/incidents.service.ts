@@ -5,6 +5,7 @@ import type {
   EscalateDto,
   IncidentQuery,
   NoteDto,
+  SupervisorReviewDto,
   UpdateIncidentDto,
 } from './dto';
 import {
@@ -12,6 +13,7 @@ import {
   verifyCreationRetry,
   activeStatuses,
   conflict,
+  DEMO_SUPERVISOR_ID,
   DEMO_TECHNICIAN_ID,
   incidentInclude,
   lockAsset,
@@ -19,11 +21,20 @@ import {
   missing,
   normalizeFaultCode,
   requireTechnician,
+  requireSupervisor,
 } from './support';
 
 @Injectable()
 export class IncidentsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async users() {
+    return this.prisma.user.findMany({
+      where: { role: { in: ['technician', 'supervisor'] } },
+      select: { id: true, name: true, role: true },
+      orderBy: [{ role: 'desc' }, { name: 'asc' }],
+    });
+  }
 
   async list(query: IncidentQuery) {
     return this.prisma.incident.findMany({
@@ -184,6 +195,76 @@ export class IncidentsService {
         message:
           'Escalation recorded for supervisor review. No external notification was sent.',
       };
+    });
+  }
+
+  async supervisorReview(id: string, dto: SupervisorReviewDto) {
+    if (
+      !dto.acknowledgeEscalation &&
+      dto.assignedToId === undefined &&
+      !dto.priority &&
+      !dto.note
+    )
+      conflict(
+        'EMPTY_SUPERVISOR_REVIEW',
+        'Choose an escalation, assignment, priority, or note update.',
+      );
+    return this.prisma.$transaction(async (tx) => {
+      const incident = await lockIncident(tx, id);
+      if (!activeStatuses.some((status) => status === incident.status))
+        conflict(
+          'INCIDENT_FINISHED',
+          'Resolved or closed incidents cannot receive a supervisor review.',
+        );
+      await requireSupervisor(tx);
+      if (typeof dto.assignedToId === 'string') {
+        const assignee = await tx.user.findUnique({
+          where: { id: dto.assignedToId },
+        });
+        if (!assignee || !['technician', 'supervisor'].includes(assignee.role))
+          missing('USER_NOT_FOUND', 'No eligible user matched the assignee.');
+      }
+      if (dto.acknowledgeEscalation) {
+        const pending = incident.escalations.find(
+          (escalation) => escalation.status === 'pending',
+        );
+        if (!pending)
+          conflict(
+            'NO_PENDING_ESCALATION',
+            'This incident has no pending escalation to acknowledge.',
+          );
+        await tx.escalation.update({
+          where: { id: pending.id },
+          data: {
+            status: 'acknowledged',
+            acknowledgedAt: new Date(),
+            acknowledgedById: DEMO_SUPERVISOR_ID,
+          },
+        });
+      }
+      if (dto.assignedToId !== undefined || dto.priority) {
+        await tx.incident.update({
+          where: { id },
+          data: {
+            assignedToId: dto.assignedToId,
+            priority: dto.priority,
+          },
+        });
+      }
+      if (dto.note) {
+        await tx.incidentNote.create({
+          data: {
+            incidentId: id,
+            note: dto.note,
+            source: 'manual',
+            authorId: DEMO_SUPERVISOR_ID,
+          },
+        });
+      }
+      return tx.incident.findUniqueOrThrow({
+        where: { id },
+        include: incidentInclude,
+      });
     });
   }
 }

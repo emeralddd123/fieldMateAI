@@ -22,6 +22,7 @@ import {
   PageQuery,
   ProcedureParams,
   ProcedureQuery,
+  SupervisorReviewDto,
   UpdateIncidentDto,
 } from './dto';
 import { IncidentsService } from './incidents.service';
@@ -38,6 +39,11 @@ export class MaintenanceController {
     private readonly records: RecordsService,
     private readonly repairs: RepairsService,
   ) {}
+
+  @Get('users')
+  async users() {
+    return { data: await this.incidents.users() };
+  }
 
   @Get('assets/:assetId/faults/:faultCode')
   async fault(@Param() params: FaultParams) {
@@ -113,6 +119,17 @@ export class MaintenanceController {
     @Body() dto: EscalateDto,
   ) {
     return { data: await this.incidents.escalate(id, dto) };
+  }
+  @Post('incidents/:id/supervisor-review')
+  @ApiOperation({
+    summary:
+      'Acknowledge an escalation and optionally assign, reprioritize, or annotate an active incident',
+  })
+  async supervisorReview(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: SupervisorReviewDto,
+  ) {
+    return { data: await this.incidents.supervisorReview(id, dto) };
   }
   @Post('incidents/:id/complete-repair')
   @ApiOperation({
