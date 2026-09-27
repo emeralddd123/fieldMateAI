@@ -9,6 +9,7 @@ import { VoiceModule } from './voice/voice.module';
 import { env } from './config/env';
 import { AuthModule } from './auth/auth.module';
 import { AccessModule } from './access/access.module';
+import { AdminModule } from './admin/admin.module';
 import { AuthGuard } from './auth/auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 
@@ -22,6 +23,7 @@ import { RolesGuard } from './auth/roles.guard';
     PrismaModule,
     AccessModule,
     AuthModule,
+    AdminModule,
     AssetsModule,
     MaintenanceModule,
     VoiceModule,

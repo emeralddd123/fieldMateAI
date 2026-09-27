@@ -268,7 +268,7 @@ Forms must display server validation errors next to the affected field and requi
 
 ## Implementation phases
 
-Current status: **Phase 1, 2, and 3 implemented**. Phase 4 is the next build target.
+Current status: **Phase 1, 2, 3, and 4 implemented**. Phase 5 is the next build target.
 
 ### Phase 1 — Security and tenancy foundation
 

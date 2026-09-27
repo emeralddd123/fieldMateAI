@@ -36,6 +36,9 @@ import {
 import { AdminPlaceholder, ForbiddenPage } from './auth/AccessPages';
 import { useAuth } from './auth/AuthProvider';
 import { UserMenu } from './auth/UserMenu';
+import { AdminLayout } from './admin/AdminLayout';
+import { AdminOverviewPage } from './admin/AdminOverviewPage';
+import { AdminUsersPage } from './admin/AdminUsersPage';
 
 export function App() {
   return (
@@ -52,7 +55,11 @@ export function App() {
           <Route path="supervisor" element={<SupervisorView />} />
         </Route>
         <Route element={<ProtectedRoute roles={['admin']} />}>
-          <Route path="admin/*" element={<AdminPlaceholder />} />
+          <Route path="admin" element={<AdminLayout />}>
+            <Route index element={<AdminOverviewPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="*" element={<AdminPlaceholder />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
