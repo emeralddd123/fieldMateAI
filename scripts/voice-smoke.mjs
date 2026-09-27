@@ -153,7 +153,7 @@ try {
   if (lookup)
     await page.getByRole('button', { name: 'Mute', exact: true }).click();
   stage = 'greeting';
-  const deadline = Date.now() + 30000;
+  const deadline = Date.now() + 60000;
   while (
     Date.now() < deadline &&
     !(
@@ -266,20 +266,28 @@ try {
         'Live procedure gate passed: confirmation displayed, declined, and no steps returned to the provider.',
       );
     if (writes) {
-      const runWrite = async (name, instructions, received) => {
+      const runWrite = async (name, instructions, received, userMessage) => {
         stage = name;
-        const idleDeadline = Date.now() + 10000;
+        const idleDeadline = Date.now() + 30000;
         while (!replyIdle && Date.now() < idleDeadline)
           await new Promise((resolve) => setTimeout(resolve, 100));
         assert.ok(replyIdle);
         const priorResults = counts.toolResults;
         await page.evaluate(
-          ({ instructions }) => {
+          ({ instructions, userMessage }) => {
+            if (userMessage)
+              globalThis.__voiceTestSocket.send(
+                JSON.stringify({
+                  type: 'conversation.message',
+                  role: 'user',
+                  content: userMessage,
+                }),
+              );
             globalThis.__voiceTestSocket.send(
               JSON.stringify({ type: 'reply.create', instructions }),
             );
           },
-          { instructions },
+          { instructions, userMessage },
         );
         const review = page.getByRole('region', {
           name: 'Review maintenance write',
@@ -319,10 +327,11 @@ try {
         'resolve_incident',
         `Call resolve_incident now with incident_id ${createdIncidentId}, root_cause "Loose L2 terminal", action_taken "Tightened L2 terminal connection", resolution_summary "Motor restarted and is running normally at 12.4 A.", verification_measurement containing measurement_type motor_current, value 12.4, unit A, notes "Stable after restart.", and asset_status operational. Do not ask follow-up questions.`,
         () => resolutionSaved,
+        'The repair is complete. The loose L2 terminal was tightened, and the motor restarted and is stable at 12.4 A. Resolve the active incident and return the asset to operational status.',
       );
 
       stage = 'completed maintenance history';
-      const idleDeadline = Date.now() + 10000;
+      const idleDeadline = Date.now() + 30000;
       while (!replyIdle && Date.now() < idleDeadline)
         await new Promise((resolve) => setTimeout(resolve, 100));
       assert.ok(replyIdle);
@@ -358,7 +367,13 @@ try {
   console.log(
     'Live voice smoke passed: session ready, microphone frames sent, greeting audio and transcript received, session ended.',
   );
-} catch {
+} catch (error) {
+  const workspaceError = page
+    ? await page
+        .getByRole('alert')
+        .textContent()
+        .catch(() => null)
+    : null;
   console.error('Check progress:', {
     stage,
     ...counts,
@@ -372,9 +387,16 @@ try {
     escalationSaved,
     resolutionSaved,
     completedHistoryReturned,
+    workspaceError,
   });
   console.error(
     'Live voice smoke failed. Check the workspace voice error and server configuration. No credentials were logged.',
+  );
+  console.error(
+    'Failure:',
+    error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : 'Unknown error',
   );
   process.exitCode = 1;
 } finally {

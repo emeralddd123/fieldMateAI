@@ -21,7 +21,7 @@ const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(
 export async function fetchVoiceToken(signal: AbortSignal) {
   const response = await fetch(`${baseUrl}/voice/token`, {
     method: 'POST',
-    signal: AbortSignal.any([signal, AbortSignal.timeout(12_000)]),
+    signal: AbortSignal.any([signal, AbortSignal.timeout(30_000)]),
     cache: 'no-store',
   });
   if (!response.ok) {

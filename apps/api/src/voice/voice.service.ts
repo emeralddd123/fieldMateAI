@@ -1,6 +1,7 @@
 import {
   Inject,
   Injectable,
+  Logger,
   ServiceUnavailableException,
   ForbiddenException,
   HttpException,
@@ -38,6 +39,7 @@ export const voicePrompt = [
 
 @Injectable()
 export class VoiceService {
+  private readonly logger = new Logger(VoiceService.name);
   private readonly requests = new Map<string, number[]>();
   constructor(
     @Inject(VOICE_SETTINGS) private readonly settings: VoiceSettings,
@@ -85,11 +87,30 @@ export class VoiceService {
     try {
       const response = await this.request(url, {
         headers: { Authorization: `Bearer ${this.settings.apiKey}` },
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.timeout(25_000),
       });
-      if (!response.ok) throw new Error('Token request failed');
-      token = tokenSchema.parse(await response.json()).token;
-    } catch {
+      if (!response.ok) {
+        this.logger.warn(
+          `Voice token provider returned HTTP ${response.status}.`,
+        );
+        throw new Error('Token request failed');
+      }
+      const parsed = tokenSchema.safeParse(await response.json());
+      if (!parsed.success) {
+        this.logger.warn('Voice token provider returned an unexpected schema.');
+        throw new Error('Invalid token response');
+      }
+      token = parsed.data.token;
+    } catch (error) {
+      if (!(
+        error instanceof Error &&
+        ['Token request failed', 'Invalid token response'].includes(
+          error.message,
+        )
+      ))
+        this.logger.warn(
+          `Voice token request failed with ${error instanceof Error ? error.name : 'unknown error'}.`,
+        );
       // Do not log or forward provider response bodies: they can contain credentials.
       throw new ServiceUnavailableException({
         code: 'VOICE_PROVIDER_UNAVAILABLE',
