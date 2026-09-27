@@ -59,11 +59,11 @@ const schema = z.object({
   ),
   BOOTSTRAP_ADMIN_PASSWORD: z.preprocess(
     (value) => (value === '' ? undefined : value),
-    z.string().min(12).max(128).optional(),
+    z.string().min(8).max(128).optional(),
   ),
   DEMO_USER_PASSWORD: z.preprocess(
     (value) => (value === '' ? undefined : value),
-    z.string().min(12).max(128).optional(),
+    z.string().min(8).max(128).optional(),
   ),
   ASSEMBLYAI_API_KEY: z.string().trim().default(''),
   ASSEMBLYAI_VOICE: z.string().trim().min(1).default('alba'),
