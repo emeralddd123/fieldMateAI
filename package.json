@@ -24,6 +24,7 @@
     "test:rbac": "node --env-file=.env.test --test apps/api/test/rbac.integration.test.mjs",
     "test:admin": "node --env-file=.env.test --test apps/api/test/admin-users.integration.test.mjs",
     "test:admin:resources": "node --env-file=.env.test --test apps/api/test/admin-sites-assets.integration.test.mjs",
+    "test:admin:knowledge": "node --env-file=.env.test --test apps/api/test/admin-faults-procedures.integration.test.mjs",
     "test:voice": "pnpm --filter @fieldmate/api build && pnpm --filter @fieldmate/api exec tsx --test test/voice.test.mjs ../web/test/voice.test.mjs",
     "test:voice:live": "node scripts/voice-smoke.mjs",
     "test:voice:live:writes": "node scripts/voice-smoke.mjs --writes"

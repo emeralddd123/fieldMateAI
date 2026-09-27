@@ -375,3 +375,234 @@ export function resendInvitation(inviteId: string) {
     method: 'POST',
   });
 }
+
+// --- PROCEDURES ---
+
+export interface AdminProcedureStep {
+  order?: number;
+  text: string;
+  type?: string;
+  confirmationRequired?: boolean;
+}
+
+export interface AdminProcedureItem {
+  id: string;
+  key: string;
+  title: string;
+  assetType: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  safetyLevel: string;
+  safetyConfirmationRequired: boolean;
+  summary: string;
+  steps: (string | AdminProcedureStep)[];
+  approved: boolean;
+  status: 'draft' | 'approved' | 'withdrawn';
+  approvedById: string | null;
+  approvedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  approvedAt: string | null;
+  source: string;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  linkedFaultCount?: number;
+}
+
+export interface AdminProceduresResponse {
+  procedures: AdminProcedureItem[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export function fetchAdminProcedures(params?: {
+  q?: string;
+  status?: string;
+  assetType?: string;
+  manufacturer?: string;
+  model?: string;
+  includeArchived?: boolean;
+  page?: number;
+  limit?: number;
+}) {
+  const search = new URLSearchParams();
+  if (params?.q) search.set('q', params.q);
+  if (params?.status) search.set('status', params.status);
+  if (params?.assetType) search.set('assetType', params.assetType);
+  if (params?.manufacturer) search.set('manufacturer', params.manufacturer);
+  if (params?.model) search.set('model', params.model);
+  if (params?.includeArchived) search.set('includeArchived', 'true');
+  if (params?.page) search.set('page', String(params.page));
+  if (params?.limit) search.set('limit', String(params.limit));
+
+  const query = search.toString();
+  return adminRequest<AdminProceduresResponse>(`/procedures${query ? `?${query}` : ''}`);
+}
+
+export function fetchAdminProcedure(id: string) {
+  return adminRequest<AdminProcedureItem>(`/procedures/${id}`);
+}
+
+export function createAdminProcedure(data: {
+  key: string;
+  title: string;
+  assetType?: string;
+  manufacturer?: string;
+  model?: string;
+  safetyLevel?: string;
+  safetyConfirmationRequired?: boolean;
+  summary: string;
+  steps: (string | AdminProcedureStep)[];
+  source?: string;
+}) {
+  return adminRequest<AdminProcedureItem>('/procedures', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateAdminProcedure(
+  id: string,
+  data: {
+    key?: string;
+    title?: string;
+    assetType?: string;
+    manufacturer?: string;
+    model?: string;
+    safetyLevel?: string;
+    safetyConfirmationRequired?: boolean;
+    summary?: string;
+    steps?: (string | AdminProcedureStep)[];
+    source?: string;
+  },
+) {
+  return adminRequest<AdminProcedureItem>(`/procedures/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function approveAdminProcedure(id: string) {
+  return adminRequest<AdminProcedureItem>(`/procedures/${id}/approve`, {
+    method: 'POST',
+  });
+}
+
+export function withdrawAdminProcedure(id: string) {
+  return adminRequest<AdminProcedureItem>(`/procedures/${id}/withdraw`, {
+    method: 'POST',
+  });
+}
+
+export function archiveAdminProcedure(id: string) {
+  return adminRequest<{ archived: boolean }>(`/procedures/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// --- FAULT DEFINITIONS ---
+
+export interface AdminFaultDefinitionItem {
+  id: string;
+  manufacturer: string;
+  model: string;
+  faultCode: string;
+  normalizedFaultCode: string;
+  title: string;
+  description: string;
+  safetyLevel: string;
+  source: string;
+  procedureId: string | null;
+  procedure?: {
+    id: string;
+    key: string;
+    title: string;
+    approved: boolean;
+    status: string;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+}
+
+export interface AdminFaultsResponse {
+  faults: AdminFaultDefinitionItem[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export function fetchAdminFaults(params?: {
+  q?: string;
+  manufacturer?: string;
+  model?: string;
+  includeArchived?: boolean;
+  page?: number;
+  limit?: number;
+}) {
+  const search = new URLSearchParams();
+  if (params?.q) search.set('q', params.q);
+  if (params?.manufacturer) search.set('manufacturer', params.manufacturer);
+  if (params?.model) search.set('model', params.model);
+  if (params?.includeArchived) search.set('includeArchived', 'true');
+  if (params?.page) search.set('page', String(params.page));
+  if (params?.limit) search.set('limit', String(params.limit));
+
+  const query = search.toString();
+  return adminRequest<AdminFaultsResponse>(`/faults${query ? `?${query}` : ''}`);
+}
+
+export function fetchAdminFault(id: string) {
+  return adminRequest<AdminFaultDefinitionItem>(`/faults/${id}`);
+}
+
+export function createAdminFault(data: {
+  manufacturer: string;
+  model: string;
+  faultCode: string;
+  title: string;
+  description: string;
+  safetyLevel?: string;
+  source?: string;
+  procedureId?: string;
+}) {
+  return adminRequest<AdminFaultDefinitionItem>('/faults', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateAdminFault(
+  id: string,
+  data: {
+    manufacturer?: string;
+    model?: string;
+    faultCode?: string;
+    title?: string;
+    description?: string;
+    safetyLevel?: string;
+    source?: string;
+    procedureId?: string | null;
+  },
+) {
+  return adminRequest<AdminFaultDefinitionItem>(`/faults/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function archiveAdminFault(id: string) {
+  return adminRequest<{ archived: boolean }>(`/faults/${id}`, {
+    method: 'DELETE',
+  });
+}

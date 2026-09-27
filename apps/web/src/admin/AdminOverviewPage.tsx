@@ -156,7 +156,7 @@ export function AdminOverviewPage() {
           <p>
             Standardize manufacturer diagnostics, symptoms, probable causes, and verified solutions.
           </p>
-          <div className="admin-card-tag pending">Phase 6</div>
+          <div className="admin-card-tag">Phase 6 Active</div>
         </Link>
 
         <Link to="/admin/procedures" className="admin-nav-card">
@@ -170,7 +170,7 @@ export function AdminOverviewPage() {
           <p>
             Draft, review, approve, and withdraw step-by-step guidance used by voice assistance.
           </p>
-          <div className="admin-card-tag pending">Phase 6</div>
+          <div className="admin-card-tag">Phase 6 Active</div>
         </Link>
 
         <Link to="/admin/audit" className="admin-nav-card">

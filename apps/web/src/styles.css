@@ -4548,3 +4548,249 @@ h1 {
   font-size: 11px;
   font-family: monospace;
 }
+
+/* Procedure and Fault specific styling */
+.admin-status-badge.status-approved {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.admin-status-badge.status-draft {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.admin-status-badge.status-withdrawn {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.safety-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.safety-badge.safety-low,
+.safety-badge.safety-standard {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.safety-badge.safety-medium,
+.safety-badge.safety-warning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.safety-badge.safety-high,
+.safety-badge.safety-critical,
+.safety-badge.safety-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.fault-code-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.linked-proc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  color: #c084fc;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.steps-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: #090f16;
+  border: 1px solid #1f2e3d;
+  border-radius: 8px;
+}
+
+.steps-builder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.steps-builder-header span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9bb0c2;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.step-card-edit {
+  display: grid;
+  grid-template-columns: 32px 1fr 120px 100px auto;
+  gap: 8px;
+  align-items: center;
+  background: #101923;
+  padding: 8px 10px;
+  border: 1px solid #202f3e;
+  border-radius: 6px;
+}
+
+.step-order-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #182635;
+  color: #9db2c7;
+  font-weight: 700;
+  font-size: 12px;
+  display: grid;
+  place-items: center;
+}
+
+.step-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #9db0c2;
+  cursor: pointer;
+  user-select: none;
+}
+
+.procedure-preview-modal {
+  max-width: 640px;
+}
+
+.procedure-preview-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.preview-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  background: #090f16;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid #1f2e3d;
+}
+
+.preview-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.preview-meta-label {
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.preview-meta-value {
+  font-size: 13px;
+  color: #f1f5f9;
+  font-weight: 500;
+}
+
+.preview-summary-card {
+  padding: 14px;
+  background: rgba(103, 217, 236, 0.05);
+  border: 1px solid rgba(103, 217, 236, 0.2);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.preview-safety-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  font-size: 13px;
+}
+
+.preview-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preview-step-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+}
+
+.preview-step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1e293b;
+  color: #38bdf8;
+  font-weight: 700;
+  font-size: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.preview-step-text {
+  color: #e2e8f0;
+  font-size: 13px;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.preview-step-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+

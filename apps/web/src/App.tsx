@@ -41,6 +41,8 @@ import { AdminOverviewPage } from './admin/AdminOverviewPage';
 import { AdminUsersPage } from './admin/AdminUsersPage';
 import { AdminSitesPage } from './admin/AdminSitesPage';
 import { AdminAssetsPage } from './admin/AdminAssetsPage';
+import { AdminFaultsPage } from './admin/AdminFaultsPage';
+import { AdminProceduresPage } from './admin/AdminProceduresPage';
 
 export function App() {
   return (
@@ -62,6 +64,8 @@ export function App() {
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="sites" element={<AdminSitesPage />} />
             <Route path="assets" element={<AdminAssetsPage />} />
+            <Route path="faults" element={<AdminFaultsPage />} />
+            <Route path="procedures" element={<AdminProceduresPage />} />
             <Route path="*" element={<AdminPlaceholder />} />
           </Route>
         </Route>
