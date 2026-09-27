@@ -430,6 +430,7 @@ export async function submitVoiceWrite(
     const body = {
       note: request.args.note,
       source: 'voice',
+      requestId,
     };
     const response = await fetch(
       `${baseUrl}/incidents/${request.args.incident_id}/notes`,

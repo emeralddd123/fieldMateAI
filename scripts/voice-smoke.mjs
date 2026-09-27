@@ -9,7 +9,8 @@ const browser = await chromium.launch({
     '--use-fake-ui-for-media-stream',
   ],
 });
-const procedure = process.argv.includes('--procedure');
+const writes = process.argv.includes('--writes');
+const procedure = writes || process.argv.includes('--procedure');
 const knowledge = procedure || process.argv.includes('--knowledge');
 let procedureLocked = false;
 const lookup = knowledge || process.argv.includes('--lookup');
@@ -23,6 +24,12 @@ let page;
 let stage = 'connect';
 let lookupReturned = false;
 let responseAfterLookup = false;
+let savedReadingId;
+let createdIncidentId;
+let noteSaved = false;
+let escalationSaved = false;
+let resolutionSaved = false;
+let completedHistoryReturned = false;
 const counts = {
   ready: 0,
   input: 0,
@@ -59,6 +66,7 @@ try {
       }
       if (event.type === 'tool.result' && !event.is_error) {
         const result = JSON.parse(event.result);
+        const toolName = callNames.get(event.call_id);
         procedureLocked ||=
           result.requiresSafetyConfirmation === true && !result.procedure;
         const found = result.matches?.find(
@@ -78,6 +86,39 @@ try {
           result.totalMatchingIncidents === 2 &&
           result.incidents?.some((item) =>
             item.notes.some((note) => /L2/.test(note.note)),
+          );
+        if (
+          toolName === 'record_measurement' &&
+          result.success === true &&
+          result.value === 347 &&
+          result.unit === 'V'
+        )
+          savedReadingId = result.id;
+        if (
+          toolName === 'create_incident' &&
+          result.success === true &&
+          result.incidentNumber === 'INC-1048'
+        )
+          createdIncidentId = result.id;
+        noteSaved ||=
+          toolName === 'add_incident_note' &&
+          result.success === true &&
+          /347 V/.test(result.note ?? '');
+        escalationSaved ||=
+          toolName === 'escalate_incident' &&
+          result.success === true &&
+          result.status === 'escalated';
+        resolutionSaved ||=
+          toolName === 'resolve_incident' &&
+          result.success === true &&
+          result.status === 'operational';
+        completedHistoryReturned ||=
+          toolName === 'get_maintenance_history' &&
+          result.totalMatchingIncidents === 3 &&
+          result.maintenanceRecords?.some(
+            (record) =>
+              /Loose L2 terminal/i.test(record.rootCause) &&
+              /Tightened L2 terminal/i.test(record.actionTaken),
           );
       }
     });
@@ -224,6 +265,87 @@ try {
       console.log(
         'Live procedure gate passed: confirmation displayed, declined, and no steps returned to the provider.',
       );
+    if (writes) {
+      const runWrite = async (name, instructions, received) => {
+        stage = name;
+        const idleDeadline = Date.now() + 10000;
+        while (!replyIdle && Date.now() < idleDeadline)
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        assert.ok(replyIdle);
+        const priorResults = counts.toolResults;
+        await page.evaluate(
+          ({ instructions }) => {
+            globalThis.__voiceTestSocket.send(
+              JSON.stringify({ type: 'reply.create', instructions }),
+            );
+          },
+          { instructions },
+        );
+        const review = page.getByRole('region', {
+          name: 'Review maintenance write',
+        });
+        await review.waitFor({ timeout: 30000 });
+        await review.getByRole('button', { name: 'Confirm and save' }).click();
+        const deadline = Date.now() + 45000;
+        while (
+          Date.now() < deadline &&
+          !(received() && counts.toolResults > priorResults)
+        )
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        assert.ok(received() && counts.toolResults > priorResults);
+      };
+
+      await runWrite(
+        'record_measurement',
+        `Call record_measurement now with asset_id ${foundAssetId}, measurement_type line_voltage, value 347, unit V, and notes "Measured at the drive input." Do not ask follow-up questions.`,
+        () => Boolean(savedReadingId),
+      );
+      await runWrite(
+        'create_incident',
+        `Call create_incident now with asset_id ${foundAssetId}, title "VFD F0003 undervoltage fault", description "Motor stopped during production; drive reported F0003.", fault_code F0003, priority high, asset_status down, and measurement_ids containing ${savedReadingId}. Do not ask follow-up questions.`,
+        () => Boolean(createdIncidentId),
+      );
+      await runWrite(
+        'add_incident_note',
+        `Call add_incident_note now with incident_id ${createdIncidentId} and note "Incoming voltage confirmed low at 347 V." Do not ask follow-up questions.`,
+        () => noteSaved,
+      );
+      await runWrite(
+        'escalate_incident',
+        `Call escalate_incident now with incident_id ${createdIncidentId}, reason "Supervisor review requested before restoring power.", and severity supervisor_review. Do not ask follow-up questions.`,
+        () => escalationSaved,
+      );
+      await runWrite(
+        'resolve_incident',
+        `Call resolve_incident now with incident_id ${createdIncidentId}, root_cause "Loose L2 terminal", action_taken "Tightened L2 terminal connection", resolution_summary "Motor restarted and is running normally at 12.4 A.", verification_measurement containing measurement_type motor_current, value 12.4, unit A, notes "Stable after restart.", and asset_status operational. Do not ask follow-up questions.`,
+        () => resolutionSaved,
+      );
+
+      stage = 'completed maintenance history';
+      const idleDeadline = Date.now() + 10000;
+      while (!replyIdle && Date.now() < idleDeadline)
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      assert.ok(replyIdle);
+      const priorResults = counts.toolResults;
+      await page.evaluate((assetId) => {
+        globalThis.__voiceTestSocket.send(
+          JSON.stringify({
+            type: 'reply.create',
+            instructions: `Call get_maintenance_history now with asset_id ${assetId}, fault_code F0003, and limit 10. Briefly confirm the new loose L2 repair is in history.`,
+          }),
+        );
+      }, foundAssetId);
+      const historyDeadline = Date.now() + 45000;
+      while (
+        Date.now() < historyDeadline &&
+        !(completedHistoryReturned && counts.toolResults > priorResults)
+      )
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      assert.ok(completedHistoryReturned && counts.toolResults > priorResults);
+      console.log(
+        'Live write path passed: 347 V saved, INC-1048 created, note and escalation recorded, repair resolved at 12.4 A, and new history retrieved.',
+      );
+    }
     console.log(
       knowledge
         ? 'Live knowledge tools passed: equipment, verified F0003 definition, prior L2 note, and response transcript.'
@@ -244,6 +366,12 @@ try {
     faultReturned,
     historyReturned,
     responseAfterLookup,
+    savedReadingId,
+    createdIncidentId,
+    noteSaved,
+    escalationSaved,
+    resolutionSaved,
+    completedHistoryReturned,
   });
   console.error(
     'Live voice smoke failed. Check the workspace voice error and server configuration. No credentials were logged.',

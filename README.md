@@ -21,7 +21,7 @@ Industrial maintenance knowledge is fragmented across PDF manuals, CMMS tickets,
 FieldMate AI introduces a voice-first interface directly to the plant's operational systems and maintenance memory:
 
 - **Hands-Free Troubleshooting:** Speak naturally to query equipment, lookup drive fault codes, recall past incidents, and log readings without setting tools down.
-- **Safety First:** Approved repair procedures for high-voltage or mechanical systems are strictly gated behind verbal workspace safe-state confirmations.
+- **Safety First:** Approved repair procedures for high-voltage or mechanical systems are strictly gated behind an explicit on-screen safe-state confirmation in the technician workspace.
 - **Voice-to-Structured Records:** Natural spoken wrap-ups (_"Fixed it. Loose L2 terminal. Tightened it. Motor is now drawing 12.4 amps."_) are atomically converted into structured incident records, telemetry measurements, and permanent maintenance history.
 - **Institutional Memory:** The moment a repair is logged, it becomes searchable knowledge for any future technician encountering that same machine or fault code.
 
@@ -33,7 +33,7 @@ FieldMate uses a streaming TypeScript architecture connecting a React/Vite audio
 
 ```mermaid
 flowchart TD
-    Tech([Field Technician / Mic + Speaker]) <-->|16 kHz Capture / 24 kHz Playback| Web[React Workspace / AudioWorklet]
+    Tech([Field Technician / Mic + Speaker]) <-->|24 kHz Capture / 24 kHz Playback| Web[React Workspace / AudioWorklet]
 
     Web <-->|WebSocket Full-Duplex / Transcripts & Audio| AAI[AssemblyAI Voice Agent API]
 
@@ -46,7 +46,7 @@ flowchart TD
 
 ### Voice Pipeline Highlights
 
-- **Capture:** Browser `AudioWorkletNode` captures microphone input at a clean, downsampled 16 kHz PCM stream.
+- **Capture:** Browser `AudioWorkletNode` resamples microphone input to the Voice Agent API's 24 kHz PCM stream.
 - **Playback:** Incoming 24 kHz raw PCM audio buffers are scheduled seamlessly on an `AudioContext` with sub-millisecond precision.
 - **Barge-In / Interruption:** When the technician speaks while the agent is responding, AssemblyAI turn detection triggers an immediate client-side audio queue flush.
 - **Zero Credential Exposure:** Browser clients never receive the permanent `ASSEMBLYAI_API_KEY`. Single-use temporary tokens with a 60-second TTL are minted by the NestJS backend via `POST /api/v1/voice/token`.
@@ -69,8 +69,8 @@ flowchart TD
 2. **Institutional Memory Graph:**
    - Interactive relationship tree in the workspace connecting equipment roots $\to$ recurring fault occurrences $\to$ historical root causes $\to$ latest verification telemetry readings.
 
-3. **Field QR / Barcode Tag Scanner:**
-   - Live camera viewfinder with target reticle, support for direct `fieldmate://asset/M-204` URIs, and one-click demo machine tags for instant asset selection without speaking.
+3. **Field Tag Selector:**
+   - Camera viewfinder with target reticle, direct `fieldmate://asset/M-204` URI entry, and one-click demo machine tags for instant asset selection without speaking. Camera-frame QR decoding is a remaining stretch feature.
 
 4. **Supervisor Telemetry & Incident Register:**
    - Real-time dashboard metric cards (Active Incidents, Equipment Down, Resolved Repairs, Recurring Faults).
@@ -119,6 +119,14 @@ docker compose up --build -d
 
 # 3. Seed the Plant Alpha equipment dataset
 docker compose exec api pnpm prisma:seed
+
+# Useful operations
+docker compose logs -f api
+docker compose exec api pnpm prisma:migrate:deploy
+docker compose down
+
+# Destructive local reset: removes the PostgreSQL volume
+docker compose down -v
 ```
 
 ### Local URLs
@@ -169,14 +177,44 @@ pnpm test:voice
 # 2. Automated Canonical Demo API Simulation
 pnpm demo:api
 
-# 3. Typecheck, Lint, and Format Verification
+# 3. Maintenance transaction tests against an isolated test stack
+pnpm test:maintenance
+
+# 4. Browser E2E suite against a running stack
+pnpm test:e2e
+
+# 5. Canonical browser voice-write path against a freshly reset isolated stack
+pnpm test:e2e:writes
+
+# 6. Typecheck, Lint, and Format Verification
 pnpm typecheck
 pnpm lint
 pnpm format:check
 pnpm build
 
-# 4. Optional Live Voice Provider Smoke Test (requires ASSEMBLYAI_API_KEY)
+# 7. Optional Live Voice Provider Smoke Test (requires ASSEMBLYAI_API_KEY)
 pnpm test:voice:live
+
+# Full live provider write path; use only with a freshly reset isolated stack
+TEST_WEB_URL=http://localhost:55173 pnpm test:voice:live:writes
+```
+
+The write-path and maintenance tests intentionally target a separate database. Start it before running those commands:
+
+```sh
+cp .env.test.example .env.test
+docker compose --project-name fieldmate-test --env-file .env.test \
+  -f docker-compose.yml -f docker-compose.test.yml up -d --wait
+docker compose --project-name fieldmate-test --env-file .env.test \
+  -f docker-compose.yml -f docker-compose.test.yml exec api pnpm prisma:seed
+
+# Run isolated tests using the URLs from .env.test
+pnpm test:maintenance
+pnpm test:e2e:writes
+
+# Restore the canonical scenario after write tests
+docker compose --project-name fieldmate-test --env-file .env.test \
+  -f docker-compose.yml -f docker-compose.test.yml exec api pnpm seed:reset --confirm
 ```
 
 ### Demo Reset Command
@@ -196,7 +234,7 @@ docker compose exec api pnpm seed:reset --confirm
 FieldMate is an industrial **decision-support copilot**, not an autonomous PLC or machine controller:
 
 1. **No Autonomous Energization:** FieldMate never sends machine start, stop, or breaker control signals.
-2. **Safety-State Confirmation:** Troubleshooting steps for hazardous electrical or mechanical systems cannot be retrieved until the technician verbally confirms the machine is stopped and isolated.
+2. **Safety-State Confirmation:** Troubleshooting steps for hazardous electrical or mechanical systems cannot be retrieved until the technician explicitly confirms the safe maintenance state in the workspace. Voice conversation alone cannot satisfy this gate.
 3. **No Hallucinated Procedures:** If a fault code is unverified or no approved procedure exists, FieldMate explicitly refuses to invent steps and offers to log an incident for supervisor escalation.
 4. **On-Screen Confirmation:** Write operations (incidents, measurements, and repairs) present an interactive preview before committing to the database.
 
@@ -224,4 +262,4 @@ FieldMate is an industrial **decision-support copilot**, not an autonomous PLC o
 
 - **AssemblyAI Voice Agent API:** Full-duplex WebSocket streaming, low-latency ASR, voice activity detection, barge-in / interruption handling, and 9 registered function tools.
 - **Domain Keyterm Boosting:** Custom vocabulary hints (`M-204`, `F0003`, `SINAMICS`, `VFD`, `undervoltage`) configured in the session.
-- **Deterministic Testability:** 100% test pass rate with idempotent database seed and reset workflows.
+- **Deterministic Testability:** Automated unit, API integration, browser, and canonical voice-write coverage with isolated database seed and reset workflows.

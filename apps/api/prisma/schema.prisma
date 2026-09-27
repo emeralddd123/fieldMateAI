@@ -187,6 +187,8 @@ model Incident {
 }
 
 model IncidentNote {
+  requestId   String?    @unique @map("request_id") @db.Uuid
+  requestHash String?    @map("request_hash")
   id         String     @id @default(uuid()) @db.Uuid
   incidentId String     @map("incident_id") @db.Uuid
   incident   Incident   @relation(fields: [incidentId], references: [id], onDelete: Cascade)

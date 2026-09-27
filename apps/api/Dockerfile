@@ -16,7 +16,7 @@ COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/api apps/api
 RUN pnpm --filter @fieldmate/shared build && pnpm --filter @fieldmate/api prisma:generate && pnpm --filter @fieldmate/api build
-RUN --mount=type=cache,id=fieldmate-pnpm,target=/pnpm/store pnpm --filter @fieldmate/api deploy --prod --legacy /prod/api
+RUN --mount=type=cache,id=fieldmate-pnpm,target=/pnpm/store pnpm --filter @fieldmate/api deploy --prod /prod/api
 
 FROM base AS runtime
 ENV NODE_ENV=production

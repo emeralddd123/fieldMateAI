@@ -527,3 +527,40 @@ test('voice incident retries keep one incident and do not repeat status changes 
   assert.equal(rows.rows[0].n, 0);
   await request('POST', '/incidents', { ...body, requestId: undefined }, 400);
 });
+
+test('voice incident note retries keep one audit entry', async () => {
+  const incident = await create(pump.id);
+  const body = {
+    note: 'Incoming voltage confirmed low at 347 V.',
+    source: 'voice',
+    requestId: crypto.randomUUID(),
+  };
+  const [a, b] = await Promise.all([
+    request('POST', `/incidents/${incident.id}/notes`, body, 201),
+    request('POST', `/incidents/${incident.id}/notes`, body, 201),
+  ]);
+  assert.equal(a.id, b.id);
+  assert.equal(a.source, 'voice');
+  assert.equal(
+    (
+      await request(
+        'POST',
+        `/incidents/${incident.id}/notes`,
+        { ...body, note: 'Changed observation' },
+        409,
+      )
+    ).code,
+    'REQUEST_ID_REUSED',
+  );
+  await request(
+    'POST',
+    `/incidents/${incident.id}/notes`,
+    { ...body, requestId: undefined },
+    400,
+  );
+  const rows = await pool.query(
+    'SELECT count(*)::int AS n FROM incident_notes WHERE request_id=$1',
+    [body.requestId],
+  );
+  assert.equal(rows.rows[0].n, 1);
+});

@@ -134,6 +134,16 @@ export class UpdateIncidentDto {
   @OptionalUuid() assignedToId?: string;
 }
 export class NoteDto {
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'Stable creation request ID. Required for voice writes; reuse for identical retries.',
+  })
+  @ValidateIf(
+    (object, value) => object.source === 'voice' || value !== undefined,
+  )
+  @IsUUID()
+  requestId?: string;
   @Text(4000, 'Incoming voltage measured at 347 V.') note!: string;
   @ApiProperty({ enum: ['voice', 'manual'], default: 'manual' })
   @IsIn(['voice', 'manual'])

@@ -130,10 +130,33 @@ export class IncidentsService {
   }
   async note(id: string, dto: NoteDto) {
     return this.prisma.$transaction(async (tx) => {
+      const request = {
+        incidentId: id,
+        ...dto,
+      };
+      const requestHash = await lockCreationRequest(
+        tx,
+        'incident-note',
+        request,
+      );
+      if (dto.requestId) {
+        const existing = await tx.incidentNote.findUnique({
+          where: { requestId: dto.requestId },
+        });
+        if (existing) {
+          verifyCreationRetry(existing.requestHash, requestHash);
+          return existing;
+        }
+      }
       await lockIncident(tx, id);
       await requireTechnician(tx);
       return tx.incidentNote.create({
-        data: { incidentId: id, ...dto, authorId: DEMO_TECHNICIAN_ID },
+        data: {
+          incidentId: id,
+          ...dto,
+          requestHash,
+          authorId: DEMO_TECHNICIAN_ID,
+        },
       });
     });
   }
