@@ -221,7 +221,6 @@ export class AuthService {
             data: {
               name: invite.name,
               email: invite.email.toLowerCase(),
-              role: invite.role,
               status: 'active',
               passwordHash,
               passwordChangedAt: new Date(),

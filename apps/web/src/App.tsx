@@ -43,6 +43,7 @@ import { AdminSitesPage } from './admin/AdminSitesPage';
 import { AdminAssetsPage } from './admin/AdminAssetsPage';
 import { AdminFaultsPage } from './admin/AdminFaultsPage';
 import { AdminProceduresPage } from './admin/AdminProceduresPage';
+import { AdminAuditPage } from './admin/AdminAuditPage';
 
 export function App() {
   return (
@@ -66,6 +67,7 @@ export function App() {
             <Route path="assets" element={<AdminAssetsPage />} />
             <Route path="faults" element={<AdminFaultsPage />} />
             <Route path="procedures" element={<AdminProceduresPage />} />
+            <Route path="audit" element={<AdminAuditPage />} />
             <Route path="*" element={<AdminPlaceholder />} />
           </Route>
         </Route>

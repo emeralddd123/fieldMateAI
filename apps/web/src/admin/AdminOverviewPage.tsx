@@ -184,7 +184,7 @@ export function AdminOverviewPage() {
           <p>
             Review immutable event records for authentications, role changes, deactivations, and mutations.
           </p>
-          <div className="admin-card-tag pending">Phase 7</div>
+          <div className="admin-card-tag">Phase 7 Active</div>
         </Link>
       </div>
     </div>

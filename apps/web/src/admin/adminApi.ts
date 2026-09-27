@@ -606,3 +606,77 @@ export function archiveAdminFault(id: string) {
     method: 'DELETE',
   });
 }
+
+// --- AUDIT TRAIL & SYSTEM CLEANUP ---
+
+export interface AdminAuditEventItem {
+  id: string;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  targetMembershipId: string | null;
+  requestId: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  details: Record<string, any>;
+  createdAt: string;
+  actor: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+  membership: {
+    id: string;
+    role: string;
+  } | null;
+}
+
+export interface AdminAuditEventsResponse {
+  events: AdminAuditEventItem[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface AdminCleanupResult {
+  purgedSessions: number;
+  purgedResetTokens: number;
+  purgedInvites: number;
+  timestamp: string;
+}
+
+export function fetchAdminAuditEvents(params?: {
+  action?: string;
+  resourceType?: string;
+  actorId?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const search = new URLSearchParams();
+  if (params?.action) search.set('action', params.action);
+  if (params?.resourceType) search.set('resourceType', params.resourceType);
+  if (params?.actorId) search.set('actorId', params.actorId);
+  if (params?.startDate) search.set('startDate', params.startDate);
+  if (params?.endDate) search.set('endDate', params.endDate);
+  if (params?.page) search.set('page', String(params.page));
+  if (params?.limit) search.set('limit', String(params.limit));
+
+  const query = search.toString();
+  return adminRequest<AdminAuditEventsResponse>(`/audit${query ? `?${query}` : ''}`);
+}
+
+export function fetchAdminAuditActions() {
+  return adminRequest<string[]>('/audit/actions');
+}
+
+export function triggerAdminCleanup() {
+  return adminRequest<AdminCleanupResult>('/cleanup', {
+    method: 'POST',
+  });
+}
+

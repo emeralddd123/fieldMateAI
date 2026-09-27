@@ -157,8 +157,8 @@ before(async () => {
 
   // Create technician B who only has access to Plant B
   const techBRes = await pool.query(
-    `INSERT INTO users (id, name, email, role, status, updated_at)
-     VALUES (gen_random_uuid(), 'Tech Bravo', 'techb.test@fieldmate.test', 'technician', 'active', NOW())
+    `INSERT INTO users (id, name, email, status, updated_at)
+     VALUES (gen_random_uuid(), 'Tech Bravo', 'techb.test@fieldmate.test', 'active', NOW())
      ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, updated_at = NOW()
      RETURNING id`,
   );

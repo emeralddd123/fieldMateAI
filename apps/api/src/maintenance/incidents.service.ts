@@ -62,11 +62,16 @@ export class IncidentsService {
     if (access) {
       return this.assignees(siteId, access);
     }
-    return this.prisma.user.findMany({
-      where: { role: { in: ['technician', 'supervisor', 'admin'] } },
-      select: { id: true, name: true, role: true },
-      orderBy: [{ role: 'desc' }, { name: 'asc' }],
+    const memberships = await this.prisma.organizationMembership.findMany({
+      where: { status: 'active' },
+      include: { user: { select: { id: true, name: true } } },
+      orderBy: [{ role: 'desc' }, { user: { name: 'asc' } }],
     });
+    return memberships.map((m) => ({
+      id: m.user.id,
+      name: m.user.name,
+      role: m.role,
+    }));
   }
 
   async list(query: IncidentQuery, access: AccessContext) {

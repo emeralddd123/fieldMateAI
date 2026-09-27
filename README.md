@@ -135,6 +135,7 @@ docker compose down -v
 | :------------------------ | :------------------------------------------------------------------------- | :------------------------------------------------------- |
 | **Technician Workspace**  | [http://localhost:5173](http://localhost:5173)                             | Main UI (voice orb, equipment list, timeline)            |
 | **Supervisor Workspace**  | [http://localhost:5173/supervisor](http://localhost:5173/supervisor)       | Escalation queue, assignment, priority, and review notes |
+| **Administration Space**  | [http://localhost:5173/admin](http://localhost:5173/admin)                 | Users, sites, assets, fault codes, SOPs, and audit trail |
 | **REST API**              | [http://localhost:3000/api/v1/assets](http://localhost:3000/api/v1/assets) | Equipment and maintenance API endpoints                  |
 | **Swagger Documentation** | [http://localhost:3000/docs](http://localhost:3000/docs)                   | Interactive API explorer                                 |
 | **Readiness & Health**    | [http://localhost:3000/health](http://localhost:3000/health)               | Database and API readiness check                         |
@@ -169,38 +170,56 @@ pnpm dev
 
 ## Validation & Test Suite
 
-FieldMate includes test suites covering contracts, voice protocols, and the canonical repair loop:
+FieldMate includes comprehensive test suites covering contracts, voice protocols, role-based access, and the administrative lifecycle:
 
 ```sh
 # 1. Unit & Voice Tool Tests (22 passing tests)
 pnpm test:voice
 
-# 2. Automated Canonical Demo API Simulation
-pnpm demo:api
+# 2. Authentication & Session Lifecycle (6 passing tests)
+pnpm test:auth
 
-# 3. Maintenance transaction tests against an isolated test stack
+# 3. Role-Based Access Control & Multi-Site Scoping (7 passing tests)
+pnpm test:rbac
+
+# 4. User Administration & Invitations (8 passing tests)
+pnpm test:admin
+
+# 5. Site & Machine Inventory Administration (4 passing tests)
+pnpm test:admin:resources
+
+# 6. Fault Code & Procedure SOP Administration (4 passing tests)
+pnpm test:admin:knowledge
+
+# 7. Audit Trail & Session Cleanup (4 passing tests)
+pnpm test:admin:audit
+
+# 8. Maintenance transaction tests against an isolated test stack (9 passing tests)
 pnpm test:maintenance
 
-# 4. Browser E2E suite against a running stack
+# 9. Automated Canonical Demo API Simulation
+pnpm demo:api
+
+# 10. Browser E2E suite against a running stack
 pnpm test:e2e
 
-# 5. Canonical browser voice-write path against a freshly reset isolated stack
+# 11. Canonical browser voice-write path against a freshly reset isolated stack
 pnpm test:e2e:writes
 
-# 6. Typecheck, Lint, and Format Verification
+# 12. Typecheck, Lint, and Format Verification
 pnpm typecheck
 pnpm lint
 pnpm format:check
 pnpm build
 
-# 7. Optional Live Voice Provider Smoke Test (requires ASSEMBLYAI_API_KEY)
+# 13. Optional Live Voice Provider Smoke Test (requires ASSEMBLYAI_API_KEY)
 pnpm test:voice:live
 
 # Full live provider write path; use only with a freshly reset isolated stack
 TEST_WEB_URL=http://localhost:55173 pnpm test:voice:live:writes
 ```
 
-The write-path and maintenance tests intentionally target a separate database. Start it before running those commands:
+The write-path, maintenance, and administrative tests target an isolated test database. Start it before running those commands:
 
 ```sh
 cp .env.test.example .env.test
@@ -211,6 +230,7 @@ docker compose --project-name fieldmate-test --env-file .env.test \
 
 # Run isolated tests using the URLs from .env.test
 pnpm test:maintenance
+pnpm test:admin:audit
 pnpm test:e2e:writes
 
 # Restore the canonical scenario after write tests
@@ -224,11 +244,10 @@ change priority, and add an attributed note without resolving the technician's
 incident. Repair completion remains the only operation that resolves the
 incident and its escalation. See [docs/supervisor.md](docs/supervisor.md).
 
-The authentication and administration rollout is tracked in
+The multi-tenant authentication, RBAC, and administration workspace is documented in
 [docs/auth-rbac-admin-implementation-plan.md](docs/auth-rbac-admin-implementation-plan.md).
-Phase 1 adds the organization, membership, session, invitation, audit, request
-security, and bootstrap foundation. Deployment and environment details are in
-[docs/security-foundation.md](docs/security-foundation.md).
+All phases (Phase 1 through 7) are fully implemented and verified. Deployment and
+security foundation details are in [docs/security-foundation.md](docs/security-foundation.md).
 
 ### Demo Reset Command
 
@@ -264,7 +283,7 @@ FieldMate is an industrial **decision-support copilot**, not an autonomous PLC o
 ## Future Roadmap
 
 - [ ] Enterprise CMMS two-way connectors (SAP PM, IBM Maximo, MaintainX).
-- [ ] Multi-tenant organization support and role-based access control (RBAC).
+- [x] Multi-tenant organization support and role-based access control (RBAC).
 - [ ] Thermal camera and computer vision integration for AR smart-glasses.
 - [ ] Native vibration and acoustic anomaly telemetry feeds.
 - [ ] Multi-lingual speech translation for diverse global manufacturing crews.

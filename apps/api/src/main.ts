@@ -44,17 +44,37 @@ async function bootstrap() {
     next();
   });
   const config = new DocumentBuilder()
-    .setTitle('FieldMate API')
-    .setDescription('Equipment context and maintenance operations.')
-    .setVersion('0.1.0')
+    .setTitle('FieldMate Industrial Intelligence API')
+    .setDescription(
+      'Role-based operations for equipment diagnostics, maintenance work orders, voice assistance, and multi-tenant administration.',
+    )
+    .setVersion('1.0.0')
     .addCookieAuth(
       env.SESSION_COOKIE_NAME,
       {
         type: 'apiKey',
         in: 'cookie',
+        description:
+          'Server-side session cookie authenticated via Argon2id hashed sessions.',
       },
       'fieldmate-session',
     )
+    .addTag('auth', 'Authentication and session lifecycle endpoints')
+    .addTag('admin-users', 'User, member, and site invitation administration')
+    .addTag('admin-resources', 'Site and machine inventory administration')
+    .addTag(
+      'admin-knowledge',
+      'Fault code diagnostics and procedure SOP administration',
+    )
+    .addTag(
+      'admin-audit',
+      'Immutable security audit trail and maintenance cleanup',
+    )
+    .addTag(
+      'maintenance',
+      'Equipment incidents, work orders, measurements, and repairs',
+    )
+    .addTag('voice', 'Voice intelligence session token and assistance tools')
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
   await app.listen(env.PORT, '0.0.0.0');

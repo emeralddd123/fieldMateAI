@@ -153,7 +153,6 @@ model User {
   id                      String                   @id @default(uuid()) @db.Uuid
   name                    String
   email                   String?                  @unique
-  role                    UserRole                 @default(technician)
   passwordHash            String?                  @map("password_hash")
   status                  UserStatus               @default(active)
   passwordChangedAt       DateTime?                @map("password_changed_at")
@@ -219,6 +218,7 @@ model AuthSession {
   createdAt  DateTime  @default(now()) @map("created_at")
 
   @@index([userId, expiresAt])
+  @@index([expiresAt])
   @@map("auth_sessions")
 }
 
@@ -274,6 +274,7 @@ model AuditEvent {
   createdAt         DateTime                @default(now()) @map("created_at")
 
   @@index([organizationId, createdAt])
+  @@index([organizationId, action, createdAt])
   @@index([actorUserId, createdAt])
   @@index([resourceType, resourceId])
   @@map("audit_events")

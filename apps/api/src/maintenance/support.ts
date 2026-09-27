@@ -8,8 +8,6 @@ import { Prisma } from '../generated/prisma/client';
 import type { MeasurementFields } from './dto';
 import type { AccessContext } from '../access/access.types';
 
-export const DEMO_TECHNICIAN_ID = '00000000-0000-4000-8000-000000000001';
-export const DEMO_SUPERVISOR_ID = '00000000-0000-4000-8000-000000000002';
 export const activeStatuses = ['open', 'investigating', 'escalated'] as const;
 
 export const incidentInclude = {

@@ -313,8 +313,8 @@ test('6. Protections: Last active admin and self-deactivation cannot be bypassed
 
   // Create a second admin directly in DB for testing demotion
   const secondAdminUser = await pool.query(
-    `INSERT INTO users (id, name, email, role, status, updated_at)
-     VALUES (gen_random_uuid(), 'Second Admin', 'second.admin@fieldmate.test', 'admin', 'active', NOW())
+    `INSERT INTO users (id, name, email, status, updated_at)
+     VALUES (gen_random_uuid(), 'Second Admin', 'second.admin@fieldmate.test', 'active', NOW())
      RETURNING id`,
   );
   const secondAdminId = secondAdminUser.rows[0].id;
