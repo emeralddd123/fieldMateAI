@@ -22,9 +22,16 @@ import { DashboardMetrics } from './components/DashboardMetrics';
 import { IncidentDetailModal } from './components/IncidentDetailModal';
 import { IncidentsDrawer } from './components/IncidentsDrawer';
 import { QrScannerModal } from './components/QrScannerModal';
+import { SupervisorView } from './components/SupervisorView';
 import { useVoiceSession } from './voice/useVoiceSession';
 
 export function App() {
+  if (window.location.pathname.startsWith('/supervisor'))
+    return <SupervisorView />;
+  return <TechnicianWorkspace />;
+}
+
+function TechnicianWorkspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewIncidentId, setViewIncidentId] = useState<string | null>(null);
   const [isIncidentsDrawerOpen, setIsIncidentsDrawerOpen] = useState(false);
@@ -81,6 +88,13 @@ export function App() {
             <TableProperties size={14} />
             <span>Incidents ({incidents.data?.length ?? 0})</span>
           </button>
+          <a
+            className="topbar-action-btn supervisor-role-link"
+            href="/supervisor"
+          >
+            <ShieldCheck size={14} />
+            <span>Supervisor view</span>
+          </a>
           <button
             type="button"
             className="topbar-action-btn topbar-qr-btn"

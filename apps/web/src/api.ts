@@ -501,7 +501,13 @@ export interface DashboardIncident {
   resolvedAt: string | null;
   rootCause: string | null;
   actionTaken: string | null;
-  escalations: Array<{ id: string; reason: string; status: string }>;
+  escalations: Array<{
+    id: string;
+    reason: string;
+    severity: string;
+    status: string;
+    createdAt: string;
+  }>;
 }
 
 export interface IncidentDetail {

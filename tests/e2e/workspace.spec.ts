@@ -59,6 +59,36 @@ test('loads seeded equipment and switches asset context', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('shows the supervisor operations view and opens incident details', async ({
+  page,
+}) => {
+  await page.goto('/supervisor');
+  await expect(
+    page.getByRole('heading', { name: 'Plant maintenance overview' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Plant summary' }),
+  ).toContainText('ACTIVE INCIDENTS');
+  await expect(
+    page.getByRole('heading', { name: 'Equipment health' }),
+  ).toBeVisible();
+  await expect(page.getByText('M-204', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'all', exact: true }).click();
+  await page
+    .getByRole('textbox', { name: 'Search supervisor incidents' })
+    .fill('INC-1037');
+  await expect(page.getByText('INC-1037', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Open INC-1037' }).click();
+  await expect(page.getByRole('dialog')).toContainText('INC-1037');
+  await page.getByRole('button', { name: 'Close incident details' }).click();
+
+  await page.getByRole('link', { name: 'Technician view' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Know your equipment.' }),
+  ).toBeVisible();
+});
+
 test('shows an honest empty state', async ({ page }) => {
   await page.route('**/api/v1/assets', (route) =>
     route.fulfill({ json: { data: [] } }),
