@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import {
   Activity,
   AudioLines,
@@ -24,14 +25,44 @@ import { IncidentsDrawer } from './components/IncidentsDrawer';
 import { QrScannerModal } from './components/QrScannerModal';
 import { SupervisorView } from './components/SupervisorView';
 import { useVoiceSession } from './voice/useVoiceSession';
+import { ProtectedRoute } from './auth/ProtectedRoute';
+import { LoginPage } from './auth/LoginPage';
+import { AccountPage } from './auth/AccountPage';
+import { InvitationPage } from './auth/InvitationPage';
+import {
+  ForgotPasswordPage,
+  ResetPasswordPage,
+} from './auth/PasswordResetPages';
+import { AdminPlaceholder, ForbiddenPage } from './auth/AccessPages';
+import { useAuth } from './auth/AuthProvider';
+import { UserMenu } from './auth/UserMenu';
 
 export function App() {
-  if (window.location.pathname.startsWith('/supervisor'))
-    return <SupervisorView />;
-  return <TechnicianWorkspace />;
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+      <Route path="/accept-invite/:token" element={<InvitationPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route index element={<TechnicianWorkspace />} />
+        <Route path="account" element={<AccountPage />} />
+        <Route path="forbidden" element={<ForbiddenPage />} />
+        <Route element={<ProtectedRoute roles={['supervisor', 'admin']} />}>
+          <Route path="supervisor" element={<SupervisorView />} />
+        </Route>
+        <Route element={<ProtectedRoute roles={['admin']} />}>
+          <Route path="admin/*" element={<AdminPlaceholder />} />
+        </Route>
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
 
 function TechnicianWorkspace() {
+  const auth = useAuth();
+  const membership = auth.session!.memberships[0];
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewIncidentId, setViewIncidentId] = useState<string | null>(null);
   const [isIncidentsDrawerOpen, setIsIncidentsDrawerOpen] = useState(false);
@@ -88,13 +119,15 @@ function TechnicianWorkspace() {
             <TableProperties size={14} />
             <span>Incidents ({incidents.data?.length ?? 0})</span>
           </button>
-          <a
-            className="topbar-action-btn supervisor-role-link"
-            href="/supervisor"
-          >
-            <ShieldCheck size={14} />
-            <span>Supervisor view</span>
-          </a>
+          {auth.hasRole('supervisor', 'admin') && (
+            <a
+              className="topbar-action-btn supervisor-role-link"
+              href="/supervisor"
+            >
+              <ShieldCheck size={14} />
+              <span>Supervisor view</span>
+            </a>
+          )}
           <button
             type="button"
             className="topbar-action-btn topbar-qr-btn"
@@ -106,12 +139,9 @@ function TechnicianWorkspace() {
           </button>
           <span className="plant">
             <Factory size={15} />
-            Plant Alpha
+            {membership?.sites[0]?.name ?? membership?.organization.name}
           </span>
-          <span className="demo-badge">DEMO</span>
-          <span className="avatar" title="Demo Technician">
-            DT
-          </span>
+          <UserMenu />
         </div>
       </header>
       <div className="workspace">

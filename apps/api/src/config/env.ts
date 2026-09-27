@@ -34,6 +34,22 @@ const schema = z.object({
     .max(3_600_000)
     .default(60_000),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(100).default(10),
+  INVITE_TTL_HOURS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 30)
+    .default(72),
+  PASSWORD_RESET_TTL_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(24 * 60)
+    .default(30),
+  AUTH_RETURN_RESET_TOKEN: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   BOOTSTRAP_ADMIN_EMAIL: z.preprocess(
     (value) => (value === '' ? undefined : value),
     z
@@ -42,6 +58,10 @@ const schema = z.object({
       .optional(),
   ),
   BOOTSTRAP_ADMIN_PASSWORD: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(12).max(128).optional(),
+  ),
+  DEMO_USER_PASSWORD: z.preprocess(
     (value) => (value === '' ? undefined : value),
     z.string().min(12).max(128).optional(),
   ),

@@ -47,6 +47,14 @@ async function bootstrap() {
     .setTitle('FieldMate API')
     .setDescription('Equipment context and maintenance operations.')
     .setVersion('0.1.0')
+    .addCookieAuth(
+      env.SESSION_COOKIE_NAME,
+      {
+        type: 'apiKey',
+        in: 'cookie',
+      },
+      'fieldmate-session',
+    )
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
   await app.listen(env.PORT, '0.0.0.0');

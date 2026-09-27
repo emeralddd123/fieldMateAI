@@ -10,6 +10,8 @@ export const sessionCookieOptions: CookieOptions = {
 };
 
 export const clearSessionCookieOptions: CookieOptions = {
-  ...sessionCookieOptions,
-  maxAge: undefined,
+  httpOnly: sessionCookieOptions.httpOnly,
+  secure: sessionCookieOptions.secure,
+  sameSite: sessionCookieOptions.sameSite,
+  path: sessionCookieOptions.path,
 };

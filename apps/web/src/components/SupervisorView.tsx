@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { fetchAssets, fetchIncidents } from '../api';
 import { IncidentDetailModal } from './IncidentDetailModal';
+import { useAuth } from '../auth/AuthProvider';
+import { UserMenu } from '../auth/UserMenu';
 
 const activeStatuses = new Set(['open', 'investigating', 'escalated']);
 const priorityRank = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -28,6 +30,8 @@ const formatDate = (value: string) =>
   }).format(new Date(value));
 
 export function SupervisorView() {
+  const auth = useAuth();
+  const membership = auth.session!.memberships[0];
   const [selectedIncident, setSelectedIncident] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<
@@ -114,12 +118,10 @@ export function SupervisorView() {
             <Wrench size={14} /> Technician view
           </a>
           <span className="plant">
-            <Factory size={15} /> Plant Alpha
+            <Factory size={15} />
+            {membership?.sites[0]?.name ?? membership?.organization.name}
           </span>
-          <span className="demo-badge">DEMO</span>
-          <span className="avatar" title="Demo Supervisor">
-            DS
-          </span>
+          <UserMenu />
         </div>
       </header>
 

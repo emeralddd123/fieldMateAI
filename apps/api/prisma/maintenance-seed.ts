@@ -42,6 +42,15 @@ export async function seedMaintenance(tx: Prisma.TransactionClient) {
         parallelism: 1,
       })
     : null;
+  const demoPassword = process.env.DEMO_USER_PASSWORD?.trim();
+  const demoPasswordHash = demoPassword
+    ? await hash(demoPassword, {
+        type: argon2id,
+        memoryCost: 19456,
+        timeCost: 2,
+        parallelism: 1,
+      })
+    : null;
   for (const user of users)
     await tx.user.upsert({
       where: { id: user.id },
@@ -53,9 +62,13 @@ export async function seedMaintenance(tx: Prisma.TransactionClient) {
       },
       create: {
         ...user,
-        passwordHash: user.role === 'admin' ? bootstrapPasswordHash : null,
-        passwordChangedAt:
-          user.role === 'admin' && bootstrapPasswordHash ? new Date() : null,
+        passwordHash:
+          user.role === 'admin' ? bootstrapPasswordHash : demoPasswordHash,
+        passwordChangedAt: (
+          user.role === 'admin' ? bootstrapPasswordHash : demoPasswordHash
+        )
+          ? new Date()
+          : null,
       },
     });
   if (bootstrapPasswordHash) {
@@ -63,6 +76,18 @@ export async function seedMaintenance(tx: Prisma.TransactionClient) {
       where: { id: users[3]!.id, passwordHash: null },
       data: {
         passwordHash: bootstrapPasswordHash,
+        passwordChangedAt: new Date(),
+      },
+    });
+  }
+  if (demoPasswordHash) {
+    await tx.user.updateMany({
+      where: {
+        id: { in: users.slice(0, 3).map((user) => user.id) },
+        passwordHash: null,
+      },
+      data: {
+        passwordHash: demoPasswordHash,
         passwordChangedAt: new Date(),
       },
     });

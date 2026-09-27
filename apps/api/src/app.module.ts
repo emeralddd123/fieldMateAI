@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { VoiceModule } from './voice/voice.module';
 import { env } from './config/env';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { env } from './config/env';
         { ttl: env.API_RATE_LIMIT_TTL_MS, limit: env.API_RATE_LIMIT_MAX },
       ],
     }),
+    AuthModule,
     PrismaModule,
     AssetsModule,
     MaintenanceModule,

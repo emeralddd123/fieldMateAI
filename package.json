@@ -20,6 +20,7 @@
     "test:e2e:writes": "WRITE_E2E=1 TEST_WEB_URL=http://localhost:55173 playwright test tests/e2e/write-path.spec.ts --project=desktop --workers=1",
     "demo:api": "node scripts/demo.mjs",
     "test:maintenance": "node --env-file=.env.test --test apps/api/test/maintenance.integration.test.mjs",
+    "test:auth": "node --env-file=.env.test --test apps/api/test/auth.integration.test.mjs",
     "test:voice": "pnpm --filter @fieldmate/api build && pnpm --filter @fieldmate/api exec tsx --test test/voice.test.mjs ../web/test/voice.test.mjs",
     "test:voice:live": "node scripts/voice-smoke.mjs",
     "test:voice:live:writes": "node scripts/voice-smoke.mjs --writes"
