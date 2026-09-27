@@ -5,10 +5,20 @@ import { seedMaintenance } from './maintenance-seed';
 import { pathToFileURL } from 'node:url';
 
 export async function seedDemo(tx: Prisma.TransactionClient) {
+  const organization = await tx.organization.upsert({
+    where: { slug: 'fieldmate-demo' },
+    update: { name: 'FieldMate Demo' },
+    create: {
+      id: '00000000-0000-4000-8000-000000000100',
+      name: 'FieldMate Demo',
+      slug: 'fieldmate-demo',
+    },
+  });
   const site = await tx.site.upsert({
     where: { code: 'PLANT-A' },
-    update: {},
+    update: { organizationId: organization.id },
     create: {
+      organizationId: organization.id,
       name: 'Plant Alpha',
       code: 'PLANT-A',
       location: 'Simulated manufacturing plant',
@@ -68,8 +78,12 @@ export async function seedDemo(tx: Prisma.TransactionClient) {
   for (const data of assets) {
     const asset = await tx.asset.upsert({
       where: { assetTag: data.assetTag },
-      update: {},
-      create: { ...data, siteId: site.id },
+      update: { organizationId: organization.id, siteId: site.id },
+      create: {
+        ...data,
+        organizationId: organization.id,
+        siteId: site.id,
+      },
     });
     if (data.assetTag === 'M-204') {
       await tx.component.upsert({

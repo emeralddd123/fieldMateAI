@@ -15,19 +15,45 @@ enum AssetStatus {
   maintenance
 }
 
-model Site {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  code      String   @unique
-  location  String
-  createdAt DateTime @default(now()) @map("created_at")
-  assets    Asset[]
+model Organization {
+  id               String                   @id @default(uuid()) @db.Uuid
+  name             String
+  slug             String                   @unique
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+  archivedAt       DateTime?                @map("archived_at")
+  sites            Site[]
+  assets           Asset[]
+  memberships      OrganizationMembership[]
+  invites          UserInvite[]
+  faultDefinitions FaultDefinition[]
+  procedures       Procedure[]
+  auditEvents      AuditEvent[]
 
+  @@map("organizations")
+}
+
+model Site {
+  id               String                 @id @default(uuid()) @db.Uuid
+  organizationId   String                 @map("organization_id") @db.Uuid
+  organization     Organization           @relation(fields: [organizationId], references: [id])
+  name             String
+  code             String                 @unique
+  location         String
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+  archivedAt       DateTime?              @map("archived_at")
+  assets           Asset[]
+  membershipAccess MembershipSiteAccess[]
+
+  @@index([organizationId])
   @@map("sites")
 }
 
 model Asset {
   id                 String              @id @default(uuid()) @db.Uuid
+  organizationId     String              @map("organization_id") @db.Uuid
+  organization       Organization        @relation(fields: [organizationId], references: [id])
   siteId             String              @map("site_id") @db.Uuid
   site               Site                @relation(fields: [siteId], references: [id])
   assetTag           String              @unique @map("asset_tag")
@@ -44,24 +70,30 @@ model Asset {
   commissionedAt     DateTime?           @map("commissioned_at") @db.Date
   createdAt          DateTime            @default(now()) @map("created_at")
   updatedAt          DateTime            @updatedAt @map("updated_at")
+  archivedAt         DateTime?           @map("archived_at")
+  retiredAt          DateTime?           @map("retired_at")
   components         Component[]
   incidents          Incident[]
   measurements       Measurement[]
   maintenanceRecords MaintenanceRecord[]
 
+  @@index([organizationId])
   @@index([siteId])
   @@map("assets")
 }
 
 model Component {
-  id            String  @id @default(uuid()) @db.Uuid
-  assetId       String  @map("asset_id") @db.Uuid
-  asset         Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  componentType String  @map("component_type")
+  id            String    @id @default(uuid()) @db.Uuid
+  assetId       String    @map("asset_id") @db.Uuid
+  asset         Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  componentType String    @map("component_type")
   manufacturer  String
   model         String
   identifier    String?
-  metadata      Json    @default("{}")
+  metadata      Json      @default("{}")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  archivedAt    DateTime? @map("archived_at")
 
   @@index([assetId])
   @@map("components")
@@ -71,6 +103,23 @@ enum UserRole {
   technician
   supervisor
   admin
+}
+
+enum UserStatus {
+  invited
+  active
+  disabled
+}
+
+enum MembershipStatus {
+  active
+  suspended
+}
+
+enum ProcedureStatus {
+  draft
+  approved
+  withdrawn
 }
 
 enum IncidentPriority {
@@ -101,23 +150,139 @@ enum NoteSource {
 }
 
 model User {
-  id                      String              @id @default(uuid()) @db.Uuid
+  id                      String                   @id @default(uuid()) @db.Uuid
   name                    String
-  email                   String?             @unique
-  role                    UserRole            @default(technician)
-  createdAt               DateTime            @default(now()) @map("created_at")
-  openedIncidents         Incident[]          @relation("OpenedBy")
-  assignedIncidents       Incident[]          @relation("AssignedTo")
+  email                   String?                  @unique
+  role                    UserRole                 @default(technician)
+  passwordHash            String?                  @map("password_hash")
+  status                  UserStatus               @default(active)
+  passwordChangedAt       DateTime?                @map("password_changed_at")
+  lastLoginAt             DateTime?                @map("last_login_at")
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+  openedIncidents         Incident[]               @relation("OpenedBy")
+  assignedIncidents       Incident[]               @relation("AssignedTo")
   notes                   IncidentNote[]
   measurements            Measurement[]
   maintenanceRecords      MaintenanceRecord[]
-  acknowledgedEscalations Escalation[]        @relation("EscalationAcknowledgedBy")
+  acknowledgedEscalations Escalation[]             @relation("EscalationAcknowledgedBy")
+  memberships             OrganizationMembership[]
+  sessions                AuthSession[]
+  invitesCreated          UserInvite[]             @relation("InviteCreatedBy")
+  passwordResetTokens     PasswordResetToken[]
+  approvedProcedures      Procedure[]              @relation("ProcedureApprovedBy")
+  auditEvents             AuditEvent[]             @relation("AuditActor")
 
   @@map("users")
 }
 
+model OrganizationMembership {
+  id             String                 @id @default(uuid()) @db.Uuid
+  organizationId String                 @map("organization_id") @db.Uuid
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String                 @map("user_id") @db.Uuid
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           UserRole               @default(technician)
+  status         MembershipStatus       @default(active)
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  siteAccess     MembershipSiteAccess[]
+  auditEvents    AuditEvent[]           @relation("AuditMembership")
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@map("organization_memberships")
+}
+
+model MembershipSiteAccess {
+  membershipId String                 @map("membership_id") @db.Uuid
+  membership   OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  siteId       String                 @map("site_id") @db.Uuid
+  site         Site                   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  createdAt    DateTime               @default(now()) @map("created_at")
+
+  @@id([membershipId, siteId])
+  @@index([siteId])
+  @@map("membership_site_access")
+}
+
+model AuthSession {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at")
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at")
+  revokedAt  DateTime? @map("revoked_at")
+  ipAddress  String?   @map("ip_address")
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, expiresAt])
+  @@map("auth_sessions")
+}
+
+model UserInvite {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  name           String
+  role           UserRole
+  siteIds        Json         @default("[]") @map("site_ids")
+  tokenHash      String       @unique @map("token_hash")
+  expiresAt      DateTime     @map("expires_at")
+  acceptedAt     DateTime?    @map("accepted_at")
+  revokedAt      DateTime?    @map("revoked_at")
+  createdById    String       @map("created_by") @db.Uuid
+  createdBy      User         @relation("InviteCreatedBy", fields: [createdById], references: [id])
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([organizationId, email])
+  @@index([expiresAt])
+  @@map("user_invites")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model AuditEvent {
+  id                String                  @id @default(uuid()) @db.Uuid
+  organizationId    String                  @map("organization_id") @db.Uuid
+  organization      Organization            @relation(fields: [organizationId], references: [id])
+  actorUserId       String?                 @map("actor_user_id") @db.Uuid
+  actorUser         User?                   @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorMembershipId String?                 @map("actor_membership_id") @db.Uuid
+  actorMembership   OrganizationMembership? @relation("AuditMembership", fields: [actorMembershipId], references: [id], onDelete: SetNull)
+  action            String
+  resourceType      String                  @map("resource_type")
+  resourceId        String?                 @map("resource_id")
+  requestId         String?                 @map("request_id")
+  ipAddress         String?                 @map("ip_address")
+  userAgent         String?                 @map("user_agent")
+  details           Json                    @default("{}")
+  createdAt         DateTime                @default(now()) @map("created_at")
+
+  @@index([organizationId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([resourceType, resourceId])
+  @@map("audit_events")
+}
+
 model Procedure {
   id                         String            @id @default(uuid()) @db.Uuid
+  organizationId             String            @map("organization_id") @db.Uuid
+  organization               Organization      @relation(fields: [organizationId], references: [id])
   key                        String            @unique
   title                      String
   assetType                  String?           @map("asset_type")
@@ -128,27 +293,41 @@ model Procedure {
   summary                    String
   steps                      Json
   approved                   Boolean           @default(false)
+  status                     ProcedureStatus   @default(draft)
+  approvedById               String?           @map("approved_by") @db.Uuid
+  approvedBy                 User?             @relation("ProcedureApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt                 DateTime?         @map("approved_at")
   source                     String
   createdAt                  DateTime          @default(now()) @map("created_at")
+  updatedAt                  DateTime          @updatedAt @map("updated_at")
+  archivedAt                 DateTime?         @map("archived_at")
   faults                     FaultDefinition[]
 
+  @@index([organizationId])
+  @@index([approvedById])
   @@map("procedures")
 }
 
 model FaultDefinition {
-  id           String     @id @default(uuid()) @db.Uuid
-  manufacturer String
-  model        String
-  faultCode    String     @map("fault_code")
-  title        String
-  description  String
-  safetyLevel  String     @map("safety_level")
-  source       String
-  procedureId  String?    @map("procedure_id") @db.Uuid
-  procedure    Procedure? @relation(fields: [procedureId], references: [id])
-  createdAt    DateTime   @default(now()) @map("created_at")
+  id                  String       @id @default(uuid()) @db.Uuid
+  organizationId      String       @map("organization_id") @db.Uuid
+  organization        Organization @relation(fields: [organizationId], references: [id])
+  manufacturer        String
+  model               String
+  faultCode           String       @map("fault_code")
+  normalizedFaultCode String       @map("normalized_fault_code")
+  title               String
+  description         String
+  safetyLevel         String       @map("safety_level")
+  source              String
+  procedureId         String?      @map("procedure_id") @db.Uuid
+  procedure           Procedure?   @relation(fields: [procedureId], references: [id])
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+  archivedAt          DateTime?    @map("archived_at")
 
   @@unique([manufacturer, model, faultCode])
+  @@index([organizationId])
   @@map("fault_definitions")
 }
 

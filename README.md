@@ -224,6 +224,12 @@ change priority, and add an attributed note without resolving the technician's
 incident. Repair completion remains the only operation that resolves the
 incident and its escalation. See [docs/supervisor.md](docs/supervisor.md).
 
+The authentication and administration rollout is tracked in
+[docs/auth-rbac-admin-implementation-plan.md](docs/auth-rbac-admin-implementation-plan.md).
+Phase 1 adds the organization, membership, session, invitation, audit, request
+security, and bootstrap foundation. Deployment and environment details are in
+[docs/security-foundation.md](docs/security-foundation.md).
+
 ### Demo Reset Command
 
 To reset the database back to the canonical pre-demo state (clean M-204, only 2 historical repairs, no `INC-1048`):

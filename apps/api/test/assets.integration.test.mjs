@@ -14,6 +14,22 @@ test('health verifies database availability', async () => {
   });
 });
 
+test('security middleware returns request IDs and baseline headers', async () => {
+  const supplied = await fetch(`${base}/health`, {
+    headers: { 'x-request-id': 'integration-request-123' },
+  });
+  assert.equal(supplied.headers.get('x-request-id'), 'integration-request-123');
+  assert.equal(supplied.headers.get('x-content-type-options'), 'nosniff');
+
+  const replaced = await fetch(`${base}/api/v1/assets/not-a-uuid`, {
+    headers: { 'x-request-id': 'invalid request id' },
+  });
+  const requestId = replaced.headers.get('x-request-id');
+  assert.match(requestId, /^[0-9a-f-]{36}$/i);
+  assert.notEqual(requestId, 'invalid request id');
+  assert.equal((await replaced.json()).requestId, requestId);
+});
+
 test('seeded assets include the canonical motor and numeric nominal values', async () => {
   const { status, body } = await get('/api/v1/assets');
   assert.equal(status, 200);

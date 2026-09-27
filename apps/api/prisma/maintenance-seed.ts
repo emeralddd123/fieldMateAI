@@ -1,4 +1,5 @@
 import type { Prisma } from '../src/generated/prisma/client';
+import { argon2id, hash } from 'argon2';
 
 export async function seedMaintenance(tx: Prisma.TransactionClient) {
   const motor = await tx.asset.findUniqueOrThrow({
@@ -8,29 +9,95 @@ export async function seedMaintenance(tx: Prisma.TransactionClient) {
     {
       id: '00000000-0000-4000-8000-000000000001',
       name: 'Demo Technician',
+      email: 'technician@fieldmate.local',
       role: 'technician' as const,
     },
     {
       id: '00000000-0000-4000-8000-000000000002',
       name: 'Ibrahim Musa',
+      email: 'supervisor@fieldmate.local',
       role: 'supervisor' as const,
     },
     {
       id: '00000000-0000-4000-8000-000000000003',
       name: 'Grace Okafor',
+      email: 'grace@fieldmate.local',
       role: 'technician' as const,
     },
+    {
+      id: '00000000-0000-4000-8000-000000000004',
+      name: 'FieldMate Admin',
+      email:
+        process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase() ||
+        'admin@fieldmate.local',
+      role: 'admin' as const,
+    },
   ];
+  const bootstrapPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD?.trim();
+  const bootstrapPasswordHash = bootstrapPassword
+    ? await hash(bootstrapPassword, {
+        type: argon2id,
+        memoryCost: 19456,
+        timeCost: 2,
+        parallelism: 1,
+      })
+    : null;
   for (const user of users)
     await tx.user.upsert({
       where: { id: user.id },
-      update: { name: user.name, role: user.role },
-      create: user,
+      update: {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: 'active',
+      },
+      create: {
+        ...user,
+        passwordHash: user.role === 'admin' ? bootstrapPasswordHash : null,
+        passwordChangedAt:
+          user.role === 'admin' && bootstrapPasswordHash ? new Date() : null,
+      },
     });
+  if (bootstrapPasswordHash) {
+    await tx.user.updateMany({
+      where: { id: users[3]!.id, passwordHash: null },
+      data: {
+        passwordHash: bootstrapPasswordHash,
+        passwordChangedAt: new Date(),
+      },
+    });
+  }
+  for (const user of users) {
+    const membership = await tx.organizationMembership.upsert({
+      where: {
+        organizationId_userId: {
+          organizationId: motor.organizationId,
+          userId: user.id,
+        },
+      },
+      update: { role: user.role, status: 'active' },
+      create: {
+        organizationId: motor.organizationId,
+        userId: user.id,
+        role: user.role,
+      },
+    });
+    await tx.membershipSiteAccess.upsert({
+      where: {
+        membershipId_siteId: {
+          membershipId: membership.id,
+          siteId: motor.siteId,
+        },
+      },
+      update: {},
+      create: { membershipId: membership.id, siteId: motor.siteId },
+    });
+  }
   const procedure = await tx.procedure.upsert({
     where: { key: 'vfd-undervoltage-check' },
     update: {},
     create: {
+      organizationId: motor.organizationId,
       key: 'vfd-undervoltage-check',
       title: 'VFD Undervoltage Diagnostic Check',
       manufacturer: 'Siemens',
@@ -38,6 +105,9 @@ export async function seedMaintenance(tx: Prisma.TransactionClient) {
       safetyLevel: 'electrical',
       safetyConfirmationRequired: true,
       approved: true,
+      status: 'approved',
+      approvedById: users[3]!.id,
+      approvedAt: new Date(),
       summary:
         'Approved high-level demo checks for a recurring undervoltage condition.',
       source:
@@ -61,9 +131,11 @@ export async function seedMaintenance(tx: Prisma.TransactionClient) {
     },
     update: {},
     create: {
+      organizationId: motor.organizationId,
       manufacturer: 'Siemens',
       model: 'SINAMICS G120 (demo reference)',
       faultCode: 'F0003',
+      normalizedFaultCode: 'F0003',
       title: 'Undervoltage',
       description:
         'Drive detected voltage below the configured operating condition.',
