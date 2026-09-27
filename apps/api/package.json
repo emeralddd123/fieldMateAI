@@ -13,6 +13,7 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "seed": "prisma db seed",
     "prisma:seed": "prisma db seed",
+    "admin:create": "node scripts/create-admin.mjs",
     "test:integration": "node --test test/assets.integration.test.mjs",
     "seed:reset": "tsx prisma/reset.ts",
     "test:maintenance": "node --test test/maintenance.integration.test.mjs"
