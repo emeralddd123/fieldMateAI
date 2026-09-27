@@ -74,6 +74,10 @@ test('@write completes the canonical maintenance write path through voice tools'
     name: string,
     args: Record<string, unknown>,
     expectedTitle: string,
+    options: {
+      interruptBeforeConfirm?: boolean;
+      expectedDetail?: string | RegExp;
+    } = {},
   ) => {
     const callId = `write-${++sequence}`;
     const previousCount = results.length;
@@ -88,19 +92,47 @@ test('@write completes the canonical maintenance write path through voice tools'
         arguments: args,
       }),
     );
-    socket!.send(
-      JSON.stringify({
-        type: 'reply.done',
-        reply_id: `reply-${callId}`,
-        status: 'completed',
-      }),
-    );
+    if (!options.interruptBeforeConfirm)
+      socket!.send(
+        JSON.stringify({
+          type: 'reply.done',
+          reply_id: `reply-${callId}`,
+          status: 'completed',
+        }),
+      );
 
     const review = page.getByRole('region', {
       name: 'Review maintenance write',
     });
     await expect(review).toBeVisible();
     await expect(review.getByRole('heading')).toHaveText(expectedTitle);
+    if (options.expectedDetail)
+      await expect(review).toContainText(options.expectedDetail);
+    if (options.interruptBeforeConfirm) {
+      socket!.send(JSON.stringify({ type: 'input.speech.started' }));
+      socket!.send(
+        JSON.stringify({
+          type: 'reply.done',
+          reply_id: `reply-${callId}`,
+          status: 'interrupted',
+        }),
+      );
+      await expect(review).toBeVisible();
+      await expect(review.getByRole('heading')).toHaveText(expectedTitle);
+      socket!.send(
+        JSON.stringify({
+          type: 'reply.started',
+          reply_id: `follow-up-${callId}`,
+        }),
+      );
+      socket!.send(
+        JSON.stringify({
+          type: 'reply.done',
+          reply_id: `follow-up-${callId}`,
+          status: 'completed',
+        }),
+      );
+    }
     await review.getByRole('button', { name: 'Confirm and save' }).click();
     await expect.poll(() => results.length).toBe(previousCount + 1);
     const response = results.at(-1)!;
@@ -135,6 +167,7 @@ test('@write completes the canonical maintenance write path through voice tools'
       measurement_ids: [reading.id],
     },
     'Review new incident',
+    { interruptBeforeConfirm: true },
   );
   expect(incident.incidentNumber).toBe('INC-1048');
 
@@ -219,6 +252,41 @@ test('@write completes the canonical maintenance write path through voice tools'
       expect.objectContaining({ value: 12.4, unit: 'A' }),
     ]),
   );
+
+  const unknownFault = await callWrite(
+    'create_incident',
+    {
+      asset_id: asset.id,
+      title: 'Unrecognized drive fault',
+      description: 'Drive displayed reported code X9999.',
+      fault_code: 'X9999',
+      priority: 'high',
+      asset_status: 'warning',
+    },
+    'Review new incident',
+    { expectedDetail: /X9999 · unverified for this equipment/i },
+  );
+  expect(unknownFault.incidentNumber).toBe('INC-1049');
+
+  const unknownEscalation = await callWrite(
+    'escalate_incident',
+    {
+      incident_id: unknownFault.id,
+      reason: 'No verified definition or approved procedure exists.',
+      severity: 'supervisor_review',
+    },
+    'Review incident escalation',
+    { expectedDetail: /X9999 · unverified for this equipment/i },
+  );
+  expect(unknownEscalation.status).toBe('escalated');
+  expect(
+    (await (await request.get(`/api/v1/incidents/${unknownFault.id}`)).json())
+      .data.faultCode,
+  ).toBe('X9999');
+  expect(
+    (await (await request.get(`/api/v1/assets/${asset.id}`)).json()).data
+      .status,
+  ).toBe('warning');
 
   await page.getByRole('button', { name: 'End session' }).click();
   await expect(

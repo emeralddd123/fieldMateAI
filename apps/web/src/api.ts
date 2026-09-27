@@ -138,6 +138,22 @@ export async function fetchVoiceProcedure(
   ).data;
 }
 
+async function describeIncidentFault(
+  assetId: string,
+  code: string | undefined | null,
+  signal: AbortSignal,
+) {
+  if (!code) return 'Fault: Not specified';
+  try {
+    const fault = await fetchVoiceFault(assetId, code, signal);
+    return fault.found
+      ? `Fault: ${fault.faultCode} · verified ${fault.title} (${fault.source})`
+      : `Fault: ${fault.faultCode} · unverified for this equipment; save and escalation retain it only as reported.`;
+  } catch {
+    return `Fault: ${code} · verification unavailable; save and escalation retain it only as reported.`;
+  }
+}
+
 export async function previewVoiceWrite(
   request: import('@fieldmate/shared').WriteRequest,
   signal: AbortSignal,
@@ -149,6 +165,7 @@ export async function previewVoiceWrite(
     title: string;
     status: string;
     assetId: string;
+    faultCode: string | null;
   } | null = null;
   if ('incident_id' in request.args && request.args.incident_id) {
     const incRes = await fetchVoiceKnowledge(
@@ -184,7 +201,7 @@ export async function previewVoiceWrite(
     details.push(
       `Title: ${draft.title}`,
       `Description: ${draft.description}`,
-      `Fault: ${draft.fault_code ?? 'Not specified'}`,
+      await describeIncidentFault(asset.id, draft.fault_code, signal),
       `Priority: ${draft.priority}`,
       `Equipment status: ${asset.status === 'down' ? 'down (retained)' : draft.asset_status}`,
     );
@@ -256,6 +273,11 @@ export async function previewVoiceWrite(
       );
     details.push(
       `Incident: ${incidentData.incidentNumber} · ${incidentData.title}`,
+      await describeIncidentFault(
+        incidentData.assetId,
+        incidentData.faultCode,
+        signal,
+      ),
       `Reason: ${request.args.reason}`,
       `Severity: ${request.args.severity ?? 'supervisor_review'}`,
     );

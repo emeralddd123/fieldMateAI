@@ -341,6 +341,50 @@ test('slow tools hold results during a new turn and drop results after interrupt
   }
 });
 
+test('an interrupted reply keeps a maintenance write review pending through a follow-up turn', async (t) => {
+  let resolve, signal;
+  const f = fixture(t, {
+    executeTool: (_name, _args, value) => {
+      signal = value;
+      return new Promise((done) => {
+        resolve = done;
+      });
+    },
+  });
+  await f.session.connect();
+  f.socket.open();
+  f.socket.event({ type: 'session.ready', session_id: 'session' });
+  f.socket.event({ type: 'reply.started', reply_id: 'incident-reply' });
+  f.socket.event({
+    type: 'tool.call',
+    call_id: 'incident-call',
+    name: 'create_incident',
+    arguments: {},
+  });
+  f.socket.event({
+    type: 'reply.done',
+    reply_id: 'incident-reply',
+    status: 'interrupted',
+  });
+  assert.equal(signal.aborted, false);
+  resolve({ result: { success: true }, isError: false, summary: 'Saved' });
+  await new Promise(setImmediate);
+  assert.equal(
+    f.sent.filter((event) => event.type === 'tool.result').length,
+    0,
+  );
+
+  f.socket.event({ type: 'reply.started', reply_id: 'follow-up' });
+  f.socket.event({
+    type: 'reply.done',
+    reply_id: 'follow-up',
+    status: 'completed',
+  });
+  const result = f.sent.find((event) => event.type === 'tool.result');
+  assert.equal(result.call_id, 'incident-call');
+  assert.equal(f.session.snapshot.tools[0].status, 'completed');
+});
+
 test('ending a lookup aborts the request and ignores late completion', async (t) => {
   let resolve, selected;
   const f = fixture(t, {

@@ -213,6 +213,13 @@ export interface ToolActivity {
   source?: string;
   details?: string[];
 }
+const maintenanceWriteTools = new Set([
+  'record_measurement',
+  'create_incident',
+  'resolve_incident',
+  'escalate_incident',
+  'add_incident_note',
+]);
 // Results may finish before or after reply.done. Only flush at an idle reply boundary.
 export class VoiceToolQueue {
   private pending = new Map<
@@ -265,7 +272,7 @@ export class VoiceToolQueue {
     this.idle = false;
   }
   done(interrupted: boolean) {
-    if (interrupted) this.cancel();
+    if (interrupted) this.interrupt();
     else {
       this.idle = true;
       this.flush();
@@ -304,6 +311,21 @@ export class VoiceToolQueue {
       );
     }
   }
+  private interrupt() {
+    this.idle = false;
+    for (const [id, entry] of this.pending) {
+      // An on-screen maintenance review belongs to the technician. Keep it
+      // actionable while they ask a follow-up question during the voice turn.
+      if (maintenanceWriteTools.has(entry.name)) continue;
+      entry.abort.abort();
+      this.changed({
+        id,
+        status: 'cancelled',
+        summary: 'Lookup cancelled.',
+      });
+      this.pending.delete(id);
+    }
+  }
   cancel() {
     this.idle = false;
     for (const [id, entry] of this.pending) {
@@ -311,8 +333,8 @@ export class VoiceToolQueue {
       this.changed({
         id,
         status: 'cancelled',
-        summary: ['record_measurement', 'create_incident'].includes(entry.name)
-          ? 'Voice request stopped. Submitted saves may still finish; check Maintenance save results.'
+        summary: maintenanceWriteTools.has(entry.name)
+          ? 'Voice review stopped. Confirmed saves may still finish; check Maintenance save results.'
           : 'Lookup cancelled.',
       });
     }
