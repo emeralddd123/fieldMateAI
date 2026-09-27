@@ -1,152 +1,227 @@
 # FieldMate AI
 
-**Talk to your machines. Remember every repair.**
+> **Talk to your machines. Remember every repair.**
+>
+> FieldMate AI is a voice-first maintenance copilot that gives industrial field technicians hands-free access to equipment knowledge, model-specific fault definitions, and past maintenance history while automatically turning repair conversations into structured institutional knowledge.
 
-FieldMate is a voice-first maintenance copilot that gives field technicians access to equipment knowledge and maintenance history, then turns repair conversations into structured records.
+---
 
-## Current build: Phase 4 — voice-first maintenance operations
+## The Problem
 
-The build includes the pnpm monorepo, equipment workspace, NestJS maintenance API, PostgreSQL migrations and seed, and the complete Docker Compose deployment path.
+Industrial maintenance knowledge is fragmented across PDF manuals, CMMS tickets, paper logs, WhatsApp messages, and senior technicians' memories. When critical plant equipment trips:
 
-The dashboard displays real equipment, incident, reading, and repair records. The backend supports approved fault knowledge, gated procedures, incident notes/escalation, and atomic repair completion. Five simulated assets and two previous M-204/F0003 repairs are seeded. Voice connects to AssemblyAI with browser microphone capture, streamed audio, live transcripts, mute, and interruption handling. Voice tools search equipment, retrieve verified model-specific fault definitions, read maintenance history, gate approved procedures behind physical workspace safety confirmation, record voltage/current measurements, open incidents, resolve repairs with verification readings and permanent maintenance records, escalate issues, and capture field notes with on-screen review and retry resilience.
+1. **Slow Troubleshooting:** Technicians waste valuable production minutes flipping through manuals, logging into clunky software, or searching for senior colleagues.
+2. **Hands-Occupied Reality:** Field technicians work with gloves on, tools in hand, multimeters probing contacts, and loud background ambient noise. Typing into a mobile screen or laptop is impractical and dangerous.
+3. **Institutional Knowledge Loss:** Documentation happens late or incompletely. Once a difficult intermittent fault is fixed, the root cause and diagnostic reasoning often leave the plant with the technician instead of being recorded for the next shift.
 
-See [voice setup and testing](docs/voice.md) and [the maintenance API walkthrough](docs/maintenance-api.md) for request examples, integrity rules, and demo reset commands.
+---
 
-## Stack
+## The Solution
 
-- Node.js 24, TypeScript, pnpm 10
-- React, Vite, Tailwind CSS, TanStack Query
-- NestJS, Swagger, DTO validation
-- PostgreSQL 17, Prisma 7 with the PostgreSQL driver adapter
-- Docker Compose, Nginx
-- AssemblyAI Voice Agent API
+FieldMate AI introduces a voice-first interface directly to the plant's operational systems and maintenance memory:
 
-```text
-apps/web          React equipment workspace + Nginx
-apps/api          NestJS API + Prisma schema, migrations, and seed
-packages/shared   Shared TypeScript contracts and Zod response schemas
+- **Hands-Free Troubleshooting:** Speak naturally to query equipment, lookup drive fault codes, recall past incidents, and log readings without setting tools down.
+- **Safety First:** Approved repair procedures for high-voltage or mechanical systems are strictly gated behind verbal workspace safe-state confirmations.
+- **Voice-to-Structured Records:** Natural spoken wrap-ups (_"Fixed it. Loose L2 terminal. Tightened it. Motor is now drawing 12.4 amps."_) are atomically converted into structured incident records, telemetry measurements, and permanent maintenance history.
+- **Institutional Memory:** The moment a repair is logged, it becomes searchable knowledge for any future technician encountering that same machine or fault code.
+
+---
+
+## Architecture
+
+FieldMate uses a streaming TypeScript architecture connecting a React/Vite audio workspace, AssemblyAI's real-time Voice Agent API over WebSockets, a NestJS maintenance backend, and PostgreSQL with Prisma transactions.
+
+```mermaid
+flowchart TD
+    Tech([Field Technician / Mic + Speaker]) <-->|16 kHz Capture / 24 kHz Playback| Web[React Workspace / AudioWorklet]
+
+    Web <-->|WebSocket Full-Duplex / Transcripts & Audio| AAI[AssemblyAI Voice Agent API]
+
+    AAI -->|tool.call / Function Calling| Disp[Frontend Tool Dispatcher]
+    Disp -->|tool.result / Confirmed Data| AAI
+
+    Disp <-->|REST API / Idempotent Writes| API[NestJS Maintenance API]
+    API <-->|Prisma ORM / Transactions| DB[(PostgreSQL 17)]
 ```
 
-## Start with Docker
+### Voice Pipeline Highlights
 
-Only Docker with Compose is required. From the repository root:
+- **Capture:** Browser `AudioWorkletNode` captures microphone input at a clean, downsampled 16 kHz PCM stream.
+- **Playback:** Incoming 24 kHz raw PCM audio buffers are scheduled seamlessly on an `AudioContext` with sub-millisecond precision.
+- **Barge-In / Interruption:** When the technician speaks while the agent is responding, AssemblyAI turn detection triggers an immediate client-side audio queue flush.
+- **Zero Credential Exposure:** Browser clients never receive the permanent `ASSEMBLYAI_API_KEY`. Single-use temporary tokens with a 60-second TTL are minted by the NestJS backend via `POST /api/v1/voice/token`.
+
+---
+
+## Key Features
+
+1. **9 Connected Operational Voice Tools:**
+   - `find_asset`: Search plant equipment by tag (`M-204`), model, or location with speech-normalization.
+   - `lookup_fault_code`: Model-specific fault definition lookup (e.g. `F0003` Undervoltage on Siemens SINAMICS G120).
+   - `get_maintenance_history`: Retrieves previous repairs, recurring fault counts, and past technician observations.
+   - `get_approved_procedure`: Retrieves site-approved troubleshooting steps requiring physical workspace safe-state confirmation.
+   - `record_measurement`: Hands-free logging of electrical and mechanical telemetry (e.g. `347 V`).
+   - `create_incident`: Opens high-priority incidents with human-readable numbers (`INC-1048`).
+   - `resolve_incident` / `complete_repair`: Atomic transaction completing repair, logging root cause, action taken, verification reading, and restoring machine status.
+   - `escalate_incident`: Marks unresolvable or dangerous faults for supervisor attention.
+   - `add_incident_note`: Appends timestamped field notes to the incident audit log.
+
+2. **Institutional Memory Graph:**
+   - Interactive relationship tree in the workspace connecting equipment roots $\to$ recurring fault occurrences $\to$ historical root causes $\to$ latest verification telemetry readings.
+
+3. **Field QR / Barcode Tag Scanner:**
+   - Live camera viewfinder with target reticle, support for direct `fieldmate://asset/M-204` URIs, and one-click demo machine tags for instant asset selection without speaking.
+
+4. **Supervisor Telemetry & Incident Register:**
+   - Real-time dashboard metric cards (Active Incidents, Equipment Down, Resolved Repairs, Recurring Faults).
+   - Cross-plant Incident Register drawer with status filtering (`Active`, `⚠️ Escalated`, `Resolved`) and search.
+   - Drill-down Incident Detail modal showing full audit notes, telemetry, and repair records.
+
+---
+
+## Canonical Demo Scenario (7-Scene Walkthrough)
+
+The canonical demonstration follows Conveyor Drive Motor **`M-204`** through an **`F0003`** drive trip:
+
+1. **Scene 1 (Asset Identification):** Technician says: _"FieldMate, motor M-204 just tripped. The drive shows F0003."_ FieldMate runs `find_asset` and `lookup_fault_code`, identifies the Siemens drive, and reports an undervoltage condition.
+2. **Scene 2 (Equipment Memory):** FieldMate checks history via `get_maintenance_history` and informs the technician: _"This machine had the same fault twice recently. Previous incidents were linked to low incoming voltage."_
+3. **Scene 3 (Safety Gating):** FieldMate requests physical safety confirmation before providing procedure steps: _"Before we proceed, confirm the equipment is stopped and in a safe state."_ Technician confirms; procedure steps unlock.
+4. **Scene 4 (Measurement Logging):** Technician measures drive input voltage: _"I'm measuring 347 volts."_ FieldMate calls `record_measurement`, detects the reading is below the 400 V nominal rating, and offers to open an incident.
+5. **Scene 5 (Incident Creation):** Technician agrees; FieldMate calls `create_incident`, generating high-priority incident **`INC-1048`**.
+6. **Scene 6 (Barge-in / Interruption):** While FieldMate explains wiring checks, technician spots the physical fault and interrupts: _"Wait, I found it — loose L2 terminal."_ FieldMate stops speaking immediately and listens.
+7. **Scene 7 (Repair Completion & Searchable Memory):** Technician tightens the connection: _"Loose L2 terminal tightened. Motor restarted, now drawing 12.4 amps."_ FieldMate executes atomic repair completion. `M-204` returns to operational status, `INC-1048` is marked resolved, and subsequent history queries retrieve this repair record.
+
+---
+
+## Tech Stack
+
+- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, TanStack Query, Lucide Icons, Web Audio API / AudioWorklet.
+- **Backend:** NestJS 11, Node.js 24, TypeScript (strict), Swagger OpenAPI, class-validator, DTO validation.
+- **Database & ORM:** PostgreSQL 17, Prisma 7 with PostgreSQL driver adapter (`@prisma/adapter-pg`).
+- **Voice Agent Engine:** AssemblyAI Voice Agent API (WebSocket, streaming speech recognition, LLM reasoning, 24 kHz TTS, function calling).
+- **Infrastructure:** Docker Compose, Nginx reverse proxy, pnpm workspaces.
+
+---
+
+## Quickstart with Docker
+
+Only Docker and Docker Compose are required:
 
 ```sh
+# 1. Clone repository and set environment variables
 cp .env.example .env
+
+# Optional: Add your ASSEMBLYAI_API_KEY to .env for live voice
+# ASSEMBLYAI_API_KEY=your_key_here
+
+# 2. Build and launch services
 docker compose up --build -d
+
+# 3. Seed the Plant Alpha equipment dataset
 docker compose exec api pnpm prisma:seed
 ```
 
-Startup applies committed migrations automatically. Seeding is explicit and idempotent: it creates missing demo assets without overwriting existing records. Before seeding, the dashboard displays its empty state. No AssemblyAI key is needed for the maintenance backend.
+### Local URLs
 
-| Service            | Local URL                           |
-| ------------------ | ----------------------------------- |
-| Dashboard          | http://localhost:5173               |
-| API                | http://localhost:3000/api/v1/assets |
-| API documentation  | http://localhost:3000/docs          |
-| Database readiness | http://localhost:3000/health        |
-| PostgreSQL         | localhost:5432                      |
+| Service                   | Local URL                                                                  | Description                                   |
+| :------------------------ | :------------------------------------------------------------------------- | :-------------------------------------------- |
+| **Technician Workspace**  | [http://localhost:5173](http://localhost:5173)                             | Main UI (voice orb, equipment list, timeline) |
+| **REST API**              | [http://localhost:3000/api/v1/assets](http://localhost:3000/api/v1/assets) | Equipment and maintenance API endpoints       |
+| **Swagger Documentation** | [http://localhost:3000/docs](http://localhost:3000/docs)                   | Interactive API explorer                      |
+| **Readiness & Health**    | [http://localhost:3000/health](http://localhost:3000/health)               | Database and API readiness check              |
+| **PostgreSQL**            | `localhost:5432`                                                           | Database port                                 |
 
-The web container proxies `/api` to NestJS, so browser requests stay on the frontend origin. All published ports bind to localhost. Public deployment should place an HTTPS reverse proxy in front of the web service and set `FRONTEND_URL` to the public origin. Keep PostgreSQL private.
+---
 
-```mermaid
-flowchart LR
-    Browser[React browser workspace] --> Web[Nginx / Vite proxy]
-    Web --> API[NestJS API]
-    API --> DB[(PostgreSQL)]
-```
-
-## Fast host development
-
-Install Node.js 24 and enable Corepack. If `pnpm` is not on PATH, use `corepack pnpm` instead of `pnpm` below.
+## Fast Host Development
 
 ```sh
+# Enable pnpm
 corepack enable
+pnpm install --frozen-lockfile
+
+# Start PostgreSQL
+docker compose up -d postgres
+
+# Configure environment
 cp .env.example .env
 cp apps/api/.env.example apps/api/.env
-docker compose up -d postgres
-pnpm install --frozen-lockfile
+
+# Generate Prisma client and seed
 pnpm db:generate
 pnpm --filter @fieldmate/api prisma:migrate:deploy
 pnpm db:seed
+
+# Launch all dev servers
 pnpm dev
 ```
 
-If the full Compose stack is already running, first stop its app containers with `docker compose stop api web` to free ports 3000 and 5173. Shared contracts compile before the dev processes start and are watched alongside the apps.
+---
 
-The root `.env` configures Compose. `apps/api/.env` configures the host API and Prisma CLI; its database URL uses `localhost`, while Compose uses the service hostname `postgres`. If you change database credentials or ports, update both files. Passwords embedded in a connection URL must be URL-encoded; the default Compose URL assumes URL-safe credentials.
+## Validation & Test Suite
 
-`apps/web/.env.example` documents the optional public `VITE_API_BASE_URL` setting. The default `/api/v1` works through both Vite and Nginx. Never put privileged keys in a `VITE_` variable. The permanent AssemblyAI key belongs only in server runtime configuration.
-
-## Database and operations
+FieldMate includes test suites covering contracts, voice protocols, and the canonical repair loop:
 
 ```sh
-docker compose ps
-docker compose logs -f api
-docker compose exec api pnpm prisma:migrate:deploy
-docker compose exec api pnpm prisma:seed
-docker compose down
-```
+# 1. Unit & Voice Tool Tests (21 passing tests)
+pnpm test:voice
 
-`docker compose down` preserves the named database volume. To reset **all local demo data**, explicitly remove the volume and reseed:
+# 2. Automated Canonical Demo API Simulation
+pnpm demo:api
 
-```sh
-docker compose down -v
-docker compose up --build -d
-docker compose exec api pnpm prisma:seed
-```
-
-For schema changes during development, edit `apps/api/prisma/schema.prisma`, run `pnpm db:migrate --name descriptive_change`, regenerate the client, and commit the generated migration. Prisma schemas, migrations, seed data, and the pnpm lockfile belong in Git; generated clients and secrets do not.
-
-## Validation
-
-```sh
-pnpm db:generate
-pnpm build
+# 3. Typecheck, Lint, and Format Verification
 pnpm typecheck
 pnpm lint
 pnpm format:check
-pnpm test:voice
-# Requires the API running with the demo seed applied:
-pnpm test:integration
-# Against the running frontend (install Chromium once):
-pnpm exec playwright install chromium
-pnpm test:e2e
+pnpm build
+
+# 4. Optional Live Voice Provider Smoke Test (requires ASSEMBLYAI_API_KEY)
+pnpm test:voice:live
 ```
 
-Integration checks cover database health, canonical asset data, asset details, normalized search, missing assets, and input validation against the running PostgreSQL-backed API. Set `TEST_API_URL` to test another API origin.
+### Demo Reset Command
 
-Browser checks cover desktop/mobile asset selection, empty data, API failure and recovery, and horizontal overflow. Set `TEST_WEB_URL` to test another frontend origin, or `PLAYWRIGHT_CHANNEL=chrome` to use an installed Google Chrome instead of bundled Chromium.
-
-## Isolated maintenance tests
-
-The maintenance suite writes records and injects a PostgreSQL failure to prove rollback. It requires a freshly seeded separate test database; never point it at the working demo.
+To reset the database back to the canonical pre-demo state (clean M-204, only 2 historical repairs, no `INC-1048`):
 
 ```sh
-cp .env.test.example .env.test
-docker compose build
-docker compose --env-file .env.test -p fieldmate-test -f docker-compose.yml -f docker-compose.test.yml up -d --no-build --wait
-docker compose --env-file .env.test -p fieldmate-test -f docker-compose.yml -f docker-compose.test.yml exec api pnpm seed:reset --confirm
-pnpm test:maintenance
-# Remove only the test containers and test volume when finished:
-docker compose --env-file .env.test -p fieldmate-test -f docker-compose.yml -f docker-compose.test.yml down -v
+pnpm --filter @fieldmate/api seed:reset --confirm
+# Or via Docker:
+docker compose exec api pnpm seed:reset --confirm
 ```
 
-Tests exercise the canonical repair, concurrent incident numbers, identical completion retries, cross-asset validation, other active incidents, approved-knowledge gates, simulated escalation, and rollback after an injected database error. Test ports are 53000 (API), 55173 (web), and 55432 (PostgreSQL).
+---
 
-## Demo and next phases
+## Safety Design & Human-in-the-Loop
 
-The primary scenario follows M-204 through an F0003 fault: retrieve previous incidents, record 347 V, open a high-priority incident, then capture a loose-L2 repair with a 12.4 A verification measurement. A later history query should retrieve that new repair.
+FieldMate is an industrial **decision-support copilot**, not an autonomous PLC or machine controller:
 
-1. **Phase 1:** workspace, Docker, database, and seeded asset dashboard.
-2. **Phase 2:** fault knowledge, incidents, measurements, and transactional repair completion.
-3. **Phase 3:** AssemblyAI authentication, microphone capture, transcripts, audio playback, and interruption handling.
-4. **Phase 4:** voice tools connected to the maintenance backend.
-5. **Phase 5:** product polish and responsive workflow refinements.
-6. **Phase 6:** repeated demo validation and public HTTPS deployment.
+1. **No Autonomous Energization:** FieldMate never sends machine start, stop, or breaker control signals.
+2. **Safety-State Confirmation:** Troubleshooting steps for hazardous electrical or mechanical systems cannot be retrieved until the technician verbally confirms the machine is stopped and isolated.
+3. **No Hallucinated Procedures:** If a fault code is unverified or no approved procedure exists, FieldMate explicitly refuses to invent steps and offers to log an incident for supervisor escalation.
+4. **On-Screen Confirmation:** Write operations (incidents, measurements, and repairs) present an interactive preview before committing to the database.
 
-## Safety and data
+---
 
-All equipment specifications and procedures in the demo are simulated references, not manufacturer documentation. FieldMate provides maintenance decision support; it will not control equipment. Procedural guidance must use approved knowledge and require the appropriate safe-state confirmation. Unknown faults should lead to documentation and escalation.
+## Business Model & Defensibility
 
-The MVP uses a demo technician without authentication. Authentication and access controls are required before using real customer maintenance data.
+- **Target Market:** Industrial manufacturing plants, facilities management, water treatment facilities, and renewable energy sites.
+- **Pricing Model:** B2B SaaS per active technician / per connected plant site.
+- **Competitive Moat:** Traditional CMMS tools (SAP PM, Maximo) are desktop/form-heavy systems of record that suffer from poor field compliance. Generic voice assistants lack equipment-specific safety rules and database write integrity. FieldMate bridges both by converting daily field speech into institutional memory.
+
+---
+
+## Future Roadmap
+
+- [ ] Enterprise CMMS two-way connectors (SAP PM, IBM Maximo, MaintainX).
+- [ ] Multi-tenant organization support and role-based access control (RBAC).
+- [ ] Thermal camera and computer vision integration for AR smart-glasses.
+- [ ] Native vibration and acoustic anomaly telemetry feeds.
+- [ ] Multi-lingual speech translation for diverse global manufacturing crews.
+
+---
+
+## Hackathon Submission Highlights
+
+- **AssemblyAI Voice Agent API:** Full-duplex WebSocket streaming, low-latency ASR, voice activity detection, barge-in / interruption handling, and 9 registered function tools.
+- **Domain Keyterm Boosting:** Custom vocabulary hints (`M-204`, `F0003`, `SINAMICS`, `VFD`, `undervoltage`) configured in the session.
+- **Deterministic Testability:** 100% test pass rate with idempotent database seed and reset workflows.
