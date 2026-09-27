@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Asset } from '@fieldmate/shared';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import type { AccessContext } from '../access/access.types';
+import { scopedAssetWhere } from '../access/scoped-query.helpers';
 
 const include = { site: true, components: true } satisfies Prisma.AssetInclude;
 type StoredAsset = Prisma.AssetGetPayload<{ include: typeof include }>;
@@ -35,18 +37,19 @@ function serialize(asset: StoredAsset): Asset {
 export class AssetsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(): Promise<Asset[]> {
+  async list(access: AccessContext): Promise<Asset[]> {
     return (
       await this.prisma.asset.findMany({
+        where: scopedAssetWhere(access),
         include,
         orderBy: { assetTag: 'asc' },
       })
     ).map(serialize);
   }
 
-  async get(id: string): Promise<Asset> {
-    const asset = await this.prisma.asset.findUnique({
-      where: { id },
+  async get(id: string, access: AccessContext): Promise<Asset> {
+    const asset = await this.prisma.asset.findFirst({
+      where: scopedAssetWhere(access, { id }),
       include,
     });
     if (!asset)
@@ -57,9 +60,9 @@ export class AssetsService {
     return serialize(asset);
   }
 
-  async search(query: string): Promise<Asset[]> {
+  async search(query: string, access: AccessContext): Promise<Asset[]> {
     const normalized = query.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const assets = await this.list();
+    const assets = await this.list(access);
     const exact = assets.filter(
       (asset) => asset.assetTag.replace(/[^A-Z0-9]/g, '') === normalized,
     );

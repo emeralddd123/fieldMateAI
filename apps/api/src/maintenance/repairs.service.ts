@@ -2,15 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../generated/prisma/client';
 import type { CompleteRepairDto, CreateMaintenanceRecordDto } from './dto';
+import type { AccessContext } from '../access/access.types';
 import {
   activeStatuses,
   conflict,
-  DEMO_TECHNICIAN_ID,
   incidentInclude,
   lockAsset,
   lockIncident,
   normalizeFaultCode,
-  requireTechnician,
   validateMeasurement,
 } from './support';
 
@@ -33,6 +32,7 @@ function completionPayload(dto: CompleteRepairDto): Prisma.InputJsonObject {
       : null,
   };
 }
+
 function samePayload(left: unknown, right: unknown): boolean {
   // PostgreSQL JSONB changes key order, so raw JSON.stringify equality is unsafe.
   if (left === right) return true;
@@ -45,15 +45,16 @@ function samePayload(left: unknown, right: unknown): boolean {
     Object.keys(a).every((key) => samePayload(a[key], b[key]))
   );
 }
+
 @Injectable()
 export class RepairsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async complete(id: string, dto: CompleteRepairDto) {
+  async complete(id: string, dto: CompleteRepairDto, access: AccessContext) {
     if (dto.verificationMeasurement)
       validateMeasurement(dto.verificationMeasurement);
     return this.prisma.$transaction(async (tx) => {
-      const incident = await lockIncident(tx, id);
+      const incident = await lockIncident(tx, id, access);
       if (incident.assetId !== dto.assetId)
         conflict(
           'ASSET_MISMATCH',
@@ -68,14 +69,13 @@ export class RepairsService {
           );
         return this.result(tx, id);
       }
-      await requireTechnician(tx);
       if (dto.verificationMeasurement) {
         await tx.measurement.create({
           data: {
             ...dto.verificationMeasurement,
             assetId: dto.assetId,
             incidentId: id,
-            recordedById: DEMO_TECHNICIAN_ID,
+            recordedById: access.user.id,
           },
         });
       }
@@ -83,7 +83,7 @@ export class RepairsService {
         data: {
           assetId: dto.assetId,
           incidentId: id,
-          technicianId: DEMO_TECHNICIAN_ID,
+          technicianId: access.user.id,
           faultCode: incident.faultCode,
           symptom: incident.description,
           rootCause: dto.rootCause,
@@ -119,6 +119,7 @@ export class RepairsService {
       return this.result(tx, id);
     });
   }
+
   private async result(tx: Prisma.TransactionClient, id: string) {
     const incident = await tx.incident.findUniqueOrThrow({
       where: { id },
@@ -135,7 +136,8 @@ export class RepairsService {
       measurements: incident.measurements,
     };
   }
-  async createRecord(dto: CreateMaintenanceRecordDto) {
+
+  async createRecord(dto: CreateMaintenanceRecordDto, access: AccessContext) {
     if (dto.incidentId) {
       const existing = await this.prisma.incident.findUnique({
         where: { id: dto.incidentId },
@@ -149,19 +151,19 @@ export class RepairsService {
           'FAULT_MISMATCH',
           'Use the incident fault code when completing its repair.',
         );
-      return (await this.complete(dto.incidentId, dto)).maintenanceRecord;
+      return (await this.complete(dto.incidentId, dto, access))
+        .maintenanceRecord;
     }
     if (dto.verificationMeasurement)
       validateMeasurement(dto.verificationMeasurement);
     return this.prisma.$transaction(async (tx) => {
-      await lockAsset(tx, dto.assetId);
-      await requireTechnician(tx);
+      await lockAsset(tx, dto.assetId, access);
       if (dto.verificationMeasurement) {
         await tx.measurement.create({
           data: {
             ...dto.verificationMeasurement,
             assetId: dto.assetId,
-            recordedById: DEMO_TECHNICIAN_ID,
+            recordedById: access.user.id,
           },
         });
       }
@@ -169,7 +171,7 @@ export class RepairsService {
       return tx.maintenanceRecord.create({
         data: {
           assetId: dto.assetId,
-          technicianId: DEMO_TECHNICIAN_ID,
+          technicianId: access.user.id,
           faultCode: dto.faultCode ? normalizeFaultCode(dto.faultCode) : null,
           symptom: dto.symptom,
           rootCause: dto.rootCause,

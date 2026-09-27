@@ -4,10 +4,38 @@ const base = (process.env.FIELDMATE_API_URL || 'http://localhost:3000').replace(
   /\/$/,
   '',
 );
+
+let sessionCookie = '';
+
+async function login() {
+  const email = process.env.DEMO_USER_EMAIL || 'technician@fieldmate.local';
+  const password = process.env.DEMO_USER_PASSWORD || 'fieldmate-demo-2026';
+  const response = await fetch(`${base}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: 'http://localhost:5173',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!response.ok) {
+    throw new Error(`Demo login failed with status ${response.status}`);
+  }
+  const setCookie = response.headers.get('set-cookie');
+  if (setCookie) {
+    sessionCookie = setCookie.split(';', 1)[0];
+  }
+}
+
 async function api(method, path, body) {
+  const headers = {
+    'Content-Type': 'application/json',
+    Origin: 'http://localhost:5173',
+  };
+  if (sessionCookie) headers.cookie = sessionCookie;
   const response = await fetch(`${base}/api/v1${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     signal: AbortSignal.timeout(15_000),
   });
@@ -22,6 +50,7 @@ async function api(method, path, body) {
 console.log(
   'Running the maintenance demo. This creates a real incident, readings, and repair record.',
 );
+await login();
 const matches = await api('GET', '/assets/search?q=M-204');
 assert.equal(
   matches.length,

@@ -1,18 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateMeasurementDto, HistoryQuery, PageQuery } from './dto';
+import type { AccessContext } from '../access/access.types';
 import {
   lockCreationRequest,
   verifyCreationRetry,
   activeStatuses,
   conflict,
-  DEMO_TECHNICIAN_ID,
   incidentInclude,
   lockAsset,
   missing,
   normalizeFaultCode,
   requireAsset,
-  requireTechnician,
   validateMeasurement,
 } from './support';
 
@@ -20,8 +19,8 @@ import {
 export class RecordsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async history(assetId: string, query: HistoryQuery) {
-    const asset = await requireAsset(this.prisma, assetId);
+  async history(assetId: string, query: HistoryQuery, access: AccessContext) {
+    const asset = await requireAsset(this.prisma, assetId, access);
     const where = {
       assetId,
       ...(query.faultCode
@@ -52,16 +51,22 @@ export class RecordsService {
       maintenanceRecords,
     };
   }
-  async measurements(assetId: string, query: PageQuery) {
-    await requireAsset(this.prisma, assetId);
+
+  async measurements(assetId: string, query: PageQuery, access: AccessContext) {
+    await requireAsset(this.prisma, assetId, access);
     return this.prisma.measurement.findMany({
       where: { assetId },
       orderBy: [{ recordedAt: 'desc' }, { id: 'desc' }],
       take: query.limit,
     });
   }
-  async maintenanceRecords(assetId: string, query: PageQuery) {
-    await requireAsset(this.prisma, assetId);
+
+  async maintenanceRecords(
+    assetId: string,
+    query: PageQuery,
+    access: AccessContext,
+  ) {
+    await requireAsset(this.prisma, assetId, access);
     return this.prisma.maintenanceRecord.findMany({
       where: { assetId },
       include: { technician: { select: { name: true } } },
@@ -69,7 +74,8 @@ export class RecordsService {
       take: query.limit,
     });
   }
-  async recordMeasurement(dto: CreateMeasurementDto) {
+
+  async recordMeasurement(dto: CreateMeasurementDto, access: AccessContext) {
     validateMeasurement(dto);
     return this.prisma.$transaction(async (tx) => {
       const requestHash = await lockCreationRequest(tx, 'measurement', dto);
@@ -83,8 +89,7 @@ export class RecordsService {
         }
       }
 
-      await lockAsset(tx, dto.assetId);
-      await requireTechnician(tx);
+      await lockAsset(tx, dto.assetId, access);
       if (dto.incidentId) {
         const incident = await tx.incident.findUnique({
           where: { id: dto.incidentId },
@@ -103,7 +108,7 @@ export class RecordsService {
           );
       }
       return tx.measurement.create({
-        data: { ...dto, requestHash, recordedById: DEMO_TECHNICIAN_ID },
+        data: { ...dto, requestHash, recordedById: access.user.id },
       });
     });
   }

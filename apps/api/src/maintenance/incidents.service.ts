@@ -8,52 +8,101 @@ import type {
   SupervisorReviewDto,
   UpdateIncidentDto,
 } from './dto';
+import type { AccessContext } from '../access/access.types';
+import { scopedIncidentWhere } from '../access/scoped-query.helpers';
 import {
   lockCreationRequest,
   verifyCreationRetry,
   activeStatuses,
   conflict,
-  DEMO_SUPERVISOR_ID,
-  DEMO_TECHNICIAN_ID,
   incidentInclude,
   lockAsset,
   lockIncident,
   missing,
   normalizeFaultCode,
-  requireTechnician,
-  requireSupervisor,
+  requireAsset,
+  requireAssignableUser,
 } from './support';
 
 @Injectable()
 export class IncidentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async users() {
+  async assignees(siteId: string | undefined, access: AccessContext) {
+    if (siteId) {
+      access.assertSite(siteId);
+    }
+    const memberships = await this.prisma.organizationMembership.findMany({
+      where: {
+        organizationId: access.organization.id,
+        status: 'active',
+        user: { status: 'active' },
+      },
+      include: {
+        user: { select: { id: true, name: true } },
+        siteAccess: { select: { siteId: true } },
+      },
+      orderBy: [{ role: 'desc' }, { user: { name: 'asc' } }],
+    });
+
+    return memberships
+      .filter((membership) => {
+        if (!siteId) return true;
+        if (membership.role === 'admin') return true;
+        return membership.siteAccess.some((sa) => sa.siteId === siteId);
+      })
+      .map((membership) => ({
+        id: membership.user.id,
+        name: membership.user.name,
+        role: membership.role,
+      }));
+  }
+
+  async users(siteId?: string, access?: AccessContext) {
+    if (access) {
+      return this.assignees(siteId, access);
+    }
     return this.prisma.user.findMany({
-      where: { role: { in: ['technician', 'supervisor'] } },
+      where: { role: { in: ['technician', 'supervisor', 'admin'] } },
       select: { id: true, name: true, role: true },
       orderBy: [{ role: 'desc' }, { name: 'asc' }],
     });
   }
 
-  async list(query: IncidentQuery) {
+  async list(query: IncidentQuery, access: AccessContext) {
+    if (query.assetId) {
+      await requireAsset(this.prisma, query.assetId, access);
+    }
     return this.prisma.incident.findMany({
-      where: { assetId: query.assetId, status: query.status },
+      where: {
+        ...scopedIncidentWhere(access),
+        ...(query.assetId ? { assetId: query.assetId } : {}),
+        ...(query.status ? { status: query.status } : {}),
+      },
       include: incidentInclude,
       orderBy: [{ openedAt: 'desc' }, { id: 'desc' }],
       take: query.limit,
     });
   }
-  async get(id: string) {
+
+  async get(id: string, access: AccessContext) {
     const incident = await this.prisma.incident.findUnique({
       where: { id },
       include: incidentInclude,
     });
-    if (!incident)
+    if (!incident || incident.asset.archivedAt !== null) {
       missing('INCIDENT_NOT_FOUND', 'No incident matched that ID.');
+    }
+    if (
+      incident.asset.organizationId !== access.organization.id ||
+      !access.hasSite(incident.asset.siteId)
+    ) {
+      missing('INCIDENT_NOT_FOUND', 'No incident matched that ID.');
+    }
     return incident;
   }
-  async create(dto: CreateIncidentDto) {
+
+  async create(dto: CreateIncidentDto, access: AccessContext) {
     return this.prisma.$transaction(async (tx) => {
       const requestHash = await lockCreationRequest(tx, 'incident', dto);
       if (dto.requestId) {
@@ -67,8 +116,7 @@ export class IncidentsService {
         }
       }
 
-      await lockAsset(tx, dto.assetId);
-      await requireTechnician(tx);
+      await lockAsset(tx, dto.assetId, access);
       const { measurementIds = [], assetStatus, ...data } = dto;
       if (measurementIds.length) {
         const count = await tx.measurement.count({
@@ -89,7 +137,7 @@ export class IncidentsService {
           ...data,
           requestHash,
           faultCode: dto.faultCode ? normalizeFaultCode(dto.faultCode) : null,
-          openedById: DEMO_TECHNICIAN_ID,
+          openedById: access.user.id,
         },
       });
       await tx.measurement.updateMany({
@@ -109,9 +157,10 @@ export class IncidentsService {
       });
     });
   }
-  async update(id: string, dto: UpdateIncidentDto) {
+
+  async update(id: string, dto: UpdateIncidentDto, access: AccessContext) {
     return this.prisma.$transaction(async (tx) => {
-      const incident = await lockIncident(tx, id);
+      const incident = await lockIncident(tx, id, access);
       if (incident.status === 'closed')
         conflict('INCIDENT_FINISHED', 'Closed incidents cannot be edited.');
       if (dto.status === 'closed' && incident.status !== 'resolved')
@@ -127,11 +176,14 @@ export class IncidentsService {
           'INVALID_TRANSITION',
           'Only open incidents can enter investigation.',
         );
-      if (
-        dto.assignedToId &&
-        !(await tx.user.findUnique({ where: { id: dto.assignedToId } }))
-      )
-        missing('USER_NOT_FOUND', 'No user matched the assignee.');
+      if (dto.assignedToId) {
+        await requireAssignableUser(
+          tx,
+          dto.assignedToId,
+          incident.asset.siteId,
+          access.organization.id,
+        );
+      }
       return tx.incident.update({
         where: { id },
         data: dto,
@@ -139,7 +191,8 @@ export class IncidentsService {
       });
     });
   }
-  async note(id: string, dto: NoteDto) {
+
+  async note(id: string, dto: NoteDto, access: AccessContext) {
     return this.prisma.$transaction(async (tx) => {
       const request = {
         incidentId: id,
@@ -159,21 +212,21 @@ export class IncidentsService {
           return existing;
         }
       }
-      await lockIncident(tx, id);
-      await requireTechnician(tx);
+      await lockIncident(tx, id, access);
       return tx.incidentNote.create({
         data: {
           incidentId: id,
           ...dto,
           requestHash,
-          authorId: DEMO_TECHNICIAN_ID,
+          authorId: access.user.id,
         },
       });
     });
   }
-  async escalate(id: string, dto: EscalateDto) {
+
+  async escalate(id: string, dto: EscalateDto, access: AccessContext) {
     return this.prisma.$transaction(async (tx) => {
-      const incident = await lockIncident(tx, id);
+      const incident = await lockIncident(tx, id, access);
       if (!activeStatuses.some((status) => status === incident.status))
         conflict(
           'INCIDENT_FINISHED',
@@ -198,7 +251,12 @@ export class IncidentsService {
     });
   }
 
-  async supervisorReview(id: string, dto: SupervisorReviewDto) {
+  async supervisorReview(
+    id: string,
+    dto: SupervisorReviewDto,
+    access: AccessContext,
+  ) {
+    access.assertRole(['supervisor', 'admin']);
     if (
       !dto.acknowledgeEscalation &&
       dto.assignedToId === undefined &&
@@ -210,19 +268,19 @@ export class IncidentsService {
         'Choose an escalation, assignment, priority, or note update.',
       );
     return this.prisma.$transaction(async (tx) => {
-      const incident = await lockIncident(tx, id);
+      const incident = await lockIncident(tx, id, access);
       if (!activeStatuses.some((status) => status === incident.status))
         conflict(
           'INCIDENT_FINISHED',
           'Resolved or closed incidents cannot receive a supervisor review.',
         );
-      await requireSupervisor(tx);
       if (typeof dto.assignedToId === 'string') {
-        const assignee = await tx.user.findUnique({
-          where: { id: dto.assignedToId },
-        });
-        if (!assignee || !['technician', 'supervisor'].includes(assignee.role))
-          missing('USER_NOT_FOUND', 'No eligible user matched the assignee.');
+        await requireAssignableUser(
+          tx,
+          dto.assignedToId,
+          incident.asset.siteId,
+          access.organization.id,
+        );
       }
       if (dto.acknowledgeEscalation) {
         const pending = incident.escalations.find(
@@ -238,7 +296,7 @@ export class IncidentsService {
           data: {
             status: 'acknowledged',
             acknowledgedAt: new Date(),
-            acknowledgedById: DEMO_SUPERVISOR_ID,
+            acknowledgedById: access.user.id,
           },
         });
       }
@@ -257,7 +315,7 @@ export class IncidentsService {
             incidentId: id,
             note: dto.note,
             source: 'manual',
-            authorId: DEMO_SUPERVISOR_ID,
+            authorId: access.user.id,
           },
         });
       }

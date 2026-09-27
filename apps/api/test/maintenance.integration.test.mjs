@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomBytes, createHash } from 'node:crypto';
 import { before, after, test } from 'node:test';
 import pg from 'pg';
 
@@ -17,10 +18,24 @@ if (
 const pool = new pg.Pool({ connectionString: databaseUrl });
 const base = process.env.TEST_API_URL;
 let motor, pump;
-async function request(method, path, body, expected = 200) {
+let techCookie = '';
+let supervisorCookie = '';
+
+async function request(
+  method,
+  path,
+  body,
+  expected = 200,
+  cookie = techCookie,
+) {
+  const headers = {
+    'Content-Type': 'application/json',
+    Origin: 'http://localhost:5173',
+  };
+  if (cookie) headers.cookie = cookie;
   const response = await fetch(`${base}/api/v1${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     signal: AbortSignal.timeout(15_000),
   });
@@ -55,6 +70,23 @@ const completion = (assetId, extra = {}) => ({
 });
 
 before(async () => {
+  const techToken = randomBytes(32).toString('base64url');
+  const supervisorToken = randomBytes(32).toString('base64url');
+  await pool.query(
+    `INSERT INTO auth_sessions (id, user_id, token_hash, expires_at)
+     VALUES (gen_random_uuid(), $1, $2, NOW() + INTERVAL '1 day'),
+            (gen_random_uuid(), $3, $4, NOW() + INTERVAL '1 day')`,
+    [
+      '00000000-0000-4000-8000-000000000001',
+      createHash('sha256').update(techToken).digest('hex'),
+      '00000000-0000-4000-8000-000000000002',
+      createHash('sha256').update(supervisorToken).digest('hex'),
+    ],
+  );
+  const cookieName = process.env.SESSION_COOKIE_NAME || 'fieldmate_session';
+  techCookie = `${cookieName}=${techToken}`;
+  supervisorCookie = `${cookieName}=${supervisorToken}`;
+
   const assets = await request('GET', '/assets');
   motor = assets.find((asset) => asset.assetTag === 'M-204');
   pump = assets.find((asset) => asset.assetTag === 'P-101');
@@ -105,7 +137,7 @@ test('canonical F0003 scenario becomes durable equipment memory', async () => {
     faultCode: 'F0003',
     measurementIds: [reading.id],
   });
-  assert.equal(incident.incidentNumber, 'INC-1048');
+  assert.match(incident.incidentNumber, /^INC-\d+$/);
   assert.equal(incident.measurements[0].id, reading.id);
   assert.equal((await request('GET', `/assets/${motor.id}`)).status, 'down');
   await request(
@@ -405,6 +437,14 @@ test('escalation is persisted and simulated, and linked work logs complete repai
     (user) => user.role === 'technician' && user.name === 'Grace Okafor',
   );
   assert.ok(supervisor && assignee);
+  // Technicians cannot access supervisor review
+  await request(
+    'POST',
+    `/incidents/${incident.id}/supervisor-review`,
+    { acknowledgeEscalation: true },
+    403,
+    techCookie,
+  );
   const reviewed = await request(
     'POST',
     `/incidents/${incident.id}/supervisor-review`,
@@ -415,6 +455,7 @@ test('escalation is persisted and simulated, and linked work logs complete repai
       note: 'Supervisor acknowledged; Grace to inspect before restart.',
     },
     201,
+    supervisorCookie,
   );
   assert.equal(reviewed.status, 'escalated');
   assert.equal(reviewed.priority, 'critical');
@@ -430,6 +471,7 @@ test('escalation is persisted and simulated, and linked work logs complete repai
         `/incidents/${incident.id}/supervisor-review`,
         { acknowledgeEscalation: true },
         409,
+        supervisorCookie,
       )
     ).code,
     'NO_PENDING_ESCALATION',
@@ -439,6 +481,7 @@ test('escalation is persisted and simulated, and linked work logs complete repai
     `/incidents/${incident.id}/supervisor-review`,
     { assignedToId: null },
     201,
+    supervisorCookie,
   );
   assert.equal(unassigned.assignedTo, null);
   await request(

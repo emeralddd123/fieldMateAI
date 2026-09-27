@@ -16,10 +16,9 @@ import {
   clearSessionCookieOptions,
   sessionCookieOptions,
 } from '../config/session-cookie';
-import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import type { AuthContext } from './auth.types';
-import { CurrentAuth } from './decorators';
+import { CurrentAuth, Public } from './decorators';
 import {
   ChangePasswordDto,
   LoginDto,
@@ -41,9 +40,14 @@ export class AuthController {
   }
 
   private clearSession(response: Response) {
-    response.clearCookie(env.SESSION_COOKIE_NAME, clearSessionCookieOptions);
+    response.cookie(env.SESSION_COOKIE_NAME, '', {
+      ...clearSessionCookieOptions,
+      maxAge: 0,
+      expires: new Date(0),
+    });
   }
 
+  @Public()
   @Post('login')
   @Throttle({
     default: {
@@ -63,14 +67,12 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(AuthGuard)
   @ApiCookieAuth('fieldmate-session')
   me(@CurrentAuth() auth: AuthContext) {
     return { data: auth };
   }
 
   @Post('logout')
-  @UseGuards(AuthGuard)
   @ApiCookieAuth('fieldmate-session')
   async logout(
     @CurrentAuth() current: AuthContext,
@@ -83,7 +85,6 @@ export class AuthController {
   }
 
   @Post('logout-all')
-  @UseGuards(AuthGuard)
   @ApiCookieAuth('fieldmate-session')
   async logoutAll(
     @CurrentAuth() current: AuthContext,
@@ -96,7 +97,6 @@ export class AuthController {
   }
 
   @Post('change-password')
-  @UseGuards(AuthGuard)
   @ApiCookieAuth('fieldmate-session')
   async changePassword(
     @CurrentAuth() current: AuthContext,
@@ -109,6 +109,7 @@ export class AuthController {
     return { data: result.auth };
   }
 
+  @Public()
   @Post('invitations/:token/accept')
   @Throttle({
     default: {
@@ -131,6 +132,7 @@ export class AuthController {
     return { data: result.auth };
   }
 
+  @Public()
   @Post('password-reset/request')
   @Throttle({
     default: {
@@ -142,6 +144,7 @@ export class AuthController {
     return { data: await this.auth.requestPasswordReset(dto) };
   }
 
+  @Public()
   @Post('password-reset/:token')
   @Throttle({
     default: {

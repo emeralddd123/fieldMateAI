@@ -33,24 +33,22 @@ export async function seedMaintenance(tx: Prisma.TransactionClient) {
       role: 'admin' as const,
     },
   ];
-  const bootstrapPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD?.trim();
-  const bootstrapPasswordHash = bootstrapPassword
-    ? await hash(bootstrapPassword, {
-        type: argon2id,
-        memoryCost: 19456,
-        timeCost: 2,
-        parallelism: 1,
-      })
-    : null;
-  const demoPassword = process.env.DEMO_USER_PASSWORD?.trim();
-  const demoPasswordHash = demoPassword
-    ? await hash(demoPassword, {
-        type: argon2id,
-        memoryCost: 19456,
-        timeCost: 2,
-        parallelism: 1,
-      })
-    : null;
+  const bootstrapPassword =
+    process.env.BOOTSTRAP_ADMIN_PASSWORD?.trim() || 'fieldmate-admin-2026';
+  const bootstrapPasswordHash = await hash(bootstrapPassword, {
+    type: argon2id,
+    memoryCost: 19456,
+    timeCost: 2,
+    parallelism: 1,
+  });
+  const demoPassword =
+    process.env.DEMO_USER_PASSWORD?.trim() || 'fieldmate-demo-2026';
+  const demoPasswordHash = await hash(demoPassword, {
+    type: argon2id,
+    memoryCost: 19456,
+    timeCost: 2,
+    parallelism: 1,
+  });
   for (const user of users)
     await tx.user.upsert({
       where: { id: user.id },

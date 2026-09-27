@@ -3,17 +3,26 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
 import type { MeasurementFields } from './dto';
+import type { AccessContext } from '../access/access.types';
 
 export const DEMO_TECHNICIAN_ID = '00000000-0000-4000-8000-000000000001';
 export const DEMO_SUPERVISOR_ID = '00000000-0000-4000-8000-000000000002';
 export const activeStatuses = ['open', 'investigating', 'escalated'] as const;
+
 export const incidentInclude = {
   asset: {
-    select: { id: true, assetTag: true, name: true, location: true },
+    select: {
+      id: true,
+      assetTag: true,
+      name: true,
+      location: true,
+      siteId: true,
+      organizationId: true,
+      archivedAt: true,
+    },
   },
   openedBy: { select: { id: true, name: true } },
   assignedTo: { select: { id: true, name: true } },
@@ -32,31 +41,93 @@ export const incidentInclude = {
 export function missing(code: string, message: string): never {
   throw new NotFoundException({ code, message });
 }
+
 export function conflict(code: string, message: string): never {
   throw new ConflictException({ code, message });
 }
-export async function requireAsset(tx: Prisma.TransactionClient, id: string) {
+
+export async function requireAsset(
+  tx: Prisma.TransactionClient,
+  id: string,
+  access?: AccessContext,
+) {
   const asset = await tx.asset.findUnique({
     where: { id },
     include: { components: true },
   });
-  if (!asset) missing('ASSET_NOT_FOUND', 'No asset matched that ID.');
+  if (!asset || asset.archivedAt !== null) {
+    missing('ASSET_NOT_FOUND', 'No asset matched that ID.');
+  }
+  if (access) {
+    if (
+      asset.organizationId !== access.organization.id ||
+      !access.hasSite(asset.siteId)
+    ) {
+      missing('ASSET_NOT_FOUND', 'No asset matched that ID.');
+    }
+  }
   return asset;
 }
+
 // All writes concerning one asset take this lock first, including completion and incident creation.
-export async function lockAsset(tx: Prisma.TransactionClient, id: string) {
+export async function lockAsset(
+  tx: Prisma.TransactionClient,
+  id: string,
+  access?: AccessContext,
+) {
   const rows = await tx.$queryRaw<
-    Array<{ id: string }>
-  >`SELECT id FROM assets WHERE id = ${id}::uuid FOR UPDATE`;
-  if (!rows.length) missing('ASSET_NOT_FOUND', 'No asset matched that ID.');
+    Array<{
+      id: string;
+      organization_id: string;
+      site_id: string;
+      archived_at: Date | null;
+    }>
+  >`SELECT id, organization_id, site_id, archived_at FROM assets WHERE id = ${id}::uuid FOR UPDATE`;
+  const row = rows[0];
+  if (!row || row.archived_at !== null) {
+    missing('ASSET_NOT_FOUND', 'No asset matched that ID.');
+  }
+  if (access) {
+    if (
+      row.organization_id !== access.organization.id ||
+      !access.hasSite(row.site_id)
+    ) {
+      missing('ASSET_NOT_FOUND', 'No asset matched that ID.');
+    }
+  }
 }
-export async function lockIncident(tx: Prisma.TransactionClient, id: string) {
+
+export async function lockIncident(
+  tx: Prisma.TransactionClient,
+  id: string,
+  access?: AccessContext,
+) {
   const initial = await tx.incident.findUnique({
     where: { id },
-    select: { assetId: true },
+    select: {
+      assetId: true,
+      asset: {
+        select: {
+          id: true,
+          organizationId: true,
+          siteId: true,
+          archivedAt: true,
+        },
+      },
+    },
   });
-  if (!initial) missing('INCIDENT_NOT_FOUND', 'No incident matched that ID.');
-  await lockAsset(tx, initial.assetId);
+  if (!initial || initial.asset.archivedAt !== null) {
+    missing('INCIDENT_NOT_FOUND', 'No incident matched that ID.');
+  }
+  if (access) {
+    if (
+      initial.asset.organizationId !== access.organization.id ||
+      !access.hasSite(initial.asset.siteId)
+    ) {
+      missing('INCIDENT_NOT_FOUND', 'No incident matched that ID.');
+    }
+  }
+  await lockAsset(tx, initial.assetId, access);
   const incident = await tx.incident.findUnique({
     where: { id },
     include: incidentInclude,
@@ -64,31 +135,46 @@ export async function lockIncident(tx: Prisma.TransactionClient, id: string) {
   if (!incident) missing('INCIDENT_NOT_FOUND', 'No incident matched that ID.');
   return incident;
 }
-export async function requireTechnician(tx: Prisma.TransactionClient) {
-  if (!(await tx.user.findUnique({ where: { id: DEMO_TECHNICIAN_ID } }))) {
-    throw new ServiceUnavailableException({
-      code: 'DEMO_NOT_SEEDED',
-      message: 'Demo technician has not been seeded.',
-    });
-  }
-  return DEMO_TECHNICIAN_ID;
-}
-export async function requireSupervisor(tx: Prisma.TransactionClient) {
-  const supervisor = await tx.user.findUnique({
-    where: { id: DEMO_SUPERVISOR_ID },
+
+export async function requireAssignableUser(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  siteId: string,
+  organizationId: string,
+) {
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    include: {
+      memberships: {
+        where: { organizationId, status: 'active' },
+        include: { siteAccess: true },
+      },
+    },
   });
-  if (!supervisor || supervisor.role !== 'supervisor') {
-    throw new ServiceUnavailableException({
-      code: 'DEMO_NOT_SEEDED',
-      message: 'Demo supervisor has not been seeded.',
-    });
+  if (!user || user.status !== 'active' || user.memberships.length === 0) {
+    missing('USER_NOT_FOUND', 'No eligible user matched the assignee.');
   }
-  return supervisor;
+  const membership = user.memberships[0];
+  if (
+    !membership ||
+    !['technician', 'supervisor', 'admin'].includes(membership.role)
+  ) {
+    missing('USER_NOT_FOUND', 'No eligible user matched the assignee.');
+  }
+  if (membership.role !== 'admin') {
+    const hasSite = membership.siteAccess.some((sa) => sa.siteId === siteId);
+    if (!hasSite) {
+      missing('USER_NOT_FOUND', 'Assignee does not have access to this site.');
+    }
+  }
+  return user;
 }
+
 export function normalizeFaultCode(value: string) {
   // Preserve digits exactly: never turn F3 into F0003 or guess a different fault.
   return value.trim().toUpperCase().replace(/\s+/g, '');
 }
+
 export function validateMeasurement(value: MeasurementFields) {
   const expected = { line_voltage: 'V', motor_current: 'A' }[
     value.measurementType
@@ -127,6 +213,7 @@ export async function lockCreationRequest(
     .update(JSON.stringify(ordered(dto)))
     .digest('hex');
 }
+
 export function verifyCreationRetry(
   storedHash: string | null,
   hash: string | undefined,

@@ -48,9 +48,10 @@ function SupervisorReviewForm({
     'idle' | 'saving' | 'saved' | 'error'
   >('idle');
   const [reviewMessage, setReviewMessage] = useState('');
+  const siteId = (incident.asset as { siteId?: string } | undefined)?.siteId;
   const users = useQuery({
-    queryKey: ['supervisor-users'],
-    queryFn: fetchSupervisorUsers,
+    queryKey: ['supervisor-users', siteId],
+    queryFn: () => fetchSupervisorUsers(siteId),
   });
   const pendingEscalation = incident.escalations.find(
     (escalation) => escalation.status === 'pending',

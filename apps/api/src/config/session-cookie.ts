@@ -14,4 +14,5 @@ export const clearSessionCookieOptions: CookieOptions = {
   secure: sessionCookieOptions.secure,
   sameSite: sessionCookieOptions.sameSite,
   path: sessionCookieOptions.path,
+  maxAge: 0,
 };

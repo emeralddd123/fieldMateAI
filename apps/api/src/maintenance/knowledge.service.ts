@@ -2,23 +2,30 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { conflict, normalizeFaultCode, requireAsset } from './support';
 import type { ProcedureQuery } from './dto';
+import type { AccessContext } from '../access/access.types';
 
 @Injectable()
 export class KnowledgeService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async lookup(assetId: string, code: string) {
-    const asset = await requireAsset(this.prisma, assetId);
+  async lookup(assetId: string, code: string, access: AccessContext) {
+    const asset = await requireAsset(this.prisma, assetId, access);
     const faultCode = normalizeFaultCode(code);
     const matches = await this.prisma.faultDefinition.findMany({
       where: {
         faultCode,
+        organizationId: access.organization.id,
+        archivedAt: null,
         OR: [...asset.components, asset].map(({ manufacturer, model }) => ({
           manufacturer,
           model,
         })),
       },
-      include: { procedure: { select: { key: true, approved: true } } },
+      include: {
+        procedure: {
+          select: { key: true, approved: true, archivedAt: true },
+        },
+      },
     });
     if (matches.length > 1)
       conflict(
@@ -34,6 +41,8 @@ export class KnowledgeService {
         message:
           'No verified definition exists for this fault on the installed equipment. Document and escalate the issue.',
       };
+    const validProcedure =
+      match.procedure?.approved && !match.procedure?.archivedAt;
     return {
       found: true,
       assetId,
@@ -44,14 +53,18 @@ export class KnowledgeService {
       model: match.model,
       source: match.source,
       safetyLevel: match.safetyLevel,
-      procedureKey: match.procedure?.approved ? match.procedure.key : null,
+      procedureKey: validProcedure ? match.procedure!.key : null,
     };
   }
 
-  async procedure(key: string, query: ProcedureQuery) {
-    const asset = await requireAsset(this.prisma, query.assetId);
-    const procedure = await this.prisma.procedure.findUnique({
-      where: { key },
+  async procedure(key: string, query: ProcedureQuery, access: AccessContext) {
+    const asset = await requireAsset(this.prisma, query.assetId, access);
+    const procedure = await this.prisma.procedure.findFirst({
+      where: {
+        key,
+        organizationId: access.organization.id,
+        archivedAt: null,
+      },
     });
     const equipment = [...asset.components, asset];
     if (

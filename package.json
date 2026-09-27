@@ -21,6 +21,7 @@
     "demo:api": "node scripts/demo.mjs",
     "test:maintenance": "node --env-file=.env.test --test apps/api/test/maintenance.integration.test.mjs",
     "test:auth": "node --env-file=.env.test --test apps/api/test/auth.integration.test.mjs",
+    "test:rbac": "node --env-file=.env.test --test apps/api/test/rbac.integration.test.mjs",
     "test:voice": "pnpm --filter @fieldmate/api build && pnpm --filter @fieldmate/api exec tsx --test test/voice.test.mjs ../web/test/voice.test.mjs",
     "test:voice:live": "node scripts/voice-smoke.mjs",
     "test:voice:live:writes": "node scripts/voice-smoke.mjs --writes"

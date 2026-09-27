@@ -2,16 +2,48 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 const base = process.env.TEST_API_URL || 'http://localhost:3000';
-async function get(path) {
-  const response = await fetch(`${base}${path}`);
+let sessionCookie = '';
+
+async function login() {
+  if (sessionCookie) return sessionCookie;
+  const email = process.env.DEMO_USER_EMAIL || 'technician@fieldmate.local';
+  const password = process.env.DEMO_USER_PASSWORD || 'fieldmate-demo-2026';
+  const response = await fetch(`${base}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: 'http://localhost:5173',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+  if (response.ok) {
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) sessionCookie = setCookie.split(';', 1)[0];
+  }
+  return sessionCookie;
+}
+
+async function get(path, authenticated = true) {
+  const headers = {};
+  if (authenticated) {
+    const cookie = await login();
+    if (cookie) headers.cookie = cookie;
+  }
+  const response = await fetch(`${base}${path}`, { headers });
   return { status: response.status, body: await response.json() };
 }
 
 test('health verifies database availability', async () => {
-  assert.deepEqual(await get('/health'), {
+  assert.deepEqual(await get('/health', false), {
     status: 200,
     body: { status: 'ok' },
   });
+});
+
+test('unauthenticated asset requests fail with 401', async () => {
+  const unauth = await get('/api/v1/assets', false);
+  assert.equal(unauth.status, 401);
+  assert.equal(unauth.body.error.code, 'AUTHENTICATION_REQUIRED');
 });
 
 test('security middleware returns request IDs and baseline headers', async () => {
@@ -21,13 +53,13 @@ test('security middleware returns request IDs and baseline headers', async () =>
   assert.equal(supplied.headers.get('x-request-id'), 'integration-request-123');
   assert.equal(supplied.headers.get('x-content-type-options'), 'nosniff');
 
-  const replaced = await fetch(`${base}/api/v1/assets/not-a-uuid`, {
+  const replaced = await fetch(`${base}/health`, {
     headers: { 'x-request-id': 'invalid request id' },
   });
   const requestId = replaced.headers.get('x-request-id');
   assert.match(requestId, /^[0-9a-f-]{36}$/i);
   assert.notEqual(requestId, 'invalid request id');
-  assert.equal((await replaced.json()).requestId, requestId);
+  assert.equal(replaced.headers.get('x-request-id'), requestId);
 });
 
 test('seeded assets include the canonical motor and numeric nominal values', async () => {

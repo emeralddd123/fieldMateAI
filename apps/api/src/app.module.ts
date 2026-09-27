@@ -8,6 +8,9 @@ import { MaintenanceModule } from './maintenance/maintenance.module';
 import { VoiceModule } from './voice/voice.module';
 import { env } from './config/env';
 import { AuthModule } from './auth/auth.module';
+import { AccessModule } from './access/access.module';
+import { AuthGuard } from './auth/auth.guard';
+import { RolesGuard } from './auth/roles.guard';
 
 @Module({
   imports: [
@@ -16,13 +19,18 @@ import { AuthModule } from './auth/auth.module';
         { ttl: env.API_RATE_LIMIT_TTL_MS, limit: env.API_RATE_LIMIT_MAX },
       ],
     }),
-    AuthModule,
     PrismaModule,
+    AccessModule,
+    AuthModule,
     AssetsModule,
     MaintenanceModule,
     VoiceModule,
   ],
   controllers: [HealthController],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
 })
 export class AppModule {}

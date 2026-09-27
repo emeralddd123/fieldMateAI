@@ -2,11 +2,14 @@ import { Controller, Get, Header, HttpCode, Post, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { VoiceService } from './voice.service';
+import { Public } from '../auth/decorators';
 
 @ApiTags('voice')
 @Controller('api/v1/voice')
 export class VoiceController {
   constructor(private readonly voice: VoiceService) {}
+
+  @Public()
   @Get('status')
   @Header('Cache-Control', 'no-store')
   status() {

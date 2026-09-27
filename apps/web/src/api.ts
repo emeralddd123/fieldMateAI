@@ -18,8 +18,18 @@ const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(
   '',
 );
 
+function apiFetch(
+  input: string | URL | Request,
+  init?: RequestInit,
+): Promise<Response> {
+  return fetch(input, {
+    ...init,
+    credentials: 'include',
+  });
+}
+
 export async function fetchVoiceToken(signal: AbortSignal) {
-  const response = await fetch(`${baseUrl}/voice/token`, {
+  const response = await apiFetch(`${baseUrl}/voice/token`, {
     method: 'POST',
     signal: AbortSignal.any([signal, AbortSignal.timeout(30_000)]),
     cache: 'no-store',
@@ -39,7 +49,7 @@ export async function fetchVoiceToken(signal: AbortSignal) {
 }
 
 export async function fetchAssets() {
-  const response = await fetch(`${baseUrl}/assets`, {
+  const response = await apiFetch(`${baseUrl}/assets`, {
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok)
@@ -51,10 +61,10 @@ export async function fetchAssets() {
 
 export async function fetchMaintenance(assetId: string) {
   const responses = await Promise.all([
-    fetch(`${baseUrl}/assets/${assetId}/history?limit=10`, {
+    apiFetch(`${baseUrl}/assets/${assetId}/history?limit=10`, {
       signal: AbortSignal.timeout(10_000),
     }),
-    fetch(`${baseUrl}/assets/${assetId}/measurements?limit=6`, {
+    apiFetch(`${baseUrl}/assets/${assetId}/measurements?limit=6`, {
       signal: AbortSignal.timeout(10_000),
     }),
   ]);
@@ -70,7 +80,7 @@ export async function fetchMaintenance(assetId: string) {
 }
 
 export async function searchVoiceAssets(query: string, signal: AbortSignal) {
-  const response = await fetch(
+  const response = await apiFetch(
     `${baseUrl}/assets/search?q=${encodeURIComponent(query)}`,
     {
       signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
@@ -82,7 +92,7 @@ export async function searchVoiceAssets(query: string, signal: AbortSignal) {
 }
 
 async function fetchVoiceKnowledge(path: string, signal: AbortSignal) {
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await apiFetch(`${baseUrl}${path}`, {
     signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
     cache: 'no-store',
   });
@@ -334,7 +344,7 @@ export async function submitVoiceWrite(
       requestId,
       source: 'voice',
     };
-    const response = await fetch(`${baseUrl}/measurements`, {
+    const response = await apiFetch(`${baseUrl}/measurements`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -362,7 +372,7 @@ export async function submitVoiceWrite(
       requestId,
       source: 'voice',
     };
-    const response = await fetch(`${baseUrl}/incidents`, {
+    const response = await apiFetch(`${baseUrl}/incidents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -395,7 +405,7 @@ export async function submitVoiceWrite(
       assetStatus: request.args.asset_status ?? 'operational',
       source: 'voice',
     };
-    const response = await fetch(
+    const response = await apiFetch(
       `${baseUrl}/incidents/${request.args.incident_id}/complete-repair`,
       {
         method: 'POST',
@@ -423,7 +433,7 @@ export async function submitVoiceWrite(
       reason: request.args.reason,
       severity: request.args.severity ?? 'supervisor_review',
     };
-    const response = await fetch(
+    const response = await apiFetch(
       `${baseUrl}/incidents/${request.args.incident_id}/escalate`,
       {
         method: 'POST',
@@ -454,7 +464,7 @@ export async function submitVoiceWrite(
       source: 'voice',
       requestId,
     };
-    const response = await fetch(
+    const response = await apiFetch(
       `${baseUrl}/incidents/${request.args.incident_id}/notes`,
       {
         method: 'POST',
@@ -583,7 +593,7 @@ export interface SupervisorReviewInput {
 }
 
 export async function fetchIncidents(): Promise<DashboardIncident[]> {
-  const response = await fetch(`${baseUrl}/incidents`, {
+  const response = await apiFetch(`${baseUrl}/incidents`, {
     headers: { Accept: 'application/json' },
   });
   if (!response.ok) return [];
@@ -592,7 +602,7 @@ export async function fetchIncidents(): Promise<DashboardIncident[]> {
 }
 
 export async function fetchIncidentDetail(id: string): Promise<IncidentDetail> {
-  const response = await fetch(`${baseUrl}/incidents/${id}`, {
+  const response = await apiFetch(`${baseUrl}/incidents/${id}`, {
     headers: { Accept: 'application/json' },
     signal: AbortSignal.timeout(10_000),
   });
@@ -601,8 +611,13 @@ export async function fetchIncidentDetail(id: string): Promise<IncidentDetail> {
   return json.data;
 }
 
-export async function fetchSupervisorUsers(): Promise<SupervisorUser[]> {
-  const response = await fetch(`${baseUrl}/users`, {
+export async function fetchSupervisorUsers(
+  siteId?: string,
+): Promise<SupervisorUser[]> {
+  const url = siteId
+    ? `${baseUrl}/incidents/assignees?siteId=${encodeURIComponent(siteId)}`
+    : `${baseUrl}/incidents/assignees`;
+  const response = await apiFetch(url, {
     headers: { Accept: 'application/json' },
     signal: AbortSignal.timeout(10_000),
   });
@@ -614,7 +629,7 @@ export async function submitSupervisorReview(
   incidentId: string,
   input: SupervisorReviewInput,
 ): Promise<IncidentDetail> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${baseUrl}/incidents/${incidentId}/supervisor-review`,
     {
       method: 'POST',
