@@ -33,7 +33,7 @@ import {
   ForgotPasswordPage,
   ResetPasswordPage,
 } from './auth/PasswordResetPages';
-import { AdminPlaceholder, ForbiddenPage } from './auth/AccessPages';
+import { ForbiddenPage } from './auth/AccessPages';
 import { useAuth } from './auth/AuthProvider';
 import { UserMenu } from './auth/UserMenu';
 import { AdminLayout } from './admin/AdminLayout';
@@ -68,7 +68,7 @@ export function App() {
             <Route path="faults" element={<AdminFaultsPage />} />
             <Route path="procedures" element={<AdminProceduresPage />} />
             <Route path="audit" element={<AdminAuditPage />} />
-            <Route path="*" element={<AdminPlaceholder />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
         </Route>
       </Route>
