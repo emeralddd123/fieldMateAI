@@ -25,6 +25,7 @@ import { IncidentsDrawer } from './components/IncidentsDrawer';
 import { QrScannerModal } from './components/QrScannerModal';
 import { SupervisorView } from './components/SupervisorView';
 import { MobileBottomNav, MobileHeader } from './components/MobileNavigation';
+import { MobileEquipmentSheet } from './components/MobileEquipmentSheet';
 import { useVoiceSession } from './voice/useVoiceSession';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { LoginPage } from './auth/LoginPage';
@@ -85,6 +86,7 @@ function TechnicianWorkspace() {
   const [viewIncidentId, setViewIncidentId] = useState<string | null>(null);
   const [isIncidentsDrawerOpen, setIsIncidentsDrawerOpen] = useState(false);
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+  const [isEquipmentSheetOpen, setIsEquipmentSheetOpen] = useState(false);
 
   const voice = useVoiceSession(setSelectedId);
   const [search, setSearch] = useState('');
@@ -310,7 +312,25 @@ function TechnicianWorkspace() {
                   <p>Retrieving the Plant Alpha equipment register.</p>
                 </div>
               ) : selected ? (
-                <AssetOverview asset={selected} />
+                <AssetOverview
+                  asset={selected}
+                  activeIncidents={incidents.data ?? []}
+                  onOpenEquipmentSheet={() => setIsEquipmentSheetOpen(true)}
+                  onAskFieldMate={() => {
+                    if (['disconnected', 'error'].includes(voice.status)) {
+                      voice.connect();
+                    }
+                    const voiceEl = document.querySelector('.voice-bar');
+                    voiceEl?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  onReportIncident={() => setIsIncidentsDrawerOpen(true)}
+                  onRecordReading={() => {
+                    if (['disconnected', 'error'].includes(voice.status)) {
+                      voice.connect();
+                    }
+                  }}
+                  onSelectIncident={setViewIncidentId}
+                />
               ) : (
                 <div className="state-card">
                   <Factory size={28} />
@@ -368,6 +388,20 @@ function TechnicianWorkspace() {
         onSelectAsset={setSelectedId}
       />
 
+      {/* Mobile Equipment Directory & Selector Sheet */}
+      <MobileEquipmentSheet
+        isOpen={isEquipmentSheetOpen}
+        onClose={() => setIsEquipmentSheetOpen(false)}
+        assets={assets.data ?? []}
+        selectedAssetId={selected?.id}
+        onSelectAsset={(id) => {
+          setSelectedId(id);
+          setIsEquipmentSheetOpen(false);
+        }}
+        onOpenQrScanner={() => setIsQrScannerOpen(true)}
+        incidents={incidents.data ?? []}
+      />
+
       {/* Mobile-first persistent bottom navigation (< 768px) */}
       <MobileBottomNav
         activeTab="equipment"
@@ -378,10 +412,7 @@ function TechnicianWorkspace() {
           ).length ?? 0
         }
         voice={voice}
-        onOpenEquipment={() => {
-          const el = document.querySelector('.sidebar');
-          el?.scrollIntoView({ behavior: 'smooth' });
-        }}
+        onOpenEquipment={() => setIsEquipmentSheetOpen(true)}
         onOpenIncidents={() => setIsIncidentsDrawerOpen(true)}
         onOpenQrScanner={() => setIsQrScannerOpen(true)}
       />
