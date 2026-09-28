@@ -249,6 +249,9 @@ The multi-tenant authentication, RBAC, and administration workspace is documente
 All phases (Phase 1 through 7) are fully implemented and verified. Deployment and
 security foundation details are in [docs/security-foundation.md](docs/security-foundation.md).
 
+The responsive field experience and mobile technician work are planned in
+[docs/field-technician-mobile-ui-plan.md](docs/field-technician-mobile-ui-plan.md).
+
 ### Demo Reset Command
 
 To reset the database back to the canonical pre-demo state (clean M-204, only 2 historical repairs, no `INC-1048`):

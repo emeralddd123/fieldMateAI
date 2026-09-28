@@ -511,6 +511,7 @@ export interface DashboardIncident {
   resolvedAt: string | null;
   rootCause: string | null;
   actionTaken: string | null;
+  assignedTo?: { id: string; name: string } | null;
   escalations: Array<{
     id: string;
     reason: string;
@@ -642,6 +643,81 @@ export async function submitSupervisorReview(
     const body = await response.json().catch(() => null);
     throw new Error(
       body?.error?.message ?? 'The supervisor review could not be saved.',
+    );
+  }
+  return (await response.json()).data;
+}
+
+export async function submitIncidentNote(
+  incidentId: string,
+  note: string,
+): Promise<{ id: string; note: string; createdAt: string }> {
+  const response = await apiFetch(`${baseUrl}/incidents/${incidentId}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note, source: 'manual' }),
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error?.message ?? 'Failed to submit incident note.');
+  }
+  return (await response.json()).data;
+}
+
+export async function submitIncidentEscalation(
+  incidentId: string,
+  reason: string,
+  severity: 'supervisor_review' | 'urgent' = 'supervisor_review',
+): Promise<{ id: string; reason: string; severity: string; status: string }> {
+  const response = await apiFetch(`${baseUrl}/incidents/${incidentId}/escalate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason, severity }),
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error?.message ?? 'Failed to escalate incident.');
+  }
+  return (await response.json()).data;
+}
+
+export interface CompleteRepairPayload {
+  assetId: string;
+  rootCause: string;
+  actionTaken: string;
+  verificationSummary: string;
+  verificationMeasurement?: {
+    measurementType: string;
+    value: number;
+    unit: string;
+    notes?: string;
+  };
+  assetStatus?: 'operational' | 'warning' | 'maintenance' | 'down';
+}
+
+export async function submitCompleteRepair(
+  incidentId: string,
+  payload: CompleteRepairPayload,
+): Promise<{
+  incident: { id: string; incidentNumber: string; status: string };
+  maintenanceRecord: { id: string };
+  asset: { id: string; status: string };
+}> {
+  const response = await apiFetch(
+    `${baseUrl}/incidents/${incidentId}/complete-repair`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, source: 'manual' }),
+      signal: AbortSignal.timeout(12_000),
+    },
+  );
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(
+      body?.error?.message ?? 'Failed to record repair completion.',
     );
   }
   return (await response.json()).data;

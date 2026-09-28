@@ -17,8 +17,11 @@ import {
   fetchIncidentDetail,
   fetchSupervisorUsers,
   submitSupervisorReview,
+  submitIncidentNote,
+  submitIncidentEscalation,
   type IncidentDetail,
 } from '../api';
+import { RepairCompletionModal } from './RepairCompletionModal';
 
 const formatDateTime = (iso: string) =>
   new Intl.DateTimeFormat('en-GB', {
@@ -221,6 +224,22 @@ export function IncidentDetailModal({
     enabled: Boolean(incidentId),
   });
 
+  const queryClient = useQueryClient();
+
+  // Action Dialog States
+  const [isAddNoteOpen, setIsAddNoteOpen] = useState(false);
+  const [newNote, setNewNote] = useState('');
+  const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
+
+  const [isEscalateOpen, setIsEscalateOpen] = useState(false);
+  const [escalateReason, setEscalateReason] = useState('');
+  const [escalateSeverity, setEscalateSeverity] = useState<'supervisor_review' | 'urgent'>('supervisor_review');
+  const [isSubmittingEscalation, setIsSubmittingEscalation] = useState(false);
+  const [escalateError, setEscalateError] = useState<string | null>(null);
+
+  const [isCompleteRepairOpen, setIsCompleteRepairOpen] = useState(false);
+
   if (!incidentId) return null;
 
   const incident = query.data;
@@ -228,6 +247,42 @@ export function IncidentDetailModal({
   const pendingEscalation = incident?.escalations.find(
     (escalation) => escalation.status === 'pending',
   );
+
+  const handleAddNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newNote.trim() || !incident) return;
+    setIsSubmittingNote(true);
+    setNoteError(null);
+    try {
+      await submitIncidentNote(incident.id, newNote.trim());
+      await queryClient.invalidateQueries({ queryKey: ['incident-detail', incident.id] });
+      await queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      setNewNote('');
+      setIsAddNoteOpen(false);
+    } catch (err) {
+      setNoteError(err instanceof Error ? err.message : 'Failed to add note');
+    } finally {
+      setIsSubmittingNote(false);
+    }
+  };
+
+  const handleEscalate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!escalateReason.trim() || !incident) return;
+    setIsSubmittingEscalation(true);
+    setEscalateError(null);
+    try {
+      await submitIncidentEscalation(incident.id, escalateReason.trim(), escalateSeverity);
+      await queryClient.invalidateQueries({ queryKey: ['incident-detail', incident.id] });
+      await queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      setEscalateReason('');
+      setIsEscalateOpen(false);
+    } catch (err) {
+      setEscalateError(err instanceof Error ? err.message : 'Failed to escalate incident');
+    } finally {
+      setIsSubmittingEscalation(false);
+    }
+  };
 
   return (
     <div
@@ -487,7 +542,199 @@ export function IncidentDetailModal({
             </div>
           </div>
         )}
+
+        {/* Sticky Mobile-First Action Bar for Active Incidents */}
+        {incident && ['open', 'investigating', 'escalated'].includes(incident.status) && (
+          <footer className="incident-sticky-actions-bar">
+            <button
+              type="button"
+              className="incident-action-btn btn-note"
+              onClick={() => setIsAddNoteOpen(true)}
+            >
+              <MessageSquare size={16} />
+              <span>Add Note</span>
+            </button>
+
+            <button
+              type="button"
+              className="incident-action-btn btn-escalate"
+              onClick={() => setIsEscalateOpen(true)}
+            >
+              <ShieldAlert size={16} />
+              <span>Escalate</span>
+            </button>
+
+            <button
+              type="button"
+              className="incident-action-btn btn-complete-repair"
+              onClick={() => setIsCompleteRepairOpen(true)}
+            >
+              <CheckCircle2 size={16} />
+              <span>Complete Repair</span>
+            </button>
+          </footer>
+        )}
       </div>
+
+      {/* Add Note Sub-Modal */}
+      {isAddNoteOpen && incident && (
+        <div
+          className="modal-backdrop sub-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add field note"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsAddNoteOpen(false);
+          }}
+        >
+          <div className="sub-modal-card">
+            <div className="sub-modal-header">
+              <div className="sub-modal-badge">
+                <MessageSquare size={14} />
+                <span>ADD OBSERVATION NOTE</span>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setIsAddNoteOpen(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleAddNote}>
+              <div className="sub-modal-body">
+                {noteError && (
+                  <div className="sub-modal-error">
+                    <AlertTriangle size={14} />
+                    <span>{noteError}</span>
+                  </div>
+                )}
+                <label className="sub-modal-label">Technician Note:</label>
+                <textarea
+                  className="sub-modal-textarea"
+                  rows={4}
+                  placeholder="Record symptoms, measured values, or observations…"
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="sub-modal-footer">
+                <button
+                  type="button"
+                  className="sub-modal-cancel"
+                  onClick={() => setIsAddNoteOpen(false)}
+                  disabled={isSubmittingNote}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="sub-modal-submit"
+                  disabled={isSubmittingNote || !newNote.trim()}
+                >
+                  {isSubmittingNote ? 'Saving…' : 'Save Field Note'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Escalate Sub-Modal */}
+      {isEscalateOpen && incident && (
+        <div
+          className="modal-backdrop sub-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Escalate incident to supervisor"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsEscalateOpen(false);
+          }}
+        >
+          <div className="sub-modal-card">
+            <div className="sub-modal-header">
+              <div className="sub-modal-badge warning-badge">
+                <ShieldAlert size={14} />
+                <span>ESCALATE TO SUPERVISOR</span>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setIsEscalateOpen(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleEscalate}>
+              <div className="sub-modal-body">
+                {escalateError && (
+                  <div className="sub-modal-error">
+                    <AlertTriangle size={14} />
+                    <span>{escalateError}</span>
+                  </div>
+                )}
+                <label className="sub-modal-label">Escalation Severity:</label>
+                <div className="severity-toggle-row">
+                  <button
+                    type="button"
+                    className={`severity-btn ${escalateSeverity === 'supervisor_review' ? 'selected' : ''}`}
+                    onClick={() => setEscalateSeverity('supervisor_review')}
+                  >
+                    Supervisor Review
+                  </button>
+                  <button
+                    type="button"
+                    className={`severity-btn urgent ${escalateSeverity === 'urgent' ? 'selected' : ''}`}
+                    onClick={() => setEscalateSeverity('urgent')}
+                  >
+                    Urgent / Plant Impact
+                  </button>
+                </div>
+
+                <label className="sub-modal-label">Reason for Escalation:</label>
+                <textarea
+                  className="sub-modal-textarea"
+                  rows={4}
+                  placeholder="Explain why supervisor review, parts authorization, or specialist help is required…"
+                  value={escalateReason}
+                  onChange={(e) => setEscalateReason(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="sub-modal-footer">
+                <button
+                  type="button"
+                  className="sub-modal-cancel"
+                  onClick={() => setIsEscalateOpen(false)}
+                  disabled={isSubmittingEscalation}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="sub-modal-submit escalate-submit"
+                  disabled={isSubmittingEscalation || !escalateReason.trim()}
+                >
+                  {isSubmittingEscalation ? 'Escalating…' : 'Submit Escalation'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Stepped Repair Completion Modal */}
+      {isCompleteRepairOpen && incident && (
+        <RepairCompletionModal
+          isOpen={isCompleteRepairOpen}
+          onClose={() => setIsCompleteRepairOpen(false)}
+          incident={incident}
+          onCompleted={() => {
+            void query.refetch();
+          }}
+        />
+      )}
     </div>
   );
 }

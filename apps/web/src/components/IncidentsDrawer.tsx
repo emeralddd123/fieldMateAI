@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronRight, Layers, Search, X } from 'lucide-react';
+import { ChevronRight, Layers, Search, Wrench, X } from 'lucide-react';
 import type { DashboardIncident } from '../api';
 
 const formatDate = (iso: string) =>
@@ -165,6 +165,12 @@ export function IncidentsDrawer({
                   <span className="drawer-card-date">
                     {formatDate(inc.openedAt)}
                   </span>
+                  {inc.asset && (
+                    <span className="drawer-asset-pill">
+                      <Wrench size={11} />
+                      {inc.asset.assetTag}
+                    </span>
+                  )}
                   {inc.faultCode && (
                     <span className="drawer-fault-pill">
                       Fault: {inc.faultCode}

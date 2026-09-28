@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Search,
   ShieldAlert,
+  User,
   Wrench,
 } from 'lucide-react';
 import { fetchAssets, fetchIncidents } from '../api';
@@ -329,7 +330,8 @@ export function SupervisorView() {
                 </div>
               </header>
               <div className="supervisor-table-wrap">
-                <table className="supervisor-table">
+                {/* Desktop Table View (>= 768px) */}
+                <table className="supervisor-table desktop-only-table">
                   <thead>
                     <tr>
                       <th>Incident</th>
@@ -380,6 +382,75 @@ export function SupervisorView() {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Mobile Stacked Incident Cards (< 768px) */}
+                <div className="supervisor-mobile-cards-list mobile-only-cards">
+                  {visibleIncidents.map((incident) => {
+                    const hasPendingEscalation = incident.escalations?.some(
+                      (e) => e.status === 'pending',
+                    );
+                    return (
+                      <button
+                        key={incident.id}
+                        type="button"
+                        className={`supervisor-mobile-card status-${incident.status}`}
+                        onClick={() => setSelectedIncident(incident.id)}
+                      >
+                        <div className="mobile-card-top-row">
+                          <span className="incident-num-tag">
+                            {incident.incidentNumber}
+                          </span>
+                          <div className="mobile-card-badges">
+                            <span
+                              className={`priority-pill priority-${incident.priority}`}
+                            >
+                              {incident.priority}
+                            </span>
+                            <span
+                              className={`status-pill status-${incident.status}`}
+                            >
+                              {incident.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        <h4 className="mobile-card-title">{incident.title}</h4>
+
+                        <div className="mobile-card-meta-chips">
+                          {incident.asset && (
+                            <span className="mobile-card-chip asset-chip">
+                              <Wrench size={11} />
+                              {incident.asset.assetTag}
+                            </span>
+                          )}
+                          {incident.faultCode && (
+                            <span className="mobile-card-chip fault-chip">
+                              Fault: {incident.faultCode}
+                            </span>
+                          )}
+                          {hasPendingEscalation && (
+                            <span className="mobile-card-chip escalation-chip">
+                              <ShieldAlert size={11} /> Review Pending
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mobile-card-bottom-row">
+                          <span className="mobile-card-date">
+                            <Clock size={11} />
+                            {formatDate(incident.openedAt)}
+                          </span>
+                          <span className="mobile-card-assignee">
+                            <User size={11} />
+                            {incident.assignedTo?.name ?? 'Unassigned'}
+                          </span>
+                          <ChevronRight size={14} className="mobile-card-arrow" />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {visibleIncidents.length === 0 && (
                   <div className="supervisor-empty register-empty">
                     <LayoutDashboard size={24} />
