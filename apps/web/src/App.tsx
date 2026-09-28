@@ -24,6 +24,7 @@ import { IncidentDetailModal } from './components/IncidentDetailModal';
 import { IncidentsDrawer } from './components/IncidentsDrawer';
 import { QrScannerModal } from './components/QrScannerModal';
 import { SupervisorView } from './components/SupervisorView';
+import { MobileBottomNav, MobileHeader } from './components/MobileNavigation';
 import { useVoiceSession } from './voice/useVoiceSession';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { LoginPage } from './auth/LoginPage';
@@ -113,6 +114,19 @@ function TechnicianWorkspace() {
 
   return (
     <div className="app-shell">
+      {/* Mobile-first compact topbar (< 768px) */}
+      <MobileHeader
+        plantName={membership?.sites[0]?.name ?? membership?.organization.name}
+        onOpenQrScanner={() => setIsQrScannerOpen(true)}
+        onOpenIncidents={() => setIsIncidentsDrawerOpen(true)}
+        incidentCount={
+          incidents.data?.filter(
+            (i) => !['resolved', 'closed'].includes(i.status),
+          ).length ?? 0
+        }
+      />
+
+      {/* Desktop topbar (>= 768px) */}
       <header className="topbar">
         <a href="/" className="brand" aria-label="FieldMate AI home">
           <span className="brand-mark">
@@ -352,6 +366,24 @@ function TechnicianWorkspace() {
         onClose={() => setIsQrScannerOpen(false)}
         assets={assets.data ?? []}
         onSelectAsset={setSelectedId}
+      />
+
+      {/* Mobile-first persistent bottom navigation (< 768px) */}
+      <MobileBottomNav
+        activeTab="equipment"
+        activeAssetTag={selected?.assetTag}
+        incidentCount={
+          incidents.data?.filter(
+            (i) => !['resolved', 'closed'].includes(i.status),
+          ).length ?? 0
+        }
+        voice={voice}
+        onOpenEquipment={() => {
+          const el = document.querySelector('.sidebar');
+          el?.scrollIntoView({ behavior: 'smooth' });
+        }}
+        onOpenIncidents={() => setIsIncidentsDrawerOpen(true)}
+        onOpenQrScanner={() => setIsQrScannerOpen(true)}
       />
     </div>
   );

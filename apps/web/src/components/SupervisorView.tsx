@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { fetchAssets, fetchIncidents } from '../api';
 import { IncidentDetailModal } from './IncidentDetailModal';
+import { MobileBottomNav, MobileHeader } from './MobileNavigation';
 import { useAuth } from '../auth/AuthProvider';
 import { UserMenu } from '../auth/UserMenu';
 
@@ -96,6 +97,12 @@ export function SupervisorView() {
 
   return (
     <div className="supervisor-shell">
+      {/* Mobile-first compact topbar (< 768px) */}
+      <MobileHeader
+        plantName={membership?.sites[0]?.name ?? membership?.organization.name}
+        incidentCount={escalated.length}
+      />
+
       <header className="topbar supervisor-topbar">
         <a
           href="/supervisor"
@@ -391,6 +398,19 @@ export function SupervisorView() {
         onClose={() => setSelectedIncident(null)}
         supervisorMode
         onSupervisorUpdated={refresh}
+      />
+
+      {/* Mobile-first persistent bottom navigation (< 768px) */}
+      <MobileBottomNav
+        activeTab="incidents"
+        incidentCount={escalated.length}
+        onOpenEquipment={() => {
+          window.location.href = '/';
+        }}
+        onOpenIncidents={() => {
+          const el = document.querySelector('.supervisor-register');
+          el?.scrollIntoView({ behavior: 'smooth' });
+        }}
       />
     </div>
   );
