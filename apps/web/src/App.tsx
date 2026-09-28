@@ -26,6 +26,8 @@ import { QrScannerModal } from './components/QrScannerModal';
 import { SupervisorView } from './components/SupervisorView';
 import { MobileBottomNav, MobileHeader } from './components/MobileNavigation';
 import { MobileEquipmentSheet } from './components/MobileEquipmentSheet';
+import { MobileVoiceSheet } from './components/MobileVoiceSheet';
+import { VoiceReviewSheet, WriteReceiptNotice } from './components/VoiceReviewSheet';
 import { useVoiceSession } from './voice/useVoiceSession';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { LoginPage } from './auth/LoginPage';
@@ -87,6 +89,7 @@ function TechnicianWorkspace() {
   const [isIncidentsDrawerOpen, setIsIncidentsDrawerOpen] = useState(false);
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
   const [isEquipmentSheetOpen, setIsEquipmentSheetOpen] = useState(false);
+  const [isVoiceSheetOpen, setIsVoiceSheetOpen] = useState(false);
 
   const voice = useVoiceSession(setSelectedId);
   const [search, setSearch] = useState('');
@@ -320,8 +323,7 @@ function TechnicianWorkspace() {
                     if (['disconnected', 'error'].includes(voice.status)) {
                       voice.connect();
                     }
-                    const voiceEl = document.querySelector('.voice-bar');
-                    voiceEl?.scrollIntoView({ behavior: 'smooth' });
+                    setIsVoiceSheetOpen(true);
                   }}
                   onReportIncident={() => setIsIncidentsDrawerOpen(true)}
                   onRecordReading={() => {
@@ -413,8 +415,32 @@ function TechnicianWorkspace() {
         }
         voice={voice}
         onOpenEquipment={() => setIsEquipmentSheetOpen(true)}
+        onOpenVoice={() => {
+          if (['disconnected', 'error'].includes(voice.status)) {
+            voice.connect();
+          }
+          setIsVoiceSheetOpen(true);
+        }}
         onOpenIncidents={() => setIsIncidentsDrawerOpen(true)}
         onOpenQrScanner={() => setIsQrScannerOpen(true)}
+      />
+
+      {/* Full-Height Mobile Voice Workspace Sheet */}
+      <MobileVoiceSheet
+        isOpen={isVoiceSheetOpen}
+        onClose={() => setIsVoiceSheetOpen(false)}
+        voice={voice}
+        activeAssetTag={selected?.assetTag}
+        activeAssetName={selected?.name}
+      />
+
+      {/* Persistent Safe-State & Maintenance Write Review Sheet */}
+      <VoiceReviewSheet voice={voice} />
+
+      {/* Write Receipt Floating Toast Notice */}
+      <WriteReceiptNotice
+        notices={voice.writeNotices}
+        onRetry={voice.retryWrite}
       />
     </div>
   );
