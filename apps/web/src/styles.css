@@ -4794,3 +4794,475 @@ h1 {
   margin-top: 6px;
 }
 
+/* ==========================================================================
+   MOBILE & TOUCH-FIRST RESPONSIVE POLISH (FieldMate AI)
+   ========================================================================== */
+
+/* Universal Touch & Accessibility Enhancements */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Base Form Inputs on Mobile (Prevent iOS Safari auto-zoom) */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Active touch feedback */
+.admin-primary-btn:active,
+.admin-secondary-btn:active,
+.admin-action-btn:active,
+.workspace-tab:active,
+.admin-subnav-link:active,
+.admin-nav-card:active,
+.topbar-icon-link:active,
+.voice-button:active,
+.asset-button:active {
+  transform: scale(0.97);
+  transition: transform 0.08s ease;
+}
+
+/* --------------------------------------------------------------------------
+   ADMIN WORKSPACE - MOBILE RESPONSIVENESS (< 1024px & < 768px & < 480px)
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1024px) {
+  .admin-topbar {
+    padding: 0 20px;
+    gap: 16px;
+  }
+  .topbar-left {
+    gap: 16px;
+  }
+  .admin-main {
+    padding: 24px 20px;
+  }
+  .admin-subnav-bar {
+    padding: 0 20px;
+  }
+  .admin-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  /* Admin Topbar */
+  .admin-topbar {
+    height: 62px;
+    padding: 0 14px;
+    gap: 10px;
+  }
+  .topbar-left {
+    gap: 10px;
+  }
+  .brand small {
+    display: none;
+  }
+  .admin-topbar .brand {
+    font-size: 17px;
+  }
+  .admin-topbar .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+  .admin-topbar .brand-mark svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Compact workspace switcher on mobile */
+  .workspace-nav {
+    padding: 2px;
+    gap: 2px;
+  }
+  .workspace-tab {
+    padding: 6px 8px;
+    font-size: 11px;
+    gap: 4px;
+  }
+  .workspace-tab span {
+    display: none;
+  }
+
+  /* Org pill */
+  .org-pill {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+  .org-pill span {
+    display: none;
+  }
+
+  /* Topbar icons touch targets */
+  .topbar-icon-link {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Admin Subnav Bar - Smooth horizontal swipe with indicator */
+  .admin-subnav-bar {
+    padding: 0 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .admin-subnav-inner {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 4px;
+    gap: 4px;
+  }
+  .admin-subnav-inner::-webkit-scrollbar {
+    display: none;
+  }
+  .admin-subnav-link {
+    padding: 12px 14px;
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  /* Admin Main Container */
+  .admin-main {
+    padding: 16px 12px 32px;
+  }
+  .admin-page-container {
+    gap: 16px;
+  }
+
+  /* Admin Header */
+  .admin-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .admin-page-title {
+    font-size: 22px;
+  }
+  .admin-page-desc {
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+  .admin-header-actions {
+    width: 100%;
+  }
+  .admin-header-actions .admin-primary-btn,
+  .admin-header-actions .admin-secondary-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 16px;
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  /* Admin KPI Grid - Clean 2-column mobile layout */
+  .admin-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .admin-kpi-card {
+    padding: 14px 12px;
+    gap: 10px;
+  }
+  .admin-kpi-icon-wrap {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+  .admin-kpi-icon-wrap svg {
+    width: 18px;
+    height: 18px;
+  }
+  .admin-kpi-label {
+    font-size: 10.5px;
+  }
+  .admin-kpi-value {
+    font-size: 18px;
+  }
+
+  /* Admin Navigation Cards - 1 column on mobile */
+  .admin-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .admin-nav-card {
+    padding: 16px;
+  }
+
+  /* Filters Bar */
+  .admin-filters-bar {
+    padding: 12px;
+    gap: 8px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .admin-search-wrap {
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+  }
+  .admin-filter-group {
+    width: 100%;
+  }
+  .admin-select {
+    width: 100%;
+    height: 42px;
+    font-size: 14px;
+  }
+
+  /* Admin Tabs */
+  .admin-tabs {
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border-bottom: 1px solid #1f2e3d;
+  }
+  .admin-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .admin-tab {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    justify-content: center;
+    padding: 12px 10px;
+    font-size: 13px;
+  }
+
+  /* Data Table Container - Smooth horizontal scrolling */
+  .admin-table-card {
+    border-radius: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: inset -8px 0 8px -8px rgba(0, 0, 0, 0.5);
+  }
+  .admin-table {
+    min-width: 660px;
+  }
+  .admin-table th,
+  .admin-table td {
+    padding: 12px 14px;
+  }
+  .admin-actions-cell {
+    gap: 4px;
+  }
+  .admin-action-btn {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 6px;
+  }
+
+  /* Admin Modals - Mobile Bottom Sheet Behavior */
+  .admin-modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+    background: rgba(4, 8, 13, 0.85);
+  }
+  .admin-modal-card {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 92dvh;
+    display: flex;
+    flex-direction: column;
+    border-bottom: none;
+    animation: slideUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .admin-modal-card::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: #33475b;
+    margin: 8px auto 2px;
+  }
+  .admin-modal-header {
+    padding: 14px 18px;
+    flex-shrink: 0;
+  }
+  .admin-modal-form {
+    padding: 16px 18px max(24px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 14px;
+  }
+  .admin-modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  .admin-modal-actions button {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  /* Steps builder inside procedure modal on mobile */
+  .steps-builder {
+    padding: 10px;
+  }
+  .step-card-edit {
+    grid-template-columns: 28px 1fr auto;
+    gap: 6px;
+    padding: 8px;
+  }
+  .step-card-edit .admin-input {
+    grid-column: 2 / 4;
+  }
+  .step-card-edit .step-checkbox-label {
+    grid-column: 2 / 3;
+    font-size: 11px;
+  }
+
+  /* Procedure preview modal */
+  .procedure-preview-content {
+    padding: 16px;
+    max-height: 80dvh;
+  }
+  .preview-meta-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .admin-kpi-card {
+    padding: 12px 10px;
+    gap: 8px;
+  }
+  .admin-kpi-value {
+    font-size: 17px;
+  }
+  .admin-page-title {
+    font-size: 20px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   SUPERVISOR WORKSPACE - MOBILE RESPONSIVENESS (< 768px)
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .supervisor-hero {
+    padding: 16px 0 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .supervisor-hero h1 {
+    font-size: 22px;
+  }
+  .supervisor-hero p {
+    font-size: 13px;
+  }
+  .supervisor-hero button {
+    width: 100%;
+    justify-content: center;
+    min-height: 42px;
+  }
+  .supervisor-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .supervisor-kpi {
+    padding: 14px 12px;
+  }
+  .supervisor-kpi .value {
+    font-size: 24px;
+  }
+  .supervisor-register-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .supervisor-register-controls .search-box {
+    width: 100%;
+  }
+  .filter-pills {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .filter-pills::-webkit-scrollbar {
+    display: none;
+  }
+  .filter-pill {
+    white-space: nowrap;
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   TECHNICIAN WORKSPACE & GENERAL MODALS (< 768px)
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  /* Modals as bottom sheets */
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal-container,
+  .drawer-container {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 92dvh;
+    border-bottom: none;
+    animation: slideUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .modal-container::before,
+  .drawer-container::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: #33475b;
+    margin: 8px auto 2px;
+  }
+  .modal-header {
+    padding: 12px 16px;
+  }
+  .modal-content,
+  .drawer-content {
+    padding: 16px;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Safe area padding for the app shell footer/bottom */
+  .app-shell,
+  .admin-shell,
+  .supervisor-shell {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Bottom sheet slide-up animation */
+@keyframes slideUpModal {
+  from {
+    transform: translateY(100%);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+
