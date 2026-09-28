@@ -7,6 +7,7 @@ import {
   type AuthSession,
   type UserRole,
 } from './api';
+import { clearAllTenantDrafts } from '../utils/draftStorage';
 
 interface AuthContextValue {
   session: AuthSession | null;
@@ -39,11 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return session;
     },
     logout: async (all = false) => {
-      await logoutRequest(all);
-      queryClient.setQueryData(['auth-session'], null);
-      queryClient.removeQueries({
-        predicate: (item) => item.queryKey[0] !== 'auth-session',
-      });
+      try {
+        await logoutRequest(all);
+      } finally {
+        // Clear all sensitive local drafts on sign-out
+        clearAllTenantDrafts();
+        queryClient.setQueryData(['auth-session'], null);
+        queryClient.clear();
+      }
     },
     refresh: async () => {
       await query.refetch();

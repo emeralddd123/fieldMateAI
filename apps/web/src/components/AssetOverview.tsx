@@ -7,6 +7,7 @@ import {
   Box,
   ChevronDown,
   ChevronRight,
+  Clock,
   Cpu,
   Gauge,
   MapPin,
@@ -60,6 +61,9 @@ export function AssetOverview({
             <span className={`status-dot ${asset.status}`} />
             <strong className="mobile-bar-tag">{asset.assetTag}</strong>
             <span className={`status-pill ${asset.status}`}>{asset.status}</span>
+            <span className="mobile-bar-time" title="Data freshness">
+              <Clock size={10} /> {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
           </div>
           <span className="mobile-bar-name">{asset.name}</span>
         </div>
@@ -82,6 +86,9 @@ export function AssetOverview({
         <span>ASSET OVERVIEW</span>
         <div className="eyebrow-right">
           <span className="mono">{asset.assetTag}</span>
+          <span className="asset-synced-badge" title="Data freshness">
+            <Clock size={11} /> {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
           {onOpenEquipmentSheet && (
             <button
               type="button"

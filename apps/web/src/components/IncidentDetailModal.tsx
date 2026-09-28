@@ -21,6 +21,13 @@ import {
   submitIncidentEscalation,
   type IncidentDetail,
 } from '../api';
+import { useAuth } from '../auth/AuthProvider';
+import {
+  saveFormDraft,
+  loadFormDraft,
+  clearFormDraft,
+} from '../utils/draftStorage';
+import { DraftRestorationNotice } from './DraftRestorationNotice';
 import { RepairCompletionModal } from './RepairCompletionModal';
 
 const formatDateTime = (iso: string) =>
@@ -225,20 +232,77 @@ export function IncidentDetailModal({
   });
 
   const queryClient = useQueryClient();
+  const auth = useAuth();
+  const tenantId = auth.session?.memberships[0]?.organization.id ?? 'default_tenant';
+  const userId = auth.session?.user.id ?? 'anonymous';
 
   // Action Dialog States
   const [isAddNoteOpen, setIsAddNoteOpen] = useState(false);
   const [newNote, setNewNote] = useState('');
+  const [noteDraftAge, setNoteDraftAge] = useState<number | null>(null);
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
 
   const [isEscalateOpen, setIsEscalateOpen] = useState(false);
   const [escalateReason, setEscalateReason] = useState('');
   const [escalateSeverity, setEscalateSeverity] = useState<'supervisor_review' | 'urgent'>('supervisor_review');
+  const [escalateDraftAge, setEscalateDraftAge] = useState<number | null>(null);
   const [isSubmittingEscalation, setIsSubmittingEscalation] = useState(false);
   const [escalateError, setEscalateError] = useState<string | null>(null);
 
   const [isCompleteRepairOpen, setIsCompleteRepairOpen] = useState(false);
+
+  // Restore note draft on open
+  useEffect(() => {
+    if (isAddNoteOpen && incidentId) {
+      const draft = loadFormDraft<{ note: string }>(tenantId, userId, `note_${incidentId}`);
+      if (draft && draft.payload?.note) {
+        setNewNote(draft.payload.note);
+        setNoteDraftAge(draft.ageMinutes);
+      } else {
+        setNoteDraftAge(null);
+      }
+    }
+  }, [isAddNoteOpen, incidentId, tenantId, userId]);
+
+  // Persist note draft on change
+  useEffect(() => {
+    if (isAddNoteOpen && incidentId) {
+      if (newNote.trim()) {
+        saveFormDraft(tenantId, userId, `note_${incidentId}`, { note: newNote });
+      }
+    }
+  }, [isAddNoteOpen, newNote, incidentId, tenantId, userId]);
+
+  // Restore escalation draft on open
+  useEffect(() => {
+    if (isEscalateOpen && incidentId) {
+      const draft = loadFormDraft<{ reason: string; severity: 'supervisor_review' | 'urgent' }>(
+        tenantId,
+        userId,
+        `escalate_${incidentId}`,
+      );
+      if (draft && draft.payload?.reason) {
+        setEscalateReason(draft.payload.reason);
+        if (draft.payload.severity) setEscalateSeverity(draft.payload.severity);
+        setEscalateDraftAge(draft.ageMinutes);
+      } else {
+        setEscalateDraftAge(null);
+      }
+    }
+  }, [isEscalateOpen, incidentId, tenantId, userId]);
+
+  // Persist escalation draft on change
+  useEffect(() => {
+    if (isEscalateOpen && incidentId) {
+      if (escalateReason.trim()) {
+        saveFormDraft(tenantId, userId, `escalate_${incidentId}`, {
+          reason: escalateReason,
+          severity: escalateSeverity,
+        });
+      }
+    }
+  }, [isEscalateOpen, escalateReason, escalateSeverity, incidentId, tenantId, userId]);
 
   if (!incidentId) return null;
 
@@ -248,6 +312,19 @@ export function IncidentDetailModal({
     (escalation) => escalation.status === 'pending',
   );
 
+  const handleDiscardNoteDraft = () => {
+    clearFormDraft(tenantId, userId, `note_${incidentId}`);
+    setNewNote('');
+    setNoteDraftAge(null);
+  };
+
+  const handleDiscardEscalateDraft = () => {
+    clearFormDraft(tenantId, userId, `escalate_${incidentId}`);
+    setEscalateReason('');
+    setEscalateSeverity('supervisor_review');
+    setEscalateDraftAge(null);
+  };
+
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNote.trim() || !incident) return;
@@ -255,6 +332,8 @@ export function IncidentDetailModal({
     setNoteError(null);
     try {
       await submitIncidentNote(incident.id, newNote.trim());
+      clearFormDraft(tenantId, userId, `note_${incident.id}`);
+      setNoteDraftAge(null);
       await queryClient.invalidateQueries({ queryKey: ['incident-detail', incident.id] });
       await queryClient.invalidateQueries({ queryKey: ['incidents'] });
       setNewNote('');
@@ -273,6 +352,8 @@ export function IncidentDetailModal({
     setEscalateError(null);
     try {
       await submitIncidentEscalation(incident.id, escalateReason.trim(), escalateSeverity);
+      clearFormDraft(tenantId, userId, `escalate_${incident.id}`);
+      setEscalateDraftAge(null);
       await queryClient.invalidateQueries({ queryKey: ['incident-detail', incident.id] });
       await queryClient.invalidateQueries({ queryKey: ['incidents'] });
       setEscalateReason('');
@@ -603,6 +684,13 @@ export function IncidentDetailModal({
             </div>
             <form onSubmit={handleAddNote}>
               <div className="sub-modal-body">
+                {noteDraftAge !== null && (
+                  <DraftRestorationNotice
+                    ageMinutes={noteDraftAge}
+                    onDiscard={handleDiscardNoteDraft}
+                    onDismiss={() => setNoteDraftAge(null)}
+                  />
+                )}
                 {noteError && (
                   <div className="sub-modal-error">
                     <AlertTriangle size={14} />
@@ -668,6 +756,13 @@ export function IncidentDetailModal({
             </div>
             <form onSubmit={handleEscalate}>
               <div className="sub-modal-body">
+                {escalateDraftAge !== null && (
+                  <DraftRestorationNotice
+                    ageMinutes={escalateDraftAge}
+                    onDiscard={handleDiscardEscalateDraft}
+                    onDismiss={() => setEscalateDraftAge(null)}
+                  />
+                )}
                 {escalateError && (
                   <div className="sub-modal-error">
                     <AlertTriangle size={14} />

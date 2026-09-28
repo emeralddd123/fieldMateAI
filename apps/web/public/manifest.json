@@ -1,0 +1,25 @@
+{
+  "short_name": "FieldMate",
+  "name": "FieldMate AI · Industrial Maintenance Intelligence",
+  "description": "Equipment knowledge and maintenance memory for field technicians.",
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0b1118",
+  "theme_color": "#0b1118",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity", "utilities"]
+}

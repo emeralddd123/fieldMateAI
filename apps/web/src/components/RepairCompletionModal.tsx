@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -20,12 +20,32 @@ import {
   type CompleteRepairPayload,
   type IncidentDetail,
 } from '../api';
+import { useAuth } from '../auth/AuthProvider';
+import {
+  saveFormDraft,
+  loadFormDraft,
+  clearFormDraft,
+} from '../utils/draftStorage';
+import { DraftRestorationNotice } from './DraftRestorationNotice';
 
 export interface RepairCompletionModalProps {
   isOpen: boolean;
   onClose: () => void;
   incident: IncidentDetail;
   onCompleted?: () => void;
+}
+
+interface RepairDraftPayload {
+  rootCause: string;
+  actionTaken: string;
+  verificationSummary: string;
+  includeMeasurement: boolean;
+  measurementType: string;
+  measurementValue: string;
+  measurementUnit: string;
+  measurementNotes: string;
+  assetStatus: 'operational' | 'warning' | 'maintenance' | 'down';
+  step: 1 | 2 | 3 | 4;
 }
 
 export function RepairCompletionModal({
@@ -35,6 +55,10 @@ export function RepairCompletionModal({
   onCompleted,
 }: RepairCompletionModalProps) {
   const queryClient = useQueryClient();
+  const auth = useAuth();
+  const tenantId = auth.session?.memberships[0]?.organization.id ?? 'default_tenant';
+  const userId = auth.session?.user.id ?? 'anonymous';
+  const formKey = `repair_${incident.id}`;
 
   // Wizard Step: 1 (Diagnosis) | 2 (Action) | 3 (Verification & Reading) | 4 (Equipment Status) | 5 (Success Receipt)
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -51,6 +75,77 @@ export function RepairCompletionModal({
   const [assetStatus, setAssetStatus] = useState<
     'operational' | 'warning' | 'maintenance' | 'down'
   >('operational');
+
+  // Draft restoration state
+  const [restoredDraftAge, setRestoredDraftAge] = useState<number | null>(null);
+
+  // Load draft on mount / open
+  useEffect(() => {
+    if (isOpen) {
+      const draft = loadFormDraft<RepairDraftPayload>(tenantId, userId, formKey);
+      if (draft && draft.payload) {
+        setRootCause(draft.payload.rootCause ?? incident.rootCause ?? '');
+        setActionTaken(draft.payload.actionTaken ?? incident.actionTaken ?? '');
+        setVerificationSummary(draft.payload.verificationSummary ?? '');
+        setIncludeMeasurement(draft.payload.includeMeasurement ?? false);
+        setMeasurementType(draft.payload.measurementType ?? 'line_voltage');
+        setMeasurementValue(draft.payload.measurementValue ?? '400');
+        setMeasurementUnit(draft.payload.measurementUnit ?? 'V');
+        setMeasurementNotes(draft.payload.measurementNotes ?? '');
+        setAssetStatus(draft.payload.assetStatus ?? 'operational');
+        setStep(draft.payload.step ?? 1);
+        setRestoredDraftAge(draft.ageMinutes);
+      } else {
+        setRestoredDraftAge(null);
+      }
+    }
+  }, [isOpen, incident.id, incident.rootCause, incident.actionTaken, tenantId, userId, formKey]);
+
+  // Persist draft on edit
+  useEffect(() => {
+    if (!isOpen || step === 5) return;
+    // Only save if there is content
+    if (rootCause || actionTaken || verificationSummary) {
+      saveFormDraft<RepairDraftPayload>(tenantId, userId, formKey, {
+        rootCause,
+        actionTaken,
+        verificationSummary,
+        includeMeasurement,
+        measurementType,
+        measurementValue,
+        measurementUnit,
+        measurementNotes,
+        assetStatus,
+        step: step < 5 ? (step as 1 | 2 | 3 | 4) : 1,
+      });
+    }
+  }, [
+    isOpen,
+    rootCause,
+    actionTaken,
+    verificationSummary,
+    includeMeasurement,
+    measurementType,
+    measurementValue,
+    measurementUnit,
+    measurementNotes,
+    assetStatus,
+    step,
+    tenantId,
+    userId,
+    formKey,
+  ]);
+
+  const handleDiscardDraft = () => {
+    clearFormDraft(tenantId, userId, formKey);
+    setRootCause(incident.rootCause ?? '');
+    setActionTaken(incident.actionTaken ?? '');
+    setVerificationSummary('');
+    setIncludeMeasurement(false);
+    setAssetStatus('operational');
+    setStep(1);
+    setRestoredDraftAge(null);
+  };
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -143,6 +238,9 @@ export function RepairCompletionModal({
       await queryClient.invalidateQueries({ queryKey: ['incident-detail', incident.id] });
       await queryClient.invalidateQueries({ queryKey: ['assets'] });
 
+      clearFormDraft(tenantId, userId, formKey);
+      setRestoredDraftAge(null);
+
       setSuccessReceipt({
         recordId: result.maintenanceRecord.id,
         incidentNumber: result.incident.incidentNumber,
@@ -210,6 +308,15 @@ export function RepairCompletionModal({
               <span className="step-name">Confirm</span>
             </div>
           </div>
+        )}
+
+        {/* Restored Draft Notice */}
+        {restoredDraftAge !== null && step < 5 && (
+          <DraftRestorationNotice
+            ageMinutes={restoredDraftAge}
+            onDiscard={handleDiscardDraft}
+            onDismiss={() => setRestoredDraftAge(null)}
+          />
         )}
 
         {/* Error Notification */}

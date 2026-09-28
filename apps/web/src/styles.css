@@ -6869,6 +6869,27 @@ h1 {
     white-space: nowrap;
   }
 
+  .mobile-bar-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 9.5px;
+    color: #64748b;
+    margin-left: 2px;
+  }
+
+  .asset-synced-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10.5px;
+    color: #64748b;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid #1e293b;
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+
   .mobile-change-machine-btn {
     display: inline-flex;
     align-items: center;
@@ -9492,6 +9513,218 @@ h1 {
   }
 }
 
+/* ==========================================================================
+   Phase M7: Resilience, Connectivity Banner & Local Draft Restoration
+   ========================================================================== */
 
+/* Top Connectivity Status Banner */
+.connectivity-status-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  font-size: 12px;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  animation: slideDownBanner 0.2s ease-out;
+}
 
+@keyframes slideDownBanner {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
 
+.banner-offline {
+  background: #3b1404;
+  border-bottom: 1px solid #d97706;
+  color: #fef3c7;
+}
+
+.banner-reconnecting {
+  background: #082f49;
+  border-bottom: 1px solid #0284c7;
+  color: #e0f2fe;
+}
+
+.banner-stale {
+  background: #431407;
+  border-bottom: 1px solid #ea580c;
+  color: #ffedd5;
+}
+
+.banner-restored {
+  background: #064e3b;
+  border-bottom: 1px solid #10b981;
+  color: #d1fae5;
+}
+
+.connectivity-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.conn-icon-spin {
+  animation: spin 1s linear infinite;
+  color: #38bdf8;
+}
+
+.conn-icon-offline {
+  color: #fbbf24;
+}
+
+.conn-icon-stale {
+  color: #fb923c;
+}
+
+.conn-icon-restored {
+  color: #34d399;
+}
+
+.conn-message {
+  line-height: 1.4;
+}
+
+.conn-action-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  transition: all 0.15s ease;
+}
+
+.conn-action-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.conn-dismiss-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.conn-dismiss-btn:hover {
+  opacity: 1;
+}
+
+/* Draft Restoration Alert Notice */
+.draft-restoration-notice {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid #0284c7;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  animation: fadeInDraft 0.2s ease-out;
+}
+
+@keyframes fadeInDraft {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.draft-notice-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.draft-notice-icon {
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.draft-notice-text {
+  display: flex;
+  flex-direction: column;
+  font-size: 11.5px;
+}
+
+.draft-notice-text strong {
+  color: #f1f5f9;
+  font-size: 12px;
+}
+
+.draft-notice-text span {
+  color: #94a3b8;
+}
+
+.draft-notice-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.draft-discard-btn {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  transition: all 0.15s ease;
+}
+
+.draft-discard-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.draft-dismiss-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.draft-dismiss-btn:hover {
+  color: #f1f5f9;
+}

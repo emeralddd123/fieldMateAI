@@ -23,6 +23,7 @@ import { DashboardMetrics } from './components/DashboardMetrics';
 import { IncidentDetailModal } from './components/IncidentDetailModal';
 import { IncidentsDrawer } from './components/IncidentsDrawer';
 import { QrScannerModal } from './components/QrScannerModal';
+import { ConnectivityBanner } from './components/ConnectivityBanner';
 import { SupervisorView } from './components/SupervisorView';
 import { MobileBottomNav, MobileHeader } from './components/MobileNavigation';
 import { MobileEquipmentSheet } from './components/MobileEquipmentSheet';
@@ -121,6 +122,14 @@ function TechnicianWorkspace() {
 
   return (
     <div className="app-shell">
+      {/* Network Connectivity & Stale Data Status */}
+      <ConnectivityBanner
+        onRefreshLive={() => {
+          assets.refetch();
+          incidents.refetch();
+        }}
+      />
+
       {/* Mobile-first compact topbar (< 768px) */}
       <MobileHeader
         plantName={membership?.sites[0]?.name ?? membership?.organization.name}
