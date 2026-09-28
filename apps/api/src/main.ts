@@ -21,7 +21,26 @@ async function bootstrap() {
   app.use(requestIdMiddleware);
   app.use(cookieParser());
   app.enableCors({
-    origin: new URL(env.FRONTEND_URL).origin,
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      if (!origin) return callback(null, true);
+      if (origin === new URL(env.FRONTEND_URL).origin) return callback(null, true);
+      try {
+        const u = new URL(origin);
+        if (
+          u.hostname === 'localhost' ||
+          u.hostname === '127.0.0.1' ||
+          u.hostname.startsWith('192.168.') ||
+          u.hostname.startsWith('10.') ||
+          /^172\.(1[6-9]|2\d|3[01])\./.test(u.hostname)
+        ) {
+          return callback(null, true);
+        }
+      } catch {}
+      callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   });
   app.enableShutdownHooks();

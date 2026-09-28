@@ -52,7 +52,24 @@ export class VoiceService {
   }
 
   async mint(origin: string | undefined, ip: string) {
-    if (origin && origin !== this.settings.frontendOrigin) {
+    const isAllowedOrigin = (orig: string) => {
+      if (orig === this.settings.frontendOrigin) return true;
+      try {
+        const u = new URL(orig);
+        if (
+          u.hostname === 'localhost' ||
+          u.hostname === '127.0.0.1' ||
+          u.hostname.startsWith('192.168.') ||
+          u.hostname.startsWith('10.') ||
+          /^172\.(1[6-9]|2\d|3[01])\./.test(u.hostname)
+        ) {
+          return true;
+        }
+      } catch {}
+      return false;
+    };
+
+    if (origin && !isAllowedOrigin(origin)) {
       throw new ForbiddenException({
         code: 'VOICE_ORIGIN_REJECTED',
         message: 'Voice requests must come from the FieldMate workspace.',
