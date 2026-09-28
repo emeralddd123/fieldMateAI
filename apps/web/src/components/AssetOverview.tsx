@@ -3,6 +3,7 @@ import {
   Activity,
   AlertTriangle,
   ArrowUpRight,
+  AudioLines,
   Box,
   ChevronDown,
   ChevronRight,
@@ -23,6 +24,7 @@ export interface AssetOverviewProps {
   activeIncidents?: DashboardIncident[];
   onOpenEquipmentSheet?: () => void;
   onAskFieldMate?: () => void;
+  onStartWorkMode?: () => void;
   onReportIncident?: () => void;
   onRecordReading?: () => void;
   onSelectIncident?: (incidentId: string) => void;
@@ -33,6 +35,7 @@ export function AssetOverview({
   activeIncidents = [],
   onOpenEquipmentSheet,
   onAskFieldMate,
+  onStartWorkMode,
   onReportIncident,
   onRecordReading,
   onSelectIncident,
@@ -157,6 +160,23 @@ export function AssetOverview({
             <small>Log telemetry metric</small>
           </div>
         </button>
+
+        {onStartWorkMode && (
+          <button
+            type="button"
+            className="field-action-btn action-work-mode"
+            onClick={onStartWorkMode}
+            title="Launch hands-free minimal-touch Work Mode"
+          >
+            <div className="field-action-icon work-mode-icon">
+              <AudioLines size={18} />
+            </div>
+            <div className="field-action-text">
+              <strong>Work Mode</strong>
+              <small>Hands-free steps</small>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* Active Fault Alert if Machine is in trouble */}
@@ -180,16 +200,28 @@ export function AssetOverview({
             )}
             <p>{primaryFault.description}</p>
           </div>
-          {onSelectIncident && (
-            <button
-              type="button"
-              className="fault-view-btn"
-              onClick={() => onSelectIncident(primaryFault.id)}
-            >
-              <span>View incident details & procedures</span>
-              <ChevronRight size={14} />
-            </button>
-          )}
+          <div className="fault-banner-actions">
+            {onStartWorkMode && (
+              <button
+                type="button"
+                className="fault-work-mode-btn"
+                onClick={onStartWorkMode}
+              >
+                <AudioLines size={14} />
+                <span>Launch Diagnostic Work Mode</span>
+              </button>
+            )}
+            {onSelectIncident && (
+              <button
+                type="button"
+                className="fault-view-btn"
+                onClick={() => onSelectIncident(primaryFault.id)}
+              >
+                <span>View incident details</span>
+                <ChevronRight size={14} />
+              </button>
+            )}
+          </div>
         </div>
       )}
 

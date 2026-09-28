@@ -28,6 +28,7 @@ import { MobileBottomNav, MobileHeader } from './components/MobileNavigation';
 import { MobileEquipmentSheet } from './components/MobileEquipmentSheet';
 import { MobileVoiceSheet } from './components/MobileVoiceSheet';
 import { VoiceReviewSheet, WriteReceiptNotice } from './components/VoiceReviewSheet';
+import { WorkModeView } from './components/WorkModeView';
 import { useVoiceSession } from './voice/useVoiceSession';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { LoginPage } from './auth/LoginPage';
@@ -90,6 +91,7 @@ function TechnicianWorkspace() {
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
   const [isEquipmentSheetOpen, setIsEquipmentSheetOpen] = useState(false);
   const [isVoiceSheetOpen, setIsVoiceSheetOpen] = useState(false);
+  const [isWorkModeOpen, setIsWorkModeOpen] = useState(false);
 
   const voice = useVoiceSession(setSelectedId);
   const [search, setSearch] = useState('');
@@ -325,6 +327,7 @@ function TechnicianWorkspace() {
                     }
                     setIsVoiceSheetOpen(true);
                   }}
+                  onStartWorkMode={() => setIsWorkModeOpen(true)}
                   onReportIncident={() => setIsIncidentsDrawerOpen(true)}
                   onRecordReading={() => {
                     if (['disconnected', 'error'].includes(voice.status)) {
@@ -421,9 +424,21 @@ function TechnicianWorkspace() {
           }
           setIsVoiceSheetOpen(true);
         }}
+        onOpenWorkMode={() => setIsWorkModeOpen(true)}
         onOpenIncidents={() => setIsIncidentsDrawerOpen(true)}
         onOpenQrScanner={() => setIsQrScannerOpen(true)}
       />
+
+      {/* Hands-Free Minimal-Touch Work Mode (Phase M4) */}
+      {selected && (
+        <WorkModeView
+          isOpen={isWorkModeOpen}
+          onClose={() => setIsWorkModeOpen(false)}
+          asset={selected}
+          activeIncidents={incidents.data ?? []}
+          voice={voice}
+        />
+      )}
 
       {/* Full-Height Mobile Voice Workspace Sheet */}
       <MobileVoiceSheet

@@ -29,6 +29,7 @@ export interface MobileBottomNavProps {
   voice?: VoiceControlsState;
   onOpenEquipment?: () => void;
   onOpenVoice?: () => void;
+  onOpenWorkMode?: () => void;
   onOpenIncidents?: () => void;
   onOpenQrScanner?: () => void;
 }
@@ -40,6 +41,7 @@ export function MobileBottomNav({
   voice,
   onOpenEquipment,
   onOpenVoice,
+  onOpenWorkMode,
   onOpenIncidents,
   onOpenQrScanner,
 }: MobileBottomNavProps) {
@@ -154,6 +156,10 @@ export function MobileBottomNav({
             setIsMoreOpen(false);
             onOpenQrScanner?.();
           }}
+          onOpenWorkMode={() => {
+            setIsMoreOpen(false);
+            onOpenWorkMode?.();
+          }}
         />
       )}
     </>
@@ -241,9 +247,11 @@ export function MobileHeader({
 export function MobileMoreSheet({
   onClose,
   onOpenQrScanner,
+  onOpenWorkMode,
 }: {
   onClose: () => void;
   onOpenQrScanner?: () => void;
+  onOpenWorkMode?: () => void;
 }) {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -302,6 +310,22 @@ export function MobileMoreSheet({
         <div className="mobile-sheet-body">
           <div className="sheet-group-label">QUICK TOOLS</div>
           <div className="sheet-nav-list">
+            {onOpenWorkMode && (
+              <button
+                type="button"
+                className="sheet-nav-item"
+                onClick={onOpenWorkMode}
+              >
+                <div className="sheet-nav-icon work-mode-icon">
+                  <AudioLines size={18} />
+                </div>
+                <div className="sheet-nav-text">
+                  <span>Hands-Free Work Mode</span>
+                  <small>Step-by-step minimal-touch guidance</small>
+                </div>
+              </button>
+            )}
+
             {onOpenQrScanner && (
               <button
                 type="button"
