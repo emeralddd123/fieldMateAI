@@ -18,7 +18,9 @@ Example:
   process.exit(1);
 }
 
-if (password.length < 8) {
+const securePassword: string = password;
+
+if (securePassword.length < 8) {
   console.error('Error: Password must be at least 8 characters long.');
   process.exit(1);
 }
@@ -34,7 +36,7 @@ const prisma = new PrismaClient({
 
 async function main() {
   try {
-    const passwordHash = await hash(password, {
+    const passwordHash = await hash(securePassword, {
       type: argon2id,
       memoryCost: 19456,
       timeCost: 2,

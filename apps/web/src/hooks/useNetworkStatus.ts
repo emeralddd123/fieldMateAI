@@ -34,7 +34,7 @@ export function useNetworkStatus(): NetworkStatus {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-      const res = await fetch(`/api/auth/session?_t=${Date.now()}`, {
+      const res = await fetch(`/health?_t=${Date.now()}`, {
         method: 'HEAD',
         signal: controller.signal,
       }).catch(async () => {

@@ -42,11 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout: async (all = false) => {
       try {
         await logoutRequest(all);
+      } catch (err) {
+        console.warn('Backend sign-out request failed or network unavailable:', err);
       } finally {
         // Clear all sensitive local drafts on sign-out
         clearAllTenantDrafts();
-        queryClient.setQueryData(['auth-session'], null);
         queryClient.clear();
+        queryClient.setQueryData(['auth-session'], null);
       }
     },
     refresh: async () => {
