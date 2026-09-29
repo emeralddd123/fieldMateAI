@@ -182,7 +182,7 @@ export function MaintenancePanel({
                       </time>
                       {index === 0 && (
                         <span className="repair-date-caption">
-                          Latest activity
+                          Latest repair
                         </span>
                       )}
                     </div>
@@ -196,26 +196,23 @@ export function MaintenancePanel({
                             {record.faultCode ?? 'Maintenance'}
                           </span>
                         </div>
-                        {index === 0 && (
-                          <span className="latest-repair-badge">
-                            Latest repair
-                          </span>
-                        )}
                       </div>
                       <div className="repair-detail-grid">
                         <div className="repair-action">
-                          <span className="repair-field-label">
-                            <Wrench size={12} />
-                            Action taken
-                          </span>
-                          <p>{record.actionTaken}</p>
+                          <Wrench size={14} aria-hidden="true" />
+                          <p>
+                            <span className="repair-inline-label">Action</span>
+                            {record.actionTaken}
+                          </p>
                         </div>
                         <div className="repair-verification">
-                          <span className="repair-field-label">
-                            <CheckCheck size={13} />
-                            Verification
-                          </span>
-                          <p>{record.verification}</p>
+                          <CheckCheck size={15} aria-hidden="true" />
+                          <p>
+                            <span className="repair-inline-label">
+                              Verified
+                            </span>
+                            {record.verification}
+                          </p>
                         </div>
                       </div>
                       <div className="repair-card-footer">
@@ -235,9 +232,7 @@ export function MaintenancePanel({
                             <UserRound size={16} aria-hidden="true" />
                           </span>
                           <span>
-                            <span className="repair-technician-label">
-                              Technician
-                            </span>
+                            <span className="sr-only">Technician</span>
                             <span className="repair-technician-name">
                               {record.technician?.name ?? 'Not recorded'}
                             </span>

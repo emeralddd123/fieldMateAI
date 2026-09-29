@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import {
   Activity,
   AudioLines,
   ChevronRight,
+  ChevronDown,
   CircleHelp,
   Factory,
   LayoutDashboard,
@@ -28,7 +29,10 @@ import { SupervisorView } from './components/SupervisorView';
 import { MobileBottomNav, MobileHeader } from './components/MobileNavigation';
 import { MobileEquipmentSheet } from './components/MobileEquipmentSheet';
 import { MobileVoiceSheet } from './components/MobileVoiceSheet';
-import { VoiceReviewSheet, WriteReceiptNotice } from './components/VoiceReviewSheet';
+import {
+  VoiceReviewSheet,
+  WriteReceiptNotice,
+} from './components/VoiceReviewSheet';
 import { WorkModeView } from './components/WorkModeView';
 import { useVoiceSession } from './voice/useVoiceSession';
 import { ProtectedRoute } from './auth/ProtectedRoute';
@@ -95,6 +99,8 @@ function TechnicianWorkspace() {
   const [isWorkModeOpen, setIsWorkModeOpen] = useState(false);
 
   const voice = useVoiceSession(setSelectedId);
+  const [equipmentExpanded, setEquipmentExpanded] = useState(false);
+  const equipmentToggle = useRef<HTMLButtonElement>(null);
   const [search, setSearch] = useState('');
   const assets = useQuery({
     queryKey: ['assets'],
@@ -192,57 +198,115 @@ function TechnicianWorkspace() {
         </div>
       </header>
       <div className="workspace">
-        <aside className="sidebar" aria-label="Equipment selection">
-          <div className="sidebar-heading">
-            <span>EQUIPMENT</span>
-            <span className="count">{assets.data?.length ?? '—'}</span>
-          </div>
-          <div className="sidebar-search-row">
-            <label className="search-box">
-              <Search size={15} />
-              <input
-                aria-label="Search equipment"
-                placeholder="Find an asset…"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
+        <aside
+          className={`sidebar ${equipmentExpanded ? 'equipment-expanded' : ''}`}
+          aria-label="Equipment selection"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && equipmentExpanded) {
+              setEquipmentExpanded(false);
+              equipmentToggle.current?.focus();
+            }
+          }}
+        >
+          <button
+            ref={equipmentToggle}
+            type="button"
+            className="mobile-equipment-toggle"
+            aria-expanded={equipmentExpanded}
+            aria-controls="equipment-options"
+            onClick={() => {
+              setEquipmentExpanded(!equipmentExpanded);
+              setSearch('');
+            }}
+          >
+            <span className="mobile-equipment-symbol">
+              <Factory size={19} aria-hidden="true" />
+            </span>
+            <span className="mobile-equipment-current">
+              <span className="mobile-equipment-label">Selected equipment</span>
+              <strong>
+                {selected?.assetTag ??
+                  (assets.isPending
+                    ? 'Loading equipment…'
+                    : 'Select equipment')}
+              </strong>
+              <span>
+                {selected?.name ??
+                  (assets.isError
+                    ? 'Equipment unavailable'
+                    : 'Choose an asset to get started')}
+              </span>
+            </span>
+            {selected && (
+              <span
+                className={`status-dot ${selected.status}`}
+                aria-label={`Status: ${selected.status}`}
               />
-            </label>
-            <button
-              type="button"
-              className="scan-qr-sidebar-btn"
-              onClick={() => setIsQrScannerOpen(true)}
-              title="Scan machine tag barcode/QR"
-            >
-              <QrCode size={16} />
-            </button>
-          </div>
-          <div className="asset-list">
-            {assets.isPending && (
-              <p className="sidebar-message" role="status">
-                Loading equipment…
-              </p>
             )}
-            {assets.isError && (
-              <p className="sidebar-message">Equipment unavailable</p>
-            )}
-            {filtered?.map((asset) => (
+            <ChevronDown
+              size={18}
+              className="equipment-toggle-chevron"
+              aria-hidden="true"
+            />
+          </button>
+          <div id="equipment-options" className="equipment-options">
+            <div className="sidebar-heading">
+              <span>EQUIPMENT</span>
+              <span className="count">{assets.data?.length ?? '—'}</span>
+            </div>
+            <div className="sidebar-search-row">
+              <label className="search-box">
+                <Search size={15} />
+                <input
+                  aria-label="Search equipment"
+                  placeholder="Find an asset…"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
               <button
-                key={asset.id}
-                className={`asset-button ${selected?.id === asset.id ? 'selected' : ''}`}
-                aria-pressed={selected?.id === asset.id}
-                onClick={() => setSelectedId(asset.id)}
+                type="button"
+                className="scan-qr-sidebar-btn"
+                onClick={() => setIsQrScannerOpen(true)}
+                title="Scan machine tag barcode/QR"
               >
-                <span className={`status-dot ${asset.status}`} />
-                <span>
-                  <strong>{asset.assetTag}</strong>
-                  <small>{asset.name}</small>
-                </span>
-                <ChevronRight size={14} />
+                <QrCode size={16} />
               </button>
-            ))}
-            {filtered?.length === 0 && (
-              <p className="sidebar-message">No matching equipment.</p>
-            )}
+            </div>
+            <div className="asset-list">
+              {assets.isPending && (
+                <p className="sidebar-message" role="status">
+                  Loading equipment…
+                </p>
+              )}
+              {assets.isError && (
+                <p className="sidebar-message">Equipment unavailable</p>
+              )}
+              {filtered?.map((asset) => (
+                <button
+                  key={asset.id}
+                  className={`asset-button ${selected?.id === asset.id ? 'selected' : ''}`}
+                  aria-pressed={selected?.id === asset.id}
+                  onClick={() => {
+                    setSelectedId(asset.id);
+                    setEquipmentExpanded(false);
+                    setSearch('');
+                    if (window.matchMedia('(max-width: 768px)').matches)
+                      equipmentToggle.current?.focus();
+                  }}
+                >
+                  <span className={`status-dot ${asset.status}`} />
+                  <span>
+                    <strong>{asset.assetTag}</strong>
+                    <small>{asset.name}</small>
+                  </span>
+                  <ChevronRight size={14} />
+                </button>
+              ))}
+              {filtered?.length === 0 && (
+                <p className="sidebar-message">No matching equipment.</p>
+              )}
+            </div>
           </div>
           <div className="sidebar-bottom">
             <div className="plant-health">

@@ -29,6 +29,7 @@ coverage/
 .nyc_output/
 playwright-report/
 test-results/
+/artifacts/
 
 # Logs and runtime files
 logs/
