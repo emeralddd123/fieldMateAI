@@ -1,21 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   AudioLines,
   Building2,
   Cpu,
-  Factory,
   LogOut,
-  Menu,
   Mic,
   MicOff,
   MoreHorizontal,
   QrCode,
-  Radio,
   Settings,
   ShieldCheck,
-  User,
   Wrench,
   X,
 } from 'lucide-react';
@@ -46,7 +42,6 @@ export function MobileBottomNav({
   onOpenQrScanner,
 }: MobileBottomNavProps) {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const location = useLocation();
 
   const isVoiceActive =
     voice && !['disconnected', 'error'].includes(voice.status);
@@ -276,10 +271,7 @@ export function MobileMoreSheet({
       aria-modal="true"
       aria-label="More navigation and account menu"
     >
-      <div
-        className="mobile-more-sheet"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="mobile-more-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="mobile-sheet-handle" />
 
         <div className="mobile-sheet-header">
@@ -289,7 +281,9 @@ export function MobileMoreSheet({
               <strong>{user?.name ?? 'Field Technician'}</strong>
               <small>{user?.email}</small>
               <div className="sheet-role-pills">
-                <span className="role-chip">{membership?.role ?? 'technician'}</span>
+                <span className="role-chip">
+                  {membership?.role ?? 'technician'}
+                </span>
                 <span className="org-chip">
                   <Building2 size={11} />
                   {membership?.organization.name ?? 'FieldMate Ops'}
@@ -342,11 +336,7 @@ export function MobileMoreSheet({
               </button>
             )}
 
-            <Link
-              to="/account"
-              className="sheet-nav-item"
-              onClick={onClose}
-            >
+            <Link to="/account" className="sheet-nav-item" onClick={onClose}>
               <div className="sheet-nav-icon account-icon">
                 <Settings size={18} />
               </div>
@@ -359,11 +349,7 @@ export function MobileMoreSheet({
 
           <div className="sheet-group-label">WORKSPACES</div>
           <div className="sheet-nav-list">
-            <Link
-              to="/"
-              className="sheet-nav-item"
-              onClick={onClose}
-            >
+            <Link to="/" className="sheet-nav-item" onClick={onClose}>
               <div className="sheet-nav-icon tech-icon">
                 <Wrench size={18} />
               </div>
@@ -390,11 +376,7 @@ export function MobileMoreSheet({
             )}
 
             {auth.hasRole('admin') && (
-              <Link
-                to="/admin"
-                className="sheet-nav-item"
-                onClick={onClose}
-              >
+              <Link to="/admin" className="sheet-nav-item" onClick={onClose}>
                 <div className="sheet-nav-icon admin-icon">
                   <Cpu size={18} />
                 </div>

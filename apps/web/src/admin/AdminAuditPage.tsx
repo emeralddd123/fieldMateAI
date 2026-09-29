@@ -2,28 +2,17 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
-  AlertCircle,
-  Calendar,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Clock,
   Code,
   Copy,
-  Database,
-  Eye,
-  Filter,
   History,
   KeyRound,
   RefreshCw,
-  Search,
-  ShieldAlert,
   ShieldCheck,
   Trash2,
-  User,
-  Users,
   X,
-  Zap,
 } from 'lucide-react';
 import {
   AdminAuditEventItem,
@@ -43,8 +32,11 @@ export function AdminAuditPage() {
   const [page, setPage] = useState(1);
 
   // Selected event for JSON details modal
-  const [inspectingEvent, setInspectingEvent] = useState<AdminAuditEventItem | null>(null);
-  const [cleanupResult, setCleanupResult] = useState<AdminCleanupResult | null>(null);
+  const [inspectingEvent, setInspectingEvent] =
+    useState<AdminAuditEventItem | null>(null);
+  const [cleanupResult, setCleanupResult] = useState<AdminCleanupResult | null>(
+    null,
+  );
   const [isCleanupModalOpen, setIsCleanupModalOpen] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
 
@@ -66,7 +58,9 @@ export function AdminAuditPage() {
         action: actionFilter || undefined,
         resourceType: resourceTypeFilter || undefined,
         startDate: startDate ? new Date(startDate).toISOString() : undefined,
-        endDate: endDate ? new Date(`${endDate}T23:59:59.999Z`).toISOString() : undefined,
+        endDate: endDate
+          ? new Date(`${endDate}T23:59:59.999Z`).toISOString()
+          : undefined,
         page,
         limit: 25,
       }),
@@ -90,8 +84,12 @@ export function AdminAuditPage() {
     totalPages: 1,
   };
 
-  const authEventsCount = events.filter((e) => e.action.startsWith('auth.')).length;
-  const adminMutationsCount = events.filter((e) => !e.action.startsWith('auth.')).length;
+  const authEventsCount = events.filter((e) =>
+    e.action.startsWith('auth.'),
+  ).length;
+  const adminMutationsCount = events.filter(
+    (e) => !e.action.startsWith('auth.'),
+  ).length;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -107,7 +105,8 @@ export function AdminAuditPage() {
           <span className="panel-kicker">IMMUTABLE SECURITY AUDIT TRAIL</span>
           <h1 className="admin-page-title">Security & Audit Log</h1>
           <p className="admin-page-desc">
-            Chronological, immutable audit record of all authentication events, administrative mutations, and security operations.
+            Chronological, immutable audit record of all authentication events,
+            administrative mutations, and security operations.
           </p>
         </div>
         <div className="admin-header-actions">
@@ -135,7 +134,10 @@ export function AdminAuditPage() {
         </div>
 
         <div className="admin-kpi-card">
-          <div className="admin-kpi-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+          <div
+            className="admin-kpi-icon-wrap"
+            style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}
+          >
             <KeyRound size={20} />
           </div>
           <div>
@@ -147,7 +149,10 @@ export function AdminAuditPage() {
         </div>
 
         <div className="admin-kpi-card">
-          <div className="admin-kpi-icon-wrap" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>
+          <div
+            className="admin-kpi-icon-wrap"
+            style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}
+          >
             <Activity size={20} />
           </div>
           <div>
@@ -164,7 +169,10 @@ export function AdminAuditPage() {
           </div>
           <div>
             <span className="admin-kpi-label">Integrity Status</span>
-            <div className="admin-kpi-value" style={{ fontSize: '18px', color: '#34d399' }}>
+            <div
+              className="admin-kpi-value"
+              style={{ fontSize: '18px', color: '#34d399' }}
+            >
               Append-Only
             </div>
           </div>
@@ -286,26 +294,34 @@ export function AdminAuditPage() {
             ) : (
               events.map((event) => {
                 const dateObj = new Date(event.createdAt);
-                const actionBadgeClass = event.action.startsWith('auth.')
-                  ? 'role-technician'
-                  : event.action.startsWith('user.')
-                  ? 'role-admin'
-                  : event.action.startsWith('asset.') || event.action.startsWith('site.')
-                  ? 'role-supervisor'
-                  : 'spec-badge';
 
                 return (
                   <tr key={event.id}>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#f1f5f9', fontSize: '12px' }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          color: '#f1f5f9',
+                          fontSize: '12px',
+                        }}
+                      >
                         {dateObj.toLocaleDateString()}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#718395', fontFamily: 'monospace' }}>
+                      <div
+                        style={{
+                          fontSize: '11px',
+                          color: '#718395',
+                          fontFamily: 'monospace',
+                        }}
+                      >
                         {dateObj.toLocaleTimeString()}
                       </div>
                     </td>
                     <td>
-                      <span className={`spec-badge`} style={{ fontWeight: 700 }}>
+                      <span
+                        className={`spec-badge`}
+                        style={{ fontWeight: 700 }}
+                      >
                         {event.action}
                       </span>
                     </td>
@@ -333,8 +349,16 @@ export function AdminAuditPage() {
                     </td>
                     <td>
                       {event.actor ? (
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: 600, color: '#f1f5f9', fontSize: '12px' }}>
+                        <div
+                          style={{ display: 'flex', flexDirection: 'column' }}
+                        >
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              color: '#f1f5f9',
+                              fontSize: '12px',
+                            }}
+                          >
                             {event.actor.name}
                           </span>
                           <span style={{ fontSize: '11px', color: '#718395' }}>
@@ -342,22 +366,38 @@ export function AdminAuditPage() {
                           </span>
                         </div>
                       ) : (
-                        <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
+                        <span
+                          style={{
+                            fontSize: '12px',
+                            color: '#64748b',
+                            fontStyle: 'italic',
+                          }}
+                        >
                           System / Anonymous
                         </span>
                       )}
                     </td>
                     <td>
                       {event.membership?.role ? (
-                        <span className={`admin-role-badge role-${event.membership.role}`}>
+                        <span
+                          className={`admin-role-badge role-${event.membership.role}`}
+                        >
                           {event.membership.role}
                         </span>
                       ) : (
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>-</span>
+                        <span style={{ fontSize: '11px', color: '#64748b' }}>
+                          -
+                        </span>
                       )}
                     </td>
                     <td>
-                      <div style={{ fontSize: '11px', color: '#8899aa', fontFamily: 'monospace' }}>
+                      <div
+                        style={{
+                          fontSize: '11px',
+                          color: '#8899aa',
+                          fontFamily: 'monospace',
+                        }}
+                      >
                         {event.ipAddress || 'unknown ip'}
                       </div>
                       {event.requestId && (
@@ -396,7 +436,8 @@ export function AdminAuditPage() {
       {pagination.totalPages > 1 && (
         <div className="pagination-bar">
           <div>
-            Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+            Showing page {pagination.page} of {pagination.totalPages} (
+            {pagination.total} total)
           </div>
           <div className="pagination-controls">
             <button
@@ -423,7 +464,10 @@ export function AdminAuditPage() {
 
       {/* Event Details JSON Modal */}
       {inspectingEvent && (
-        <div className="admin-modal-backdrop" onClick={() => setInspectingEvent(null)}>
+        <div
+          className="admin-modal-backdrop"
+          onClick={() => setInspectingEvent(null)}
+        >
           <div
             className="admin-modal-card wide-modal"
             style={{ maxWidth: '720px' }}
@@ -443,42 +487,73 @@ export function AdminAuditPage() {
               </button>
             </div>
 
-            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div
+              style={{
+                padding: '20px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+              }}
+            >
               <div className="preview-meta-grid">
                 <div className="preview-meta-item">
                   <span className="preview-meta-label">Event ID</span>
-                  <span className="preview-meta-value" style={{ fontFamily: 'monospace', fontSize: '11px' }}>
+                  <span
+                    className="preview-meta-value"
+                    style={{ fontFamily: 'monospace', fontSize: '11px' }}
+                  >
                     {inspectingEvent.id}
                   </span>
                 </div>
                 <div className="preview-meta-item">
                   <span className="preview-meta-label">Recorded At</span>
-                  <span className="preview-meta-value">{inspectingEvent.createdAt}</span>
+                  <span className="preview-meta-value">
+                    {inspectingEvent.createdAt}
+                  </span>
                 </div>
                 <div className="preview-meta-item">
                   <span className="preview-meta-label">Resource</span>
                   <span className="preview-meta-value">
-                    {inspectingEvent.resourceType} ({inspectingEvent.resourceId || 'N/A'})
+                    {inspectingEvent.resourceType} (
+                    {inspectingEvent.resourceId || 'N/A'})
                   </span>
                 </div>
                 <div className="preview-meta-item">
                   <span className="preview-meta-label">IP & User Agent</span>
-                  <span className="preview-meta-value" style={{ fontSize: '11px' }}>
+                  <span
+                    className="preview-meta-value"
+                    style={{ fontSize: '11px' }}
+                  >
                     {inspectingEvent.ipAddress || 'None'}
                   </span>
                 </div>
               </div>
 
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#9bb0c2' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '8px',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: '#9bb0c2',
+                    }}
+                  >
                     EVENT DETAILS & PAYLOAD
                   </span>
                   <button
                     type="button"
                     className="row-action-btn"
                     onClick={() =>
-                      copyToClipboard(JSON.stringify(inspectingEvent.details, null, 2))
+                      copyToClipboard(
+                        JSON.stringify(inspectingEvent.details, null, 2),
+                      )
                     }
                   >
                     {copiedJson ? (
@@ -514,7 +589,10 @@ export function AdminAuditPage() {
               </div>
             </div>
 
-            <div className="modal-actions" style={{ padding: '16px 24px', borderTop: '1px solid #1f2e3d' }}>
+            <div
+              className="modal-actions"
+              style={{ padding: '16px 24px', borderTop: '1px solid #1f2e3d' }}
+            >
               <button
                 type="button"
                 className="admin-primary-btn"
@@ -529,7 +607,10 @@ export function AdminAuditPage() {
 
       {/* Manual Cleanup Confirmation Modal */}
       {isCleanupModalOpen && (
-        <div className="admin-modal-backdrop" onClick={() => setIsCleanupModalOpen(false)}>
+        <div
+          className="admin-modal-backdrop"
+          onClick={() => setIsCleanupModalOpen(false)}
+        >
           <div
             className="admin-modal-card confirm-modal"
             onClick={(e) => e.stopPropagation()}
@@ -554,32 +635,67 @@ export function AdminAuditPage() {
             <div className="confirm-body">
               {cleanupResult ? (
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#34d399', marginBottom: '14px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      color: '#34d399',
+                      marginBottom: '14px',
+                    }}
+                  >
                     <CheckCircle2 size={20} />
                     <strong>Cleanup Execution Completed</strong>
                   </div>
-                  <ul style={{ margin: 0, paddingLeft: '20px', color: '#cbd5e1', fontSize: '13px', lineHeight: '1.8' }}>
+                  <ul
+                    style={{
+                      margin: 0,
+                      paddingLeft: '20px',
+                      color: '#cbd5e1',
+                      fontSize: '13px',
+                      lineHeight: '1.8',
+                    }}
+                  >
                     <li>
-                      Expired auth sessions purged: <strong>{cleanupResult.purgedSessions}</strong>
+                      Expired auth sessions purged:{' '}
+                      <strong>{cleanupResult.purgedSessions}</strong>
                     </li>
                     <li>
-                      Expired password reset tokens purged: <strong>{cleanupResult.purgedResetTokens}</strong>
+                      Expired password reset tokens purged:{' '}
+                      <strong>{cleanupResult.purgedResetTokens}</strong>
                     </li>
                     <li>
-                      Expired unaccepted invites purged: <strong>{cleanupResult.purgedInvites}</strong>
+                      Expired unaccepted invites purged:{' '}
+                      <strong>{cleanupResult.purgedInvites}</strong>
                     </li>
                   </ul>
-                  <p style={{ marginTop: '14px', fontSize: '11px', color: '#64748b' }}>
-                    Completed at: {new Date(cleanupResult.timestamp).toLocaleString()}
+                  <p
+                    style={{
+                      marginTop: '14px',
+                      fontSize: '11px',
+                      color: '#64748b',
+                    }}
+                  >
+                    Completed at:{' '}
+                    {new Date(cleanupResult.timestamp).toLocaleString()}
                   </p>
                 </div>
               ) : (
                 <>
                   <p>
-                    Are you sure you want to trigger an immediate database cleanup?
+                    Are you sure you want to trigger an immediate database
+                    cleanup?
                   </p>
-                  <p style={{ marginTop: '10px', fontSize: '12px', color: '#7e92a4' }}>
-                    This safely deletes all session cookies that have passed their expiration timestamp, expired single-use password reset tokens, and expired unaccepted invitation records.
+                  <p
+                    style={{
+                      marginTop: '10px',
+                      fontSize: '12px',
+                      color: '#7e92a4',
+                    }}
+                  >
+                    This safely deletes all session cookies that have passed
+                    their expiration timestamp, expired single-use password
+                    reset tokens, and expired unaccepted invitation records.
                   </p>
                 </>
               )}

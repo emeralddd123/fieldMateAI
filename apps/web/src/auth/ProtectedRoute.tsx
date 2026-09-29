@@ -27,5 +27,9 @@ export function ProtectedRoute({ roles }: { roles?: UserRole[] }) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (roles && !auth.hasRole(...roles))
     return <Navigate to="/forbidden" replace />;
-  return <Outlet />;
+  return (
+    <Outlet
+      key={`${auth.session.user.id}:${auth.session.memberships[0]?.organization.id}`}
+    />
+  );
 }

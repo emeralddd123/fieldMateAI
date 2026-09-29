@@ -33,17 +33,34 @@ interface QrScannerModalProps {
 
 type PermissionStatus = 'prompt' | 'granted' | 'denied' | 'unsupported';
 
-export function QrScannerModal({
+export function QrScannerModal(props: QrScannerModalProps) {
+  return props.isOpen ? <QrScannerSession {...props} /> : null;
+}
+
+function QrScannerSession({
   isOpen,
   onClose,
   assets,
   onSelectAsset,
 }: QrScannerModalProps) {
   // Permission & camera states
-  const [permissionState, setPermissionState] = useState<PermissionStatus>('prompt');
+  const [permissionState, setPermissionState] = useState<PermissionStatus>(
+    () => {
+      try {
+        return localStorage.getItem('fieldmate_camera_granted') === 'true' &&
+          Boolean(navigator.mediaDevices?.getUserMedia)
+          ? 'granted'
+          : 'prompt';
+      } catch {
+        return 'prompt';
+      }
+    },
+  );
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>(
+    'environment',
+  );
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const [isTorchSupported, setIsTorchSupported] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
@@ -53,7 +70,9 @@ export function QrScannerModal({
   const [unrecognizedTag, setUnrecognizedTag] = useState<string | null>(null);
   const [manualInput, setManualInput] = useState('');
   const [manualError, setManualError] = useState<string | null>(null);
-  const [decoderType, setDecoderType] = useState<'BarcodeDetector' | 'jsQR' | null>(null);
+  const [decoderType, setDecoderType] = useState<
+    'BarcodeDetector' | 'jsQR' | null
+  >(null);
   const [showManualForm, setShowManualForm] = useState(false);
 
   // DOM & stream references
@@ -64,24 +83,6 @@ export function QrScannerModal({
   const lastScanTimeRef = useRef<number>(0);
   const isScanningRef = useRef<boolean>(false);
   const barcodeDetectorRef = useRef<unknown>(null);
-
-  // Check if camera permission was previously granted in this session/browser
-  useEffect(() => {
-    if (isOpen) {
-      const previouslyGranted = localStorage.getItem('fieldmate_camera_granted') === 'true';
-      const hasMediaDevices = typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
-      if (previouslyGranted && hasMediaDevices) {
-        setPermissionState('granted');
-      } else {
-        setPermissionState('prompt');
-      }
-      setDetectedAsset(null);
-      setUnrecognizedTag(null);
-      setManualError(null);
-      setShowManualForm(false);
-      setIsTorchOn(false);
-    }
-  }, [isOpen]);
 
   // Clean up all camera hardware & media stream resources
   const stopCameraStreams = useCallback(() => {
@@ -150,74 +151,79 @@ export function QrScannerModal({
   );
 
   // Frame decoding loop (supporting native BarcodeDetector with jsQR canvas fallback)
-  const runFrameDecodeLoop = useCallback(() => {
-    if (!isScanningRef.current) return;
+  const runFrameDecodeLoop = useCallback(
+    function decodeFrame() {
+      if (!isScanningRef.current) return;
 
-    const video = videoRef.current;
-    if (
-      !video ||
-      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
-      video.videoWidth === 0 ||
-      video.videoHeight === 0
-    ) {
-      scanLoopRef.current = requestAnimationFrame(runFrameDecodeLoop);
-      return;
-    }
+      const video = videoRef.current;
+      if (
+        !video ||
+        video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+        video.videoWidth === 0 ||
+        video.videoHeight === 0
+      ) {
+        scanLoopRef.current = requestAnimationFrame(decodeFrame);
+        return;
+      }
 
-    const now = performance.now();
-    // Throttle decoding to every ~90ms to conserve mobile CPU & battery
-    if (now - lastScanTimeRef.current >= 90) {
-      lastScanTimeRef.current = now;
+      const now = performance.now();
+      // Throttle decoding to every ~90ms to conserve mobile CPU & battery
+      if (now - lastScanTimeRef.current >= 90) {
+        lastScanTimeRef.current = now;
 
-      // 1. Primary: Native BarcodeDetector
-      if (barcodeDetectorRef.current) {
-        const detector = barcodeDetectorRef.current as {
-          detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>>;
-        };
-        detector
-          .detect(video)
-          .then((barcodes) => {
-            const firstBarcode = barcodes?.[0];
-            if (firstBarcode?.rawValue && isScanningRef.current) {
-              processDecodedString(firstBarcode.rawValue);
+        // 1. Primary: Native BarcodeDetector
+        if (barcodeDetectorRef.current) {
+          const detector = barcodeDetectorRef.current as {
+            detect: (
+              source: HTMLVideoElement,
+            ) => Promise<Array<{ rawValue: string }>>;
+          };
+          detector
+            .detect(video)
+            .then((barcodes) => {
+              const firstBarcode = barcodes?.[0];
+              if (firstBarcode?.rawValue && isScanningRef.current) {
+                processDecodedString(firstBarcode.rawValue);
+              }
+            })
+            .catch(() => {
+              // Fall back to jsQR if detector fails
+            });
+        } else {
+          // 2. Secondary Fallback: jsQR via offscreen canvas
+          const canvas = canvasRef.current || document.createElement('canvas');
+          if (!canvasRef.current) canvasRef.current = canvas;
+
+          // Downscale to maximum 640px width to ensure fast real-time processing
+          const scale = Math.min(1, 640 / video.videoWidth);
+          const targetWidth = Math.floor(video.videoWidth * scale);
+          const targetHeight = Math.floor(video.videoHeight * scale);
+
+          if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+          }
+
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
+            const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+            const code = jsQR(imageData.data, targetWidth, targetHeight, {
+              inversionAttempts: 'attemptBoth',
+            });
+            if (code && code.data && isScanningRef.current) {
+              processDecodedString(code.data);
             }
-          })
-          .catch(() => {
-            // Fall back to jsQR if detector fails
-          });
-      } else {
-        // 2. Secondary Fallback: jsQR via offscreen canvas
-        const canvas = canvasRef.current || document.createElement('canvas');
-        if (!canvasRef.current) canvasRef.current = canvas;
-
-        // Downscale to maximum 640px width to ensure fast real-time processing
-        const scale = Math.min(1, 640 / video.videoWidth);
-        const targetWidth = Math.floor(video.videoWidth * scale);
-        const targetHeight = Math.floor(video.videoHeight * scale);
-
-        if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
-          canvas.width = targetWidth;
-          canvas.height = targetHeight;
-        }
-
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
-          const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
-          const code = jsQR(imageData.data, targetWidth, targetHeight, {
-            inversionAttempts: 'attemptBoth',
-          });
-          if (code && code.data && isScanningRef.current) {
-            processDecodedString(code.data);
           }
         }
       }
-    }
 
-    if (isScanningRef.current) {
-      scanLoopRef.current = requestAnimationFrame(runFrameDecodeLoop);
-    }
-  }, [processDecodedString]);
+      if (isScanningRef.current) {
+        scanLoopRef.current = requestAnimationFrame(decodeFrame);
+      }
+    },
+    [processDecodedString],
+  );
 
   // Start media stream and initialize decoders
   const startCamera = useCallback(async () => {
@@ -227,7 +233,9 @@ export function QrScannerModal({
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setPermissionState('unsupported');
-      setCameraError('Camera API is not supported on this browser or connection.');
+      setCameraError(
+        'Camera API is not supported on this browser or connection.',
+      );
       return;
     }
 
@@ -250,7 +258,9 @@ export function QrScannerModal({
               BarcodeDetector: new (opts: { formats: string[] }) => unknown;
             }
           ).BarcodeDetector;
-          barcodeDetectorRef.current = new DetectorClass({ formats: ['qr_code'] });
+          barcodeDetectorRef.current = new DetectorClass({
+            formats: ['qr_code'],
+          });
           setDecoderType('BarcodeDetector');
         } catch {
           barcodeDetectorRef.current = null;
@@ -279,7 +289,9 @@ export function QrScannerModal({
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
         const capabilities = (
-          videoTrack as unknown as { getCapabilities?: () => { torch?: boolean } }
+          videoTrack as unknown as {
+            getCapabilities?: () => { torch?: boolean };
+          }
         ).getCapabilities?.();
         setIsTorchSupported(Boolean(capabilities?.torch));
       }
@@ -294,9 +306,14 @@ export function QrScannerModal({
     } catch (err: unknown) {
       const error = err as { name?: string; message?: string };
       stopCameraStreams();
-      if (error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError') {
+      if (
+        error?.name === 'NotAllowedError' ||
+        error?.name === 'PermissionDeniedError'
+      ) {
         setPermissionState('denied');
-        setCameraError('Camera permission was denied in your browser settings.');
+        setCameraError(
+          'Camera permission was denied in your browser settings.',
+        );
       } else if (
         error?.name === 'NotFoundError' ||
         error?.name === 'DevicesNotFoundError'
@@ -306,7 +323,8 @@ export function QrScannerModal({
       } else {
         setPermissionState('denied');
         setCameraError(
-          error?.message || 'Unable to access camera hardware. Enter tag manually below.',
+          error?.message ||
+            'Unable to access camera hardware. Enter tag manually below.',
         );
       }
     }
@@ -322,7 +340,9 @@ export function QrScannerModal({
       const nextState = !isTorchOn;
       await (
         videoTrack as unknown as {
-          applyConstraints: (c: { advanced: Array<{ torch: boolean }> }) => Promise<void>;
+          applyConstraints: (c: {
+            advanced: Array<{ torch: boolean }>;
+          }) => Promise<void>;
         }
       ).applyConstraints({
         advanced: [{ torch: nextState }],
@@ -341,7 +361,7 @@ export function QrScannerModal({
   // Re-start camera when facingMode changes or permission is granted
   useEffect(() => {
     if (isOpen && permissionState === 'granted') {
-      startCamera();
+      void startCamera();
     }
     return () => {
       stopCameraStreams();
@@ -355,7 +375,7 @@ export function QrScannerModal({
       isScanningRef.current = true;
       scanLoopRef.current = requestAnimationFrame(runFrameDecodeLoop);
     } else {
-      startCamera();
+      void startCamera();
     }
   };
 
@@ -373,7 +393,9 @@ export function QrScannerModal({
     if (matched) {
       handleMatchedAsset(matched);
     } else {
-      setManualError(`Equipment "${clean}" was not found in your authorized facility.`);
+      setManualError(
+        `Equipment "${clean}" was not found in your authorized facility.`,
+      );
     }
   };
 
@@ -424,12 +446,14 @@ export function QrScannerModal({
                 </div>
                 <h3>Camera Access Required</h3>
                 <p>
-                  FieldMate scans equipment QR tags to pull up real-time telemetry,
-                  schematics, and active work orders.
+                  FieldMate scans equipment QR tags to pull up real-time
+                  telemetry, schematics, and active work orders.
                 </p>
                 <div className="qr-privacy-pill">
                   <ShieldCheck size={14} />
-                  <span>On-device processing — no video is recorded or stored.</span>
+                  <span>
+                    On-device processing — no video is recorded or stored.
+                  </span>
                 </div>
                 <div className="qr-permission-actions">
                   <button
@@ -457,11 +481,15 @@ export function QrScannerModal({
               <div className="qr-permission-denied-pane">
                 <AlertCircle size={36} className="qr-denied-icon" />
                 <h3>Camera Permission Denied</h3>
-                <p>{cameraError || 'Camera access was blocked by your browser.'}</p>
+                <p>
+                  {cameraError || 'Camera access was blocked by your browser.'}
+                </p>
                 <div className="qr-permission-steps">
                   <div className="qr-step-row">
                     <span className="qr-step-num">1</span>
-                    <span>Tap the lock/settings icon in your browser URL bar.</span>
+                    <span>
+                      Tap the lock/settings icon in your browser URL bar.
+                    </span>
                   </div>
                   <div className="qr-step-row">
                     <span className="qr-step-num">2</span>
@@ -469,7 +497,10 @@ export function QrScannerModal({
                   </div>
                   <div className="qr-step-row">
                     <span className="qr-step-num">3</span>
-                    <span>Tap &quot;Retry Camera&quot; below or enter the tag manually.</span>
+                    <span>
+                      Tap &quot;Retry Camera&quot; below or enter the tag
+                      manually.
+                    </span>
                   </div>
                 </div>
                 <div className="qr-permission-actions">
@@ -497,8 +528,8 @@ export function QrScannerModal({
                 <ScanLine size={40} className="qr-fallback-icon" />
                 <h3>Camera Unavailable</h3>
                 <p>
-                  No active video input was detected. Please enter the equipment asset
-                  tag manually.
+                  No active video input was detected. Please enter the equipment
+                  asset tag manually.
                 </p>
                 <button
                   type="button"
@@ -543,7 +574,9 @@ export function QrScannerModal({
                       type="button"
                       className={`qr-control-pill ${isTorchOn ? 'active' : ''}`}
                       onClick={toggleTorch}
-                      aria-label={isTorchOn ? 'Turn torch off' : 'Turn torch on'}
+                      aria-label={
+                        isTorchOn ? 'Turn torch off' : 'Turn torch on'
+                      }
                     >
                       {isTorchOn ? <Zap size={14} /> : <ZapOff size={14} />}
                       <span>{isTorchOn ? 'Torch On' : 'Torch'}</span>
@@ -558,13 +591,17 @@ export function QrScannerModal({
                       aria-label="Flip camera direction"
                     >
                       <SwitchCamera size={14} />
-                      <span>{facingMode === 'environment' ? 'Rear' : 'Front'}</span>
+                      <span>
+                        {facingMode === 'environment' ? 'Rear' : 'Front'}
+                      </span>
                     </button>
                   )}
 
                   {decoderType && (
                     <span className="qr-decoder-badge">
-                      {decoderType === 'BarcodeDetector' ? 'HW ACCEL' : 'JS ENGINE'}
+                      {decoderType === 'BarcodeDetector'
+                        ? 'HW ACCEL'
+                        : 'JS ENGINE'}
                     </span>
                   )}
                 </div>
@@ -660,7 +697,9 @@ export function QrScannerModal({
           {/* Manual Tag Entry Form */}
           {showManualForm && (
             <form onSubmit={handleManualSubmit} className="qr-manual-form">
-              <label htmlFor="qr-input">Enter Barcode, Asset Tag, or URL:</label>
+              <label htmlFor="qr-input">
+                Enter Barcode, Asset Tag, or URL:
+              </label>
               <div className="qr-input-group">
                 <input
                   id="qr-input"

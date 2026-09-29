@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export type NetworkState = 'online' | 'offline' | 'reconnecting' | 'stale';
 
@@ -17,9 +17,10 @@ export function useNetworkStatus(): NetworkStatus {
     return typeof navigator !== 'undefined' ? navigator.onLine : true;
   });
   const [isReconnecting, setIsReconnecting] = useState<boolean>(false);
-  const [lastOnlineAt, setLastOnlineAt] = useState<Date | null>(() => new Date());
+  const [lastOnlineAt, setLastOnlineAt] = useState<Date | null>(
+    () => new Date(),
+  );
   const [isStale, setIsStale] = useState<boolean>(false);
-  const pingTimeoutRef = useRef<number | null>(null);
 
   const checkConnection = useCallback(async (): Promise<boolean> => {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -91,9 +92,6 @@ export function useNetworkStatus(): NetworkStatus {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       clearInterval(interval);
-      if (pingTimeoutRef.current) {
-        clearTimeout(pingTimeoutRef.current);
-      }
     };
   }, [checkConnection]);
 

@@ -233,7 +233,8 @@ export function IncidentDetailModal({
 
   const queryClient = useQueryClient();
   const auth = useAuth();
-  const tenantId = auth.session?.memberships[0]?.organization.id ?? 'default_tenant';
+  const tenantId =
+    auth.session?.memberships[0]?.organization.id ?? 'default_tenant';
   const userId = auth.session?.user.id ?? 'anonymous';
 
   // Action Dialog States
@@ -245,52 +246,47 @@ export function IncidentDetailModal({
 
   const [isEscalateOpen, setIsEscalateOpen] = useState(false);
   const [escalateReason, setEscalateReason] = useState('');
-  const [escalateSeverity, setEscalateSeverity] = useState<'supervisor_review' | 'urgent'>('supervisor_review');
+  const [escalateSeverity, setEscalateSeverity] = useState<
+    'supervisor_review' | 'urgent'
+  >('supervisor_review');
   const [escalateDraftAge, setEscalateDraftAge] = useState<number | null>(null);
   const [isSubmittingEscalation, setIsSubmittingEscalation] = useState(false);
   const [escalateError, setEscalateError] = useState<string | null>(null);
 
   const [isCompleteRepairOpen, setIsCompleteRepairOpen] = useState(false);
 
-  // Restore note draft on open
-  useEffect(() => {
-    if (isAddNoteOpen && incidentId) {
-      const draft = loadFormDraft<{ note: string }>(tenantId, userId, `note_${incidentId}`);
-      if (draft && draft.payload?.note) {
-        setNewNote(draft.payload.note);
-        setNoteDraftAge(draft.ageMinutes);
-      } else {
-        setNoteDraftAge(null);
-      }
-    }
-  }, [isAddNoteOpen, incidentId, tenantId, userId]);
+  const openNote = () => {
+    const draft = incidentId
+      ? loadFormDraft<{ note: string }>(tenantId, userId, `note_${incidentId}`)
+      : null;
+    setNewNote(draft?.payload.note ?? '');
+    setNoteDraftAge(draft?.ageMinutes ?? null);
+    setIsAddNoteOpen(true);
+  };
 
   // Persist note draft on change
   useEffect(() => {
     if (isAddNoteOpen && incidentId) {
       if (newNote.trim()) {
-        saveFormDraft(tenantId, userId, `note_${incidentId}`, { note: newNote });
+        saveFormDraft(tenantId, userId, `note_${incidentId}`, {
+          note: newNote,
+        });
       }
     }
   }, [isAddNoteOpen, newNote, incidentId, tenantId, userId]);
 
-  // Restore escalation draft on open
-  useEffect(() => {
-    if (isEscalateOpen && incidentId) {
-      const draft = loadFormDraft<{ reason: string; severity: 'supervisor_review' | 'urgent' }>(
-        tenantId,
-        userId,
-        `escalate_${incidentId}`,
-      );
-      if (draft && draft.payload?.reason) {
-        setEscalateReason(draft.payload.reason);
-        if (draft.payload.severity) setEscalateSeverity(draft.payload.severity);
-        setEscalateDraftAge(draft.ageMinutes);
-      } else {
-        setEscalateDraftAge(null);
-      }
-    }
-  }, [isEscalateOpen, incidentId, tenantId, userId]);
+  const openEscalation = () => {
+    const draft = incidentId
+      ? loadFormDraft<{
+          reason: string;
+          severity: 'supervisor_review' | 'urgent';
+        }>(tenantId, userId, `escalate_${incidentId}`)
+      : null;
+    setEscalateReason(draft?.payload.reason ?? '');
+    setEscalateSeverity(draft?.payload.severity ?? 'supervisor_review');
+    setEscalateDraftAge(draft?.ageMinutes ?? null);
+    setIsEscalateOpen(true);
+  };
 
   // Persist escalation draft on change
   useEffect(() => {
@@ -302,7 +298,14 @@ export function IncidentDetailModal({
         });
       }
     }
-  }, [isEscalateOpen, escalateReason, escalateSeverity, incidentId, tenantId, userId]);
+  }, [
+    isEscalateOpen,
+    escalateReason,
+    escalateSeverity,
+    incidentId,
+    tenantId,
+    userId,
+  ]);
 
   if (!incidentId) return null;
 
@@ -334,7 +337,9 @@ export function IncidentDetailModal({
       await submitIncidentNote(incident.id, newNote.trim());
       clearFormDraft(tenantId, userId, `note_${incident.id}`);
       setNoteDraftAge(null);
-      await queryClient.invalidateQueries({ queryKey: ['incident-detail', incident.id] });
+      await queryClient.invalidateQueries({
+        queryKey: ['incident-detail', incident.id],
+      });
       await queryClient.invalidateQueries({ queryKey: ['incidents'] });
       setNewNote('');
       setIsAddNoteOpen(false);
@@ -351,15 +356,23 @@ export function IncidentDetailModal({
     setIsSubmittingEscalation(true);
     setEscalateError(null);
     try {
-      await submitIncidentEscalation(incident.id, escalateReason.trim(), escalateSeverity);
+      await submitIncidentEscalation(
+        incident.id,
+        escalateReason.trim(),
+        escalateSeverity,
+      );
       clearFormDraft(tenantId, userId, `escalate_${incident.id}`);
       setEscalateDraftAge(null);
-      await queryClient.invalidateQueries({ queryKey: ['incident-detail', incident.id] });
+      await queryClient.invalidateQueries({
+        queryKey: ['incident-detail', incident.id],
+      });
       await queryClient.invalidateQueries({ queryKey: ['incidents'] });
       setEscalateReason('');
       setIsEscalateOpen(false);
     } catch (err) {
-      setEscalateError(err instanceof Error ? err.message : 'Failed to escalate incident');
+      setEscalateError(
+        err instanceof Error ? err.message : 'Failed to escalate incident',
+      );
     } finally {
       setIsSubmittingEscalation(false);
     }
@@ -625,36 +638,37 @@ export function IncidentDetailModal({
         )}
 
         {/* Sticky Mobile-First Action Bar for Active Incidents */}
-        {incident && ['open', 'investigating', 'escalated'].includes(incident.status) && (
-          <footer className="incident-sticky-actions-bar">
-            <button
-              type="button"
-              className="incident-action-btn btn-note"
-              onClick={() => setIsAddNoteOpen(true)}
-            >
-              <MessageSquare size={16} />
-              <span>Add Note</span>
-            </button>
+        {incident &&
+          ['open', 'investigating', 'escalated'].includes(incident.status) && (
+            <footer className="incident-sticky-actions-bar">
+              <button
+                type="button"
+                className="incident-action-btn btn-note"
+                onClick={openNote}
+              >
+                <MessageSquare size={16} />
+                <span>Add Note</span>
+              </button>
 
-            <button
-              type="button"
-              className="incident-action-btn btn-escalate"
-              onClick={() => setIsEscalateOpen(true)}
-            >
-              <ShieldAlert size={16} />
-              <span>Escalate</span>
-            </button>
+              <button
+                type="button"
+                className="incident-action-btn btn-escalate"
+                onClick={openEscalation}
+              >
+                <ShieldAlert size={16} />
+                <span>Escalate</span>
+              </button>
 
-            <button
-              type="button"
-              className="incident-action-btn btn-complete-repair"
-              onClick={() => setIsCompleteRepairOpen(true)}
-            >
-              <CheckCircle2 size={16} />
-              <span>Complete Repair</span>
-            </button>
-          </footer>
-        )}
+              <button
+                type="button"
+                className="incident-action-btn btn-complete-repair"
+                onClick={() => setIsCompleteRepairOpen(true)}
+              >
+                <CheckCircle2 size={16} />
+                <span>Complete Repair</span>
+              </button>
+            </footer>
+          )}
       </div>
 
       {/* Add Note Sub-Modal */}
@@ -787,7 +801,9 @@ export function IncidentDetailModal({
                   </button>
                 </div>
 
-                <label className="sub-modal-label">Reason for Escalation:</label>
+                <label className="sub-modal-label">
+                  Reason for Escalation:
+                </label>
                 <textarea
                   className="sub-modal-textarea"
                   rows={4}

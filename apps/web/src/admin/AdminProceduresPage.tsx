@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import {
   AdminProcedureItem,
-  AdminProcedureStep,
   approveAdminProcedure,
   archiveAdminProcedure,
   createAdminProcedure,
@@ -51,11 +50,16 @@ export function AdminProceduresPage() {
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingProcedure, setEditingProcedure] = useState<AdminProcedureItem | null>(null);
-  const [previewingProcedure, setPreviewingProcedure] = useState<AdminProcedureItem | null>(null);
-  const [approvingProcedure, setApprovingProcedure] = useState<AdminProcedureItem | null>(null);
-  const [withdrawingProcedure, setWithdrawingProcedure] = useState<AdminProcedureItem | null>(null);
-  const [archivingProcedure, setArchivingProcedure] = useState<AdminProcedureItem | null>(null);
+  const [editingProcedure, setEditingProcedure] =
+    useState<AdminProcedureItem | null>(null);
+  const [previewingProcedure, setPreviewingProcedure] =
+    useState<AdminProcedureItem | null>(null);
+  const [approvingProcedure, setApprovingProcedure] =
+    useState<AdminProcedureItem | null>(null);
+  const [withdrawingProcedure, setWithdrawingProcedure] =
+    useState<AdminProcedureItem | null>(null);
+  const [archivingProcedure, setArchivingProcedure] =
+    useState<AdminProcedureItem | null>(null);
 
   // Procedures query
   const proceduresQuery = useQuery({
@@ -83,19 +87,26 @@ export function AdminProceduresPage() {
     totalPages: 1,
   };
 
-  const approvedCount = procedures.filter((p) => p.status === 'approved').length;
+  const approvedCount = procedures.filter(
+    (p) => p.status === 'approved',
+  ).length;
   const draftCount = procedures.filter((p) => p.status === 'draft').length;
-  const withdrawnCount = procedures.filter((p) => p.status === 'withdrawn').length;
+  const withdrawnCount = procedures.filter(
+    (p) => p.status === 'withdrawn',
+  ).length;
 
   return (
     <div className="admin-page-container">
       {/* Header */}
       <div className="admin-header-row">
         <div>
-          <span className="panel-kicker">SAFETY & STANDARD OPERATING PROCEDURES</span>
+          <span className="panel-kicker">
+            SAFETY & STANDARD OPERATING PROCEDURES
+          </span>
           <h1 className="admin-page-title">SOPs & Safety Procedures</h1>
           <p className="admin-page-desc">
-            Author and review standard maintenance procedures. Only approved procedures are exposed to technician voice workflows.
+            Author and review standard maintenance procedures. Only approved
+            procedures are exposed to technician voice workflows.
           </p>
         </div>
         <div className="admin-header-actions">
@@ -123,7 +134,10 @@ export function AdminProceduresPage() {
         </div>
 
         <div className="admin-kpi-card">
-          <div className="admin-kpi-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+          <div
+            className="admin-kpi-icon-wrap"
+            style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}
+          >
             <FileCheck2 size={20} />
           </div>
           <div>
@@ -135,7 +149,10 @@ export function AdminProceduresPage() {
         </div>
 
         <div className="admin-kpi-card">
-          <div className="admin-kpi-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+          <div
+            className="admin-kpi-icon-wrap"
+            style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}
+          >
             <HelpCircle size={20} />
           </div>
           <div>
@@ -147,7 +164,10 @@ export function AdminProceduresPage() {
         </div>
 
         <div className="admin-kpi-card">
-          <div className="admin-kpi-icon-wrap" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171' }}>
+          <div
+            className="admin-kpi-icon-wrap"
+            style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171' }}
+          >
             <FileX2 size={20} />
           </div>
           <div>
@@ -213,7 +233,17 @@ export function AdminProceduresPage() {
           }}
         />
 
-        <label className="admin-checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#8899aa', cursor: 'pointer' }}>
+        <label
+          className="admin-checkbox-label"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '13px',
+            color: '#8899aa',
+            cursor: 'pointer',
+          }}
+        >
           <input
             type="checkbox"
             checked={includeArchived}
@@ -262,24 +292,41 @@ export function AdminProceduresPage() {
                 const safetyClass =
                   proc.safetyLevel === 'critical' || proc.safetyLevel === 'high'
                     ? 'safety-critical'
-                    : proc.safetyLevel === 'warning' || proc.safetyLevel === 'medium'
-                    ? 'safety-warning'
-                    : 'safety-standard';
+                    : proc.safetyLevel === 'warning' ||
+                        proc.safetyLevel === 'medium'
+                      ? 'safety-warning'
+                      : 'safety-standard';
 
                 return (
-                  <tr key={proc.id} style={isArchived ? { opacity: 0.55 } : undefined}>
+                  <tr
+                    key={proc.id}
+                    style={isArchived ? { opacity: 0.55 } : undefined}
+                  >
                     <td>
                       <div className="spec-badge" title="Unique Key">
                         {proc.key}
                       </div>
                       {isArchived && (
-                        <span style={{ fontSize: '10px', color: '#f87171', display: 'block', marginTop: '4px' }}>
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            color: '#f87171',
+                            display: 'block',
+                            marginTop: '4px',
+                          }}
+                        >
                           (Archived)
                         </span>
                       )}
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#f1f5f9', marginBottom: '2px' }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          color: '#f1f5f9',
+                          marginBottom: '2px',
+                        }}
+                      >
                         {proc.title}
                       </div>
                       <div
@@ -301,23 +348,45 @@ export function AdminProceduresPage() {
                           {proc.assetType && <div>Type: {proc.assetType}</div>}
                           {(proc.manufacturer || proc.model) && (
                             <div style={{ color: '#718395', fontSize: '11px' }}>
-                              {[proc.manufacturer, proc.model].filter(Boolean).join(' ')}
+                              {[proc.manufacturer, proc.model]
+                                .filter(Boolean)
+                                .join(' ')}
                             </div>
                           )}
                         </div>
                       ) : (
-                        <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
+                        <span
+                          style={{
+                            fontSize: '12px',
+                            color: '#64748b',
+                            fontStyle: 'italic',
+                          }}
+                        >
                           Universal SOP
                         </span>
                       )}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                        }}
+                      >
                         <span className={`safety-badge ${safetyClass}`}>
                           {proc.safetyLevel}
                         </span>
                         {proc.safetyConfirmationRequired && (
-                          <span style={{ fontSize: '10px', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <span
+                            style={{
+                              fontSize: '10px',
+                              color: '#fbbf24',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                            }}
+                          >
                             <ShieldAlert size={10} /> Confirmation Req
                           </span>
                         )}
@@ -326,19 +395,37 @@ export function AdminProceduresPage() {
                     <td>
                       <span className={`admin-status-badge ${statusClass}`}>
                         <span className="status-dot" />
-                        <span style={{ textTransform: 'capitalize' }}>{proc.status}</span>
+                        <span style={{ textTransform: 'capitalize' }}>
+                          {proc.status}
+                        </span>
                       </span>
                       {proc.approvedBy && (
-                        <span style={{ fontSize: '10px', color: '#718395', display: 'block', marginTop: '4px' }}>
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            color: '#718395',
+                            display: 'block',
+                            marginTop: '4px',
+                          }}
+                        >
                           By: {proc.approvedBy.name}
                         </span>
                       )}
                     </td>
                     <td>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#e2e8f0' }}>
+                      <span
+                        style={{
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          color: '#e2e8f0',
+                        }}
+                      >
                         {proc.steps?.length ?? 0}
                       </span>
-                      <span style={{ fontSize: '11px', color: '#64748b' }}> steps</span>
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>
+                        {' '}
+                        steps
+                      </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <div className="admin-row-actions">
@@ -411,7 +498,8 @@ export function AdminProceduresPage() {
       {pagination.totalPages > 1 && (
         <div className="pagination-bar">
           <div>
-            Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+            Showing page {pagination.page} of {pagination.totalPages} (
+            {pagination.total} total)
           </div>
           <div className="pagination-controls">
             <button
@@ -442,7 +530,9 @@ export function AdminProceduresPage() {
           onClose={() => setIsCreateModalOpen(false)}
           onSuccess={() => {
             setIsCreateModalOpen(false);
-            queryClient.invalidateQueries({ queryKey: ['admin', 'procedures'] });
+            queryClient.invalidateQueries({
+              queryKey: ['admin', 'procedures'],
+            });
           }}
         />
       )}
@@ -454,7 +544,9 @@ export function AdminProceduresPage() {
           onClose={() => setEditingProcedure(null)}
           onSuccess={() => {
             setEditingProcedure(null);
-            queryClient.invalidateQueries({ queryKey: ['admin', 'procedures'] });
+            queryClient.invalidateQueries({
+              queryKey: ['admin', 'procedures'],
+            });
           }}
         />
       )}
@@ -475,10 +567,14 @@ export function AdminProceduresPage() {
           message={
             <>
               Are you sure you want to approve SOP{' '}
-              <strong style={{ color: '#34d399' }}>{approvingProcedure.title}</strong> ({approvingProcedure.key})?
+              <strong style={{ color: '#34d399' }}>
+                {approvingProcedure.title}
+              </strong>{' '}
+              ({approvingProcedure.key})?
               <br />
               <br />
-              Once approved, field technicians and the voice intelligence system will immediately have access to this procedure.
+              Once approved, field technicians and the voice intelligence system
+              will immediately have access to this procedure.
             </>
           }
           actionLabel="Approve SOP"
@@ -487,7 +583,9 @@ export function AdminProceduresPage() {
           onConfirm={async () => {
             await approveAdminProcedure(approvingProcedure.id);
             setApprovingProcedure(null);
-            queryClient.invalidateQueries({ queryKey: ['admin', 'procedures'] });
+            queryClient.invalidateQueries({
+              queryKey: ['admin', 'procedures'],
+            });
           }}
         />
       )}
@@ -500,10 +598,14 @@ export function AdminProceduresPage() {
           message={
             <>
               Are you sure you want to withdraw SOP{' '}
-              <strong style={{ color: '#fbbf24' }}>{withdrawingProcedure.title}</strong> ({withdrawingProcedure.key})?
+              <strong style={{ color: '#fbbf24' }}>
+                {withdrawingProcedure.title}
+              </strong>{' '}
+              ({withdrawingProcedure.key})?
               <br />
               <br />
-              Withdrawn procedures are immediately restricted from technician voice lookup and maintenance execution.
+              Withdrawn procedures are immediately restricted from technician
+              voice lookup and maintenance execution.
             </>
           }
           actionLabel="Withdraw SOP"
@@ -512,7 +614,9 @@ export function AdminProceduresPage() {
           onConfirm={async () => {
             await withdrawAdminProcedure(withdrawingProcedure.id);
             setWithdrawingProcedure(null);
-            queryClient.invalidateQueries({ queryKey: ['admin', 'procedures'] });
+            queryClient.invalidateQueries({
+              queryKey: ['admin', 'procedures'],
+            });
           }}
         />
       )}
@@ -525,10 +629,14 @@ export function AdminProceduresPage() {
           message={
             <>
               Are you sure you want to archive SOP{' '}
-              <strong style={{ color: '#f87171' }}>{archivingProcedure.title}</strong>?
+              <strong style={{ color: '#f87171' }}>
+                {archivingProcedure.title}
+              </strong>
+              ?
               <br />
               <br />
-              Archiving soft-deletes this SOP and permanently removes it from diagnostic matching.
+              Archiving soft-deletes this SOP and permanently removes it from
+              diagnostic matching.
             </>
           }
           actionLabel="Archive SOP"
@@ -537,7 +645,9 @@ export function AdminProceduresPage() {
           onConfirm={async () => {
             await archiveAdminProcedure(archivingProcedure.id);
             setArchivingProcedure(null);
-            queryClient.invalidateQueries({ queryKey: ['admin', 'procedures'] });
+            queryClient.invalidateQueries({
+              queryKey: ['admin', 'procedures'],
+            });
           }}
         />
       )}
@@ -565,9 +675,13 @@ function ProcedureFormModal({
   const [key, setKey] = useState(initialData?.key ?? '');
   const [title, setTitle] = useState(initialData?.title ?? '');
   const [assetType, setAssetType] = useState(initialData?.assetType ?? '');
-  const [manufacturer, setManufacturer] = useState(initialData?.manufacturer ?? '');
+  const [manufacturer, setManufacturer] = useState(
+    initialData?.manufacturer ?? '',
+  );
   const [model, setModel] = useState(initialData?.model ?? '');
-  const [safetyLevel, setSafetyLevel] = useState(initialData?.safetyLevel ?? 'standard');
+  const [safetyLevel, setSafetyLevel] = useState(
+    initialData?.safetyLevel ?? 'standard',
+  );
   const [safetyConfirmationRequired, setSafetyConfirmationRequired] = useState(
     initialData?.safetyConfirmationRequired ?? false,
   );
@@ -621,13 +735,16 @@ function ProcedureFormModal({
     onSuccess: () => {
       onSuccess();
     },
-    onError: (err: any) => {
+    onError: (err: Error & { code?: string }) => {
       setFormError(err.message || 'Failed to save procedure.');
     },
   });
 
   const handleAddStep = () => {
-    setSteps([...steps, { text: '', type: 'action', confirmationRequired: false }]);
+    setSteps([
+      ...steps,
+      { text: '', type: 'action', confirmationRequired: false },
+    ]);
   };
 
   const handleRemoveStep = (index: number) => {
@@ -647,7 +764,11 @@ function ProcedureFormModal({
     setSteps(copy);
   };
 
-  const handleStepChange = (index: number, field: keyof EditableStep, value: any) => {
+  const handleStepChange = (
+    index: number,
+    field: keyof EditableStep,
+    value: EditableStep[keyof EditableStep],
+  ) => {
     const current = steps[index];
     if (!current) return;
     const copy = [...steps];
@@ -664,7 +785,8 @@ function ProcedureFormModal({
     if (!summary.trim()) return setFormError('Procedure summary is required.');
 
     const emptyStep = steps.some((s) => !s.text.trim());
-    if (emptyStep) return setFormError('All procedure steps must have instructions text.');
+    if (emptyStep)
+      return setFormError('All procedure steps must have instructions text.');
 
     saveMutation.mutate();
   };
@@ -679,7 +801,9 @@ function ProcedureFormModal({
         <div className="admin-modal-header">
           <div className="modal-title-wrap">
             <FileText size={18} className="modal-icon" />
-            <h2>{isEditing ? 'Edit Procedure' : 'Author SOP Procedure Draft'}</h2>
+            <h2>
+              {isEditing ? 'Edit Procedure' : 'Author SOP Procedure Draft'}
+            </h2>
           </div>
           <button type="button" className="modal-close-btn" onClick={onClose}>
             <X size={18} />
@@ -703,9 +827,15 @@ function ProcedureFormModal({
                 className="admin-input"
                 placeholder="e.g. dc-bus-discharge"
                 value={key}
-                onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '-'))}
+                onChange={(e) =>
+                  setKey(
+                    e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '-'),
+                  )
+                }
               />
-              <span className="form-help-text">Lowercase slug, e.g. e01-overvoltage-troubleshoot</span>
+              <span className="form-help-text">
+                Lowercase slug, e.g. e01-overvoltage-troubleshoot
+              </span>
             </div>
 
             <div className="form-field">
@@ -735,7 +865,9 @@ function ProcedureFormModal({
             </div>
 
             <div className="form-field">
-              <label htmlFor="procManufacturer">Manufacturer Compatibility</label>
+              <label htmlFor="procManufacturer">
+                Manufacturer Compatibility
+              </label>
               <input
                 id="procManufacturer"
                 type="text"
@@ -799,15 +931,25 @@ function ProcedureFormModal({
             </div>
 
             <div className="form-field" style={{ justifyContent: 'center' }}>
-              <label className="step-checkbox-label" style={{ marginTop: '16px' }}>
+              <label
+                className="step-checkbox-label"
+                style={{ marginTop: '16px' }}
+              >
                 <input
                   type="checkbox"
                   checked={safetyConfirmationRequired}
-                  onChange={(e) => setSafetyConfirmationRequired(e.target.checked)}
+                  onChange={(e) =>
+                    setSafetyConfirmationRequired(e.target.checked)
+                  }
                 />
-                <span style={{ color: '#fbbf24', fontWeight: 600 }}>Require Safety Confirmation Gate</span>
+                <span style={{ color: '#fbbf24', fontWeight: 600 }}>
+                  Require Safety Confirmation Gate
+                </span>
               </label>
-              <span className="form-help-text">Technician must explicitly acknowledge hazard before steps start.</span>
+              <span className="form-help-text">
+                Technician must explicitly acknowledge hazard before steps
+                start.
+              </span>
             </div>
           </div>
 
@@ -825,7 +967,9 @@ function ProcedureFormModal({
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div
+              style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+            >
               {steps.map((step, idx) => (
                 <div key={idx} className="step-card-edit">
                   <div className="step-order-badge">{idx + 1}</div>
@@ -835,14 +979,22 @@ function ProcedureFormModal({
                     className="admin-input"
                     placeholder={`Step ${idx + 1} action or instruction...`}
                     value={step.text}
-                    onChange={(e) => handleStepChange(idx, 'text', e.target.value)}
+                    onChange={(e) =>
+                      handleStepChange(idx, 'text', e.target.value)
+                    }
                   />
 
                   <select
                     className="admin-select"
                     value={step.type}
-                    onChange={(e) => handleStepChange(idx, 'type', e.target.value)}
-                    style={{ height: '32px', fontSize: '11px', padding: '0 8px' }}
+                    onChange={(e) =>
+                      handleStepChange(idx, 'type', e.target.value)
+                    }
+                    style={{
+                      height: '32px',
+                      fontSize: '11px',
+                      padding: '0 8px',
+                    }}
                   >
                     <option value="action">Action</option>
                     <option value="warning">Warning</option>
@@ -855,7 +1007,11 @@ function ProcedureFormModal({
                       type="checkbox"
                       checked={step.confirmationRequired}
                       onChange={(e) =>
-                        handleStepChange(idx, 'confirmationRequired', e.target.checked)
+                        handleStepChange(
+                          idx,
+                          'confirmationRequired',
+                          e.target.checked,
+                        )
                       }
                     />
                     <span>Verify</span>
@@ -878,7 +1034,9 @@ function ProcedureFormModal({
                       disabled={idx === steps.length - 1}
                       onClick={() => handleMoveStep(idx, 'down')}
                       title="Move step down"
-                      style={{ color: idx === steps.length - 1 ? '#334155' : '#94a3b8' }}
+                      style={{
+                        color: idx === steps.length - 1 ? '#334155' : '#94a3b8',
+                      }}
                     >
                       <ArrowDown size={14} />
                     </button>
@@ -888,7 +1046,9 @@ function ProcedureFormModal({
                       onClick={() => handleRemoveStep(idx)}
                       title="Remove step"
                       disabled={steps.length <= 1}
-                      style={{ color: steps.length <= 1 ? '#334155' : '#f87171' }}
+                      style={{
+                        color: steps.length <= 1 ? '#334155' : '#f87171',
+                      }}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -918,7 +1078,9 @@ function ProcedureFormModal({
                   <span>Saving...</span>
                 </>
               ) : (
-                <span>{isEditing ? 'Save Changes' : 'Save Procedure Draft'}</span>
+                <span>
+                  {isEditing ? 'Save Changes' : 'Save Procedure Draft'}
+                </span>
               )}
             </button>
           </div>
@@ -937,13 +1099,17 @@ interface ProcedurePreviewModalProps {
   onClose: () => void;
 }
 
-function ProcedurePreviewModal({ procedure, onClose }: ProcedurePreviewModalProps) {
+function ProcedurePreviewModal({
+  procedure,
+  onClose,
+}: ProcedurePreviewModalProps) {
   const safetyClass =
     procedure.safetyLevel === 'critical' || procedure.safetyLevel === 'high'
       ? 'safety-critical'
-      : procedure.safetyLevel === 'warning' || procedure.safetyLevel === 'medium'
-      ? 'safety-warning'
-      : 'safety-standard';
+      : procedure.safetyLevel === 'warning' ||
+          procedure.safetyLevel === 'medium'
+        ? 'safety-warning'
+        : 'safety-standard';
 
   return (
     <div className="admin-modal-backdrop" onClick={onClose}>
@@ -969,7 +1135,10 @@ function ProcedurePreviewModal({ procedure, onClose }: ProcedurePreviewModalProp
             </div>
             <div className="preview-meta-item">
               <span className="preview-meta-label">Status</span>
-              <span className="preview-meta-value" style={{ textTransform: 'capitalize' }}>
+              <span
+                className="preview-meta-value"
+                style={{ textTransform: 'capitalize' }}
+              >
                 {procedure.status}
               </span>
             </div>
@@ -989,31 +1158,47 @@ function ProcedurePreviewModal({ procedure, onClose }: ProcedurePreviewModalProp
 
           <div className="preview-summary-card">
             <strong>Summary & Objective:</strong>
-            <p style={{ margin: '6px 0 0', color: '#cbd5e1' }}>{procedure.summary}</p>
+            <p style={{ margin: '6px 0 0', color: '#cbd5e1' }}>
+              {procedure.summary}
+            </p>
           </div>
 
           {procedure.safetyConfirmationRequired && (
             <div className="preview-safety-alert">
-              <ShieldAlert size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <ShieldAlert
+                size={20}
+                style={{ flexShrink: 0, marginTop: '2px' }}
+              />
               <div>
                 <strong>Mandatory Safety Gate:</strong>
                 <p style={{ margin: '4px 0 0' }}>
-                  Field technicians must explicitly confirm safety precautions and LOTO protocols before voice guidance proceeds.
+                  Field technicians must explicitly confirm safety precautions
+                  and LOTO protocols before voice guidance proceeds.
                 </p>
               </div>
             </div>
           )}
 
           <div>
-            <h4 style={{ fontSize: '13px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
+            <h4
+              style={{
+                fontSize: '13px',
+                color: '#94a3b8',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginBottom: '12px',
+              }}
+            >
               Execution Sequence ({procedure.steps?.length ?? 0} Steps)
             </h4>
 
             <div className="preview-steps-list">
               {procedure.steps?.map((step, idx) => {
                 const stepText = typeof step === 'string' ? step : step.text;
-                const stepType = typeof step === 'string' ? 'action' : step.type ?? 'action';
-                const confirmReq = typeof step === 'string' ? false : step.confirmationRequired;
+                const stepType =
+                  typeof step === 'string' ? 'action' : (step.type ?? 'action');
+                const confirmReq =
+                  typeof step === 'string' ? false : step.confirmationRequired;
 
                 return (
                   <div key={idx} className="preview-step-card">
@@ -1058,7 +1243,10 @@ function ProcedurePreviewModal({ procedure, onClose }: ProcedurePreviewModalProp
           </div>
         </div>
 
-        <div className="modal-actions" style={{ padding: '16px 24px', borderTop: '1px solid #1e293b' }}>
+        <div
+          className="modal-actions"
+          style={{ padding: '16px 24px', borderTop: '1px solid #1e293b' }}
+        >
           <button type="button" className="admin-primary-btn" onClick={onClose}>
             Close Preview
           </button>
@@ -1095,7 +1283,7 @@ function ConfirmActionModal({
 
   const mutation = useMutation({
     mutationFn: onConfirm,
-    onError: (err: any) => {
+    onError: (err: Error & { code?: string }) => {
       setError(err.message || 'Operation failed.');
     },
   });
@@ -1140,7 +1328,11 @@ function ConfirmActionModal({
             className={`admin-primary-btn ${actionVariant === 'danger' ? 'danger' : ''}`}
             style={
               actionVariant === 'warning'
-                ? { background: '#f59e0b', borderColor: '#d97706', color: '#000' }
+                ? {
+                    background: '#f59e0b',
+                    borderColor: '#d97706',
+                    color: '#000',
+                  }
                 : undefined
             }
             onClick={() => mutation.mutate()}

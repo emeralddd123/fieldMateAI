@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import {
-  AlertTriangle,
   AudioLines,
   ChevronDown,
   Cpu,
@@ -8,13 +7,8 @@ import {
   Mic,
   MicOff,
   PhoneOff,
-  Radio,
-  RefreshCw,
-  Send,
   ShieldAlert,
   Sparkles,
-  Volume2,
-  X,
 } from 'lucide-react';
 import type { VoiceControlsState } from './VoiceControls';
 import { voiceLabels } from './VoiceControls';
@@ -35,8 +29,6 @@ export function MobileVoiceSheet({
   activeAssetName,
 }: MobileVoiceSheetProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [typedInput, setTypedInput] = useState('');
-  const [showTypedInput, setShowTypedInput] = useState(false);
 
   const isActive = !['disconnected', 'error'].includes(voice.status);
   const isListening = voice.status === 'listening' && !voice.muted;
@@ -73,7 +65,9 @@ export function MobileVoiceSheet({
             <div className="voice-machine-pill">
               <Cpu size={14} />
               <strong>{activeAssetTag ?? 'M-204'}</strong>
-              {activeAssetName && <span className="machine-name-trunc">{activeAssetName}</span>}
+              {activeAssetName && (
+                <span className="machine-name-trunc">{activeAssetName}</span>
+              )}
             </div>
             <div className={`voice-live-badge status-${voice.status}`}>
               <span className="live-dot" />
@@ -88,7 +82,9 @@ export function MobileVoiceSheet({
                 className={`voice-head-btn ${voice.muted ? 'muted-active' : ''}`}
                 onClick={voice.toggleMute}
                 title={voice.muted ? 'Unmute microphone' : 'Mute microphone'}
-                aria-label={voice.muted ? 'Unmute microphone' : 'Mute microphone'}
+                aria-label={
+                  voice.muted ? 'Unmute microphone' : 'Mute microphone'
+                }
               >
                 {voice.muted ? <MicOff size={16} /> : <Mic size={16} />}
               </button>
@@ -116,7 +112,9 @@ export function MobileVoiceSheet({
               )}
               <div>
                 <strong>
-                  {voice.safetyPrompt ? 'Safety Verification Required' : 'Review Maintenance Write'}
+                  {voice.safetyPrompt
+                    ? 'Safety Verification Required'
+                    : 'Review Maintenance Write'}
                 </strong>
                 <small>
                   {voice.safetyPrompt
@@ -137,8 +135,8 @@ export function MobileVoiceSheet({
               </div>
               <h3>FieldMate Voice Intelligence</h3>
               <p>
-                Speak naturally or tap a quick question below. Ask for machine specifications,
-                fault codes, or record repair notes hands-free.
+                Speak naturally or tap a quick question below. Ask for machine
+                specifications, fault codes, or record repair notes hands-free.
               </p>
 
               <div className="quick-prompts-grid">
@@ -170,8 +168,12 @@ export function MobileVoiceSheet({
                       {item.speaker === 'user' ? 'You' : 'FieldMate AI'}
                     </span>
                     <p className="bubble-text">{item.text}</p>
-                    {!item.final && <span className="bubble-speaking-dot">● Listening…</span>}
-                    {item.interrupted && <span className="bubble-interrupted">Interrupted</span>}
+                    {!item.final && (
+                      <span className="bubble-speaking-dot">● Listening…</span>
+                    )}
+                    {item.interrupted && (
+                      <span className="bubble-interrupted">Interrupted</span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -181,9 +183,14 @@ export function MobileVoiceSheet({
           {/* Real-time Tool Activity Box */}
           {voice.tools.length > 0 && (
             <div className="live-tool-tray">
-              <span className="tray-title">EQUIPMENT LOOKUPS & BACKGROUND REASONING</span>
+              <span className="tray-title">
+                EQUIPMENT LOOKUPS & BACKGROUND REASONING
+              </span>
               {voice.tools.slice(-3).map((tool) => (
-                <div key={tool.id} className={`tool-pill status-${tool.status}`}>
+                <div
+                  key={tool.id}
+                  className={`tool-pill status-${tool.status}`}
+                >
                   <span className="tool-status-dot" />
                   <span className="tool-summary">{tool.summary}</span>
                 </div>
@@ -230,7 +237,9 @@ export function MobileVoiceSheet({
                   type="button"
                   className="dock-sub-btn mute-sub-btn"
                   onClick={voice.toggleMute}
-                  aria-label={voice.muted ? 'Unmute microphone' : 'Mute microphone'}
+                  aria-label={
+                    voice.muted ? 'Unmute microphone' : 'Mute microphone'
+                  }
                 >
                   {voice.muted ? <MicOff size={20} /> : <Mic size={20} />}
                   <span>{voice.muted ? 'Unmute' : 'Mute'}</span>

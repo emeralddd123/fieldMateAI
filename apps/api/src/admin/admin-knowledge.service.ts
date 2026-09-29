@@ -33,7 +33,15 @@ export interface StructuredStep {
 }
 
 function normalizeSteps(
-  steps: (string | { text: string; order?: number; type?: string; confirmationRequired?: boolean })[],
+  steps: (
+    | string
+    | {
+        text: string;
+        order?: number;
+        type?: string;
+        confirmationRequired?: boolean;
+      }
+  )[],
 ): StructuredStep[] {
   if (!Array.isArray(steps) || steps.length === 0) {
     throw new BadRequestException({
@@ -219,7 +227,8 @@ export class AdminKnowledgeService {
     if (!fault) {
       throw new NotFoundException({
         code: 'FAULT_NOT_FOUND',
-        message: 'The requested fault definition was not found in this organization.',
+        message:
+          'The requested fault definition was not found in this organization.',
       });
     }
 
@@ -231,7 +240,10 @@ export class AdminKnowledgeService {
     dto: CreateFaultDefinitionDto,
     request: Request,
   ) {
-    const faultCode = dto.faultCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const faultCode = dto.faultCode
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
     const manufacturer = dto.manufacturer.trim();
     const model = dto.model.trim();
 
@@ -266,7 +278,8 @@ export class AdminKnowledgeService {
       if (!procedure) {
         throw new BadRequestException({
           code: 'INVALID_PROCEDURE',
-          message: 'The specified procedure does not exist or has been archived.',
+          message:
+            'The specified procedure does not exist or has been archived.',
         });
       }
 
@@ -346,15 +359,23 @@ export class AdminKnowledgeService {
     if (!fault) {
       throw new NotFoundException({
         code: 'FAULT_NOT_FOUND',
-        message: 'The requested fault definition was not found in this organization.',
+        message:
+          'The requested fault definition was not found in this organization.',
       });
     }
 
-    const nextManufacturer = dto.manufacturer !== undefined ? dto.manufacturer.trim() : fault.manufacturer;
+    const nextManufacturer =
+      dto.manufacturer !== undefined
+        ? dto.manufacturer.trim()
+        : fault.manufacturer;
     const nextModel = dto.model !== undefined ? dto.model.trim() : fault.model;
-    const nextFaultCode = dto.faultCode !== undefined
-      ? dto.faultCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
-      : fault.faultCode;
+    const nextFaultCode =
+      dto.faultCode !== undefined
+        ? dto.faultCode
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '')
+        : fault.faultCode;
 
     // Check conflict if any component of the unique key changed
     if (
@@ -397,12 +418,14 @@ export class AdminKnowledgeService {
         if (!procedure) {
           throw new BadRequestException({
             code: 'INVALID_PROCEDURE',
-            message: 'The specified procedure does not exist or has been archived.',
+            message:
+              'The specified procedure does not exist or has been archived.',
           });
         }
 
         if (
-          (procedure.manufacturer && procedure.manufacturer !== nextManufacturer) ||
+          (procedure.manufacturer &&
+            procedure.manufacturer !== nextManufacturer) ||
           (procedure.model && procedure.model !== nextModel)
         ) {
           throw new BadRequestException({
@@ -419,15 +442,20 @@ export class AdminKnowledgeService {
       const saved = await tx.faultDefinition.update({
         where: { id: faultId },
         data: {
-          manufacturer: dto.manufacturer !== undefined ? nextManufacturer : undefined,
+          manufacturer:
+            dto.manufacturer !== undefined ? nextManufacturer : undefined,
           model: dto.model !== undefined ? nextModel : undefined,
           faultCode: dto.faultCode !== undefined ? nextFaultCode : undefined,
-          normalizedFaultCode: dto.faultCode !== undefined ? nextFaultCode : undefined,
+          normalizedFaultCode:
+            dto.faultCode !== undefined ? nextFaultCode : undefined,
           title: dto.title !== undefined ? dto.title.trim() : undefined,
-          description: dto.description !== undefined ? dto.description.trim() : undefined,
-          safetyLevel: dto.safetyLevel !== undefined ? dto.safetyLevel.trim() : undefined,
+          description:
+            dto.description !== undefined ? dto.description.trim() : undefined,
+          safetyLevel:
+            dto.safetyLevel !== undefined ? dto.safetyLevel.trim() : undefined,
           source: dto.source !== undefined ? dto.source.trim() : undefined,
-          procedureId: nextProcedureId !== undefined ? nextProcedureId : undefined,
+          procedureId:
+            nextProcedureId !== undefined ? nextProcedureId : undefined,
         },
         include: {
           procedure: {
@@ -469,11 +497,7 @@ export class AdminKnowledgeService {
     return updated;
   }
 
-  async archiveFault(
-    access: AccessContext,
-    faultId: string,
-    request: Request,
-  ) {
+  async archiveFault(access: AccessContext, faultId: string, request: Request) {
     const fault = await this.prisma.faultDefinition.findFirst({
       where: {
         id: faultId,
@@ -485,7 +509,8 @@ export class AdminKnowledgeService {
     if (!fault) {
       throw new NotFoundException({
         code: 'FAULT_NOT_FOUND',
-        message: 'The requested fault definition was not found or is already archived.',
+        message:
+          'The requested fault definition was not found or is already archived.',
       });
     }
 
@@ -666,7 +691,11 @@ export class AdminKnowledgeService {
     dto: CreateProcedureDto,
     request: Request,
   ) {
-    const key = dto.key.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const key = dto.key
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
 
     const existing = await this.prisma.procedure.findUnique({
       where: { key },
@@ -743,7 +772,11 @@ export class AdminKnowledgeService {
 
     let nextKey: string | undefined;
     if (dto.key) {
-      nextKey = dto.key.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      nextKey = dto.key
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
       if (nextKey !== procedure.key) {
         const existing = await this.prisma.procedure.findUnique({
           where: { key: nextKey },
@@ -768,13 +801,27 @@ export class AdminKnowledgeService {
         data: {
           key: nextKey,
           title: dto.title !== undefined ? dto.title.trim() : undefined,
-          assetType: dto.assetType !== undefined ? (dto.assetType?.trim() || null) : undefined,
-          manufacturer: dto.manufacturer !== undefined ? (dto.manufacturer?.trim() || null) : undefined,
-          model: dto.model !== undefined ? (dto.model?.trim() || null) : undefined,
-          safetyLevel: dto.safetyLevel !== undefined ? dto.safetyLevel.trim() : undefined,
-          safetyConfirmationRequired: dto.safetyConfirmationRequired !== undefined ? dto.safetyConfirmationRequired : undefined,
+          assetType:
+            dto.assetType !== undefined
+              ? dto.assetType?.trim() || null
+              : undefined,
+          manufacturer:
+            dto.manufacturer !== undefined
+              ? dto.manufacturer?.trim() || null
+              : undefined,
+          model:
+            dto.model !== undefined ? dto.model?.trim() || null : undefined,
+          safetyLevel:
+            dto.safetyLevel !== undefined ? dto.safetyLevel.trim() : undefined,
+          safetyConfirmationRequired:
+            dto.safetyConfirmationRequired !== undefined
+              ? dto.safetyConfirmationRequired
+              : undefined,
           summary: dto.summary !== undefined ? dto.summary.trim() : undefined,
-          steps: nextSteps !== undefined ? (nextSteps as unknown as Prisma.InputJsonValue) : undefined,
+          steps:
+            nextSteps !== undefined
+              ? (nextSteps as unknown as Prisma.InputJsonValue)
+              : undefined,
           source: dto.source !== undefined ? dto.source.trim() : undefined,
         },
         include: {
@@ -792,7 +839,11 @@ export class AdminKnowledgeService {
         saved.id,
         request,
         {
-          previous: { key: procedure.key, title: procedure.title, status: procedure.status },
+          previous: {
+            key: procedure.key,
+            title: procedure.title,
+            status: procedure.status,
+          },
           updated: { key: saved.key, title: saved.title, status: saved.status },
         },
       );
@@ -823,11 +874,12 @@ export class AdminKnowledgeService {
       });
     }
 
-    const steps = procedure.steps as any[];
+    const steps = procedure.steps;
     if (!Array.isArray(steps) || steps.length === 0) {
       throw new BadRequestException({
         code: 'EMPTY_PROCEDURE_STEPS',
-        message: 'Cannot approve a procedure without verified maintenance steps.',
+        message:
+          'Cannot approve a procedure without verified maintenance steps.',
       });
     }
 
@@ -936,7 +988,8 @@ export class AdminKnowledgeService {
     if (!procedure) {
       throw new NotFoundException({
         code: 'PROCEDURE_NOT_FOUND',
-        message: 'The requested procedure was not found or is already archived.',
+        message:
+          'The requested procedure was not found or is already archived.',
       });
     }
 

@@ -5,13 +5,7 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
-  Cpu,
-  FileCheck,
-  Gauge,
-  RotateCcw,
   ShieldCheck,
-  Sparkles,
-  User,
   Wrench,
   X,
 } from 'lucide-react';
@@ -48,7 +42,13 @@ interface RepairDraftPayload {
   step: 1 | 2 | 3 | 4;
 }
 
-export function RepairCompletionModal({
+export function RepairCompletionModal(props: RepairCompletionModalProps) {
+  return props.isOpen ? (
+    <RepairCompletionForm key={props.incident.id} {...props} />
+  ) : null;
+}
+
+function RepairCompletionForm({
   isOpen,
   onClose,
   incident,
@@ -56,50 +56,51 @@ export function RepairCompletionModal({
 }: RepairCompletionModalProps) {
   const queryClient = useQueryClient();
   const auth = useAuth();
-  const tenantId = auth.session?.memberships[0]?.organization.id ?? 'default_tenant';
+  const tenantId =
+    auth.session?.memberships[0]?.organization.id ?? 'default_tenant';
   const userId = auth.session?.user.id ?? 'anonymous';
   const formKey = `repair_${incident.id}`;
 
+  const [draft] = useState(() =>
+    loadFormDraft<RepairDraftPayload>(tenantId, userId, formKey),
+  );
+
   // Wizard Step: 1 (Diagnosis) | 2 (Action) | 3 (Verification & Reading) | 4 (Equipment Status) | 5 (Success Receipt)
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(draft?.payload.step ?? 1);
 
   // Form fields
-  const [rootCause, setRootCause] = useState(incident.rootCause ?? '');
-  const [actionTaken, setActionTaken] = useState(incident.actionTaken ?? '');
-  const [verificationSummary, setVerificationSummary] = useState('');
-  const [includeMeasurement, setIncludeMeasurement] = useState(false);
-  const [measurementType, setMeasurementType] = useState('line_voltage');
-  const [measurementValue, setMeasurementValue] = useState<string>('400');
-  const [measurementUnit, setMeasurementUnit] = useState('V');
-  const [measurementNotes, setMeasurementNotes] = useState('');
+  const [rootCause, setRootCause] = useState(
+    draft?.payload.rootCause ?? incident.rootCause ?? '',
+  );
+  const [actionTaken, setActionTaken] = useState(
+    draft?.payload.actionTaken ?? incident.actionTaken ?? '',
+  );
+  const [verificationSummary, setVerificationSummary] = useState(
+    draft?.payload.verificationSummary ?? '',
+  );
+  const [includeMeasurement, setIncludeMeasurement] = useState(
+    draft?.payload.includeMeasurement ?? false,
+  );
+  const [measurementType, setMeasurementType] = useState(
+    draft?.payload.measurementType ?? 'line_voltage',
+  );
+  const [measurementValue, setMeasurementValue] = useState<string>(
+    draft?.payload.measurementValue ?? '400',
+  );
+  const [measurementUnit, setMeasurementUnit] = useState(
+    draft?.payload.measurementUnit ?? 'V',
+  );
+  const [measurementNotes, setMeasurementNotes] = useState(
+    draft?.payload.measurementNotes ?? '',
+  );
   const [assetStatus, setAssetStatus] = useState<
     'operational' | 'warning' | 'maintenance' | 'down'
-  >('operational');
+  >(draft?.payload.assetStatus ?? 'operational');
 
   // Draft restoration state
-  const [restoredDraftAge, setRestoredDraftAge] = useState<number | null>(null);
-
-  // Load draft on mount / open
-  useEffect(() => {
-    if (isOpen) {
-      const draft = loadFormDraft<RepairDraftPayload>(tenantId, userId, formKey);
-      if (draft && draft.payload) {
-        setRootCause(draft.payload.rootCause ?? incident.rootCause ?? '');
-        setActionTaken(draft.payload.actionTaken ?? incident.actionTaken ?? '');
-        setVerificationSummary(draft.payload.verificationSummary ?? '');
-        setIncludeMeasurement(draft.payload.includeMeasurement ?? false);
-        setMeasurementType(draft.payload.measurementType ?? 'line_voltage');
-        setMeasurementValue(draft.payload.measurementValue ?? '400');
-        setMeasurementUnit(draft.payload.measurementUnit ?? 'V');
-        setMeasurementNotes(draft.payload.measurementNotes ?? '');
-        setAssetStatus(draft.payload.assetStatus ?? 'operational');
-        setStep(draft.payload.step ?? 1);
-        setRestoredDraftAge(draft.ageMinutes);
-      } else {
-        setRestoredDraftAge(null);
-      }
-    }
-  }, [isOpen, incident.id, incident.rootCause, incident.actionTaken, tenantId, userId, formKey]);
+  const [restoredDraftAge, setRestoredDraftAge] = useState<number | null>(
+    draft?.ageMinutes ?? null,
+  );
 
   // Persist draft on edit
   useEffect(() => {
@@ -235,7 +236,9 @@ export function RepairCompletionModal({
     try {
       const result = await submitCompleteRepair(incident.id, payload);
       await queryClient.invalidateQueries({ queryKey: ['incidents'] });
-      await queryClient.invalidateQueries({ queryKey: ['incident-detail', incident.id] });
+      await queryClient.invalidateQueries({
+        queryKey: ['incident-detail', incident.id],
+      });
       await queryClient.invalidateQueries({ queryKey: ['assets'] });
 
       clearFormDraft(tenantId, userId, formKey);
@@ -250,7 +253,11 @@ export function RepairCompletionModal({
       setStep(5);
       onCompleted?.();
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to record repair completion.');
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to record repair completion.',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -273,7 +280,9 @@ export function RepairCompletionModal({
             <span className="repair-badge">
               <Wrench size={13} /> COMPLETE REPAIR & RESOLUTION
             </span>
-            <h2>{incident.incidentNumber} · {incident.title}</h2>
+            <h2>
+              {incident.incidentNumber} · {incident.title}
+            </h2>
           </div>
           <button
             type="button"
@@ -288,18 +297,30 @@ export function RepairCompletionModal({
         {/* Stepper Indicator */}
         {step < 5 && (
           <div className="repair-stepper">
-            <div className={`stepper-step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'done' : ''}`}>
-              <span className="step-num">{step > 1 ? <Check size={12} /> : '1'}</span>
+            <div
+              className={`stepper-step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'done' : ''}`}
+            >
+              <span className="step-num">
+                {step > 1 ? <Check size={12} /> : '1'}
+              </span>
               <span className="step-name">Diagnosis</span>
             </div>
             <div className="stepper-line" />
-            <div className={`stepper-step ${step >= 2 ? 'active' : ''} ${step > 2 ? 'done' : ''}`}>
-              <span className="step-num">{step > 2 ? <Check size={12} /> : '2'}</span>
+            <div
+              className={`stepper-step ${step >= 2 ? 'active' : ''} ${step > 2 ? 'done' : ''}`}
+            >
+              <span className="step-num">
+                {step > 2 ? <Check size={12} /> : '2'}
+              </span>
               <span className="step-name">Work Done</span>
             </div>
             <div className="stepper-line" />
-            <div className={`stepper-step ${step >= 3 ? 'active' : ''} ${step > 3 ? 'done' : ''}`}>
-              <span className="step-num">{step > 3 ? <Check size={12} /> : '3'}</span>
+            <div
+              className={`stepper-step ${step >= 3 ? 'active' : ''} ${step > 3 ? 'done' : ''}`}
+            >
+              <span className="step-num">
+                {step > 3 ? <Check size={12} /> : '3'}
+              </span>
               <span className="step-name">Verification</span>
             </div>
             <div className="stepper-line" />
@@ -334,7 +355,9 @@ export function RepairCompletionModal({
             <div className="repair-step-pane">
               <label className="repair-input-label">
                 <strong>Diagnosed Root Cause:</strong>
-                <small>What underlying condition triggered this incident?</small>
+                <small>
+                  What underlying condition triggered this incident?
+                </small>
               </label>
               <textarea
                 className="repair-textarea"
@@ -345,7 +368,9 @@ export function RepairCompletionModal({
                 autoFocus
               />
               <div className="quick-pill-section">
-                <span className="quick-pill-label">COMMON CAUSES (TAP TO INSERT):</span>
+                <span className="quick-pill-label">
+                  COMMON CAUSES (TAP TO INSERT):
+                </span>
                 <div className="quick-pills-row">
                   {quickRootCauses.map((cause, i) => (
                     <button
@@ -367,7 +392,10 @@ export function RepairCompletionModal({
             <div className="repair-step-pane">
               <label className="repair-input-label">
                 <strong>Corrective Action Performed:</strong>
-                <small>Detail the maintenance steps, part replacements, or adjustments made.</small>
+                <small>
+                  Detail the maintenance steps, part replacements, or
+                  adjustments made.
+                </small>
               </label>
               <textarea
                 className="repair-textarea"
@@ -378,7 +406,9 @@ export function RepairCompletionModal({
                 autoFocus
               />
               <div className="quick-pill-section">
-                <span className="quick-pill-label">COMMON ACTIONS (TAP TO INSERT):</span>
+                <span className="quick-pill-label">
+                  COMMON ACTIONS (TAP TO INSERT):
+                </span>
                 <div className="quick-pills-row">
                   {quickActions.map((act, i) => (
                     <button
@@ -400,7 +430,9 @@ export function RepairCompletionModal({
             <div className="repair-step-pane">
               <label className="repair-input-label">
                 <strong>Post-Repair Verification Summary:</strong>
-                <small>How did you verify the equipment is functioning safely?</small>
+                <small>
+                  How did you verify the equipment is functioning safely?
+                </small>
               </label>
               <textarea
                 className="repair-textarea"
@@ -434,7 +466,10 @@ export function RepairCompletionModal({
                     checked={includeMeasurement}
                     onChange={(e) => setIncludeMeasurement(e.target.checked)}
                   />
-                  <span>Attach quantitative verification measurement (multimeter, vibration, temp)</span>
+                  <span>
+                    Attach quantitative verification measurement (multimeter,
+                    vibration, temp)
+                  </span>
                 </label>
 
                 {includeMeasurement && (
@@ -446,9 +481,15 @@ export function RepairCompletionModal({
                         onChange={(e) => setMeasurementType(e.target.value)}
                       >
                         <option value="line_voltage">Line Voltage (V)</option>
-                        <option value="operating_current">Operating Current (A)</option>
-                        <option value="bearing_temperature">Bearing Temperature (°C)</option>
-                        <option value="vibration_rms">Vibration RMS (mm/s)</option>
+                        <option value="operating_current">
+                          Operating Current (A)
+                        </option>
+                        <option value="bearing_temperature">
+                          Bearing Temperature (°C)
+                        </option>
+                        <option value="vibration_rms">
+                          Vibration RMS (mm/s)
+                        </option>
                         <option value="pressure">Pressure (bar)</option>
                       </select>
                     </div>
@@ -494,7 +535,10 @@ export function RepairCompletionModal({
             <div className="repair-step-pane">
               <label className="repair-input-label">
                 <strong>Equipment Operating Status:</strong>
-                <small>Select the return-to-service status for {incident.asset?.assetTag ?? 'this asset'}.</small>
+                <small>
+                  Select the return-to-service status for{' '}
+                  {incident.asset?.assetTag ?? 'this asset'}.
+                </small>
               </label>
 
               <div className="status-selection-cards">
@@ -506,7 +550,9 @@ export function RepairCompletionModal({
                   <span className="status-dot operational" />
                   <div>
                     <strong>Operational</strong>
-                    <small>Normal production operation restored without restrictions</small>
+                    <small>
+                      Normal production operation restored without restrictions
+                    </small>
                   </div>
                 </button>
 
@@ -518,7 +564,9 @@ export function RepairCompletionModal({
                   <span className="status-dot warning" />
                   <div>
                     <strong>Warning / Monitored</strong>
-                    <small>Operational with monitoring required on next shift</small>
+                    <small>
+                      Operational with monitoring required on next shift
+                    </small>
                   </div>
                 </button>
 
@@ -556,7 +604,9 @@ export function RepairCompletionModal({
                 {includeMeasurement && (
                   <div className="summary-row">
                     <span>Reading:</span>
-                    <p>{measurementValue} {measurementUnit} ({measurementType})</p>
+                    <p>
+                      {measurementValue} {measurementUnit} ({measurementType})
+                    </p>
                   </div>
                 )}
               </div>
@@ -570,7 +620,10 @@ export function RepairCompletionModal({
                 <CheckCircle2 size={40} />
               </div>
               <h2>Repair Completed & Verified</h2>
-              <p>The incident has been resolved and logged in the plant equipment memory.</p>
+              <p>
+                The incident has been resolved and logged in the plant equipment
+                memory.
+              </p>
 
               <div className="receipt-card">
                 <div className="receipt-row">
@@ -587,7 +640,9 @@ export function RepairCompletionModal({
                 </div>
                 <div className="receipt-row">
                   <span>Timestamp:</span>
-                  <small>{new Date(successReceipt.timestamp).toLocaleString()}</small>
+                  <small>
+                    {new Date(successReceipt.timestamp).toLocaleString()}
+                  </small>
                 </div>
               </div>
 

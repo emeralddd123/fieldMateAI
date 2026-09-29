@@ -232,7 +232,9 @@ export function fetchAdminAssets(params?: {
   if (params?.limit) search.set('limit', String(params.limit));
   if (params?.includeArchived) search.set('includeArchived', 'true');
   const query = search.toString();
-  return adminRequest<AdminAssetsResponse>(`/assets${query ? `?${query}` : ''}`);
+  return adminRequest<AdminAssetsResponse>(
+    `/assets${query ? `?${query}` : ''}`,
+  );
 }
 
 export function fetchAdminAsset(id: string) {
@@ -343,9 +345,12 @@ export function updateAdminUser(
 }
 
 export function revokeUserSessions(userId: string) {
-  return adminRequest<{ revokedCount: number }>(`/users/${userId}/revoke-sessions`, {
-    method: 'POST',
-  });
+  return adminRequest<{ revokedCount: number }>(
+    `/users/${userId}/revoke-sessions`,
+    {
+      method: 'POST',
+    },
+  );
 }
 
 export function inviteUser(data: {
@@ -443,7 +448,9 @@ export function fetchAdminProcedures(params?: {
   if (params?.limit) search.set('limit', String(params.limit));
 
   const query = search.toString();
-  return adminRequest<AdminProceduresResponse>(`/procedures${query ? `?${query}` : ''}`);
+  return adminRequest<AdminProceduresResponse>(
+    `/procedures${query ? `?${query}` : ''}`,
+  );
 }
 
 export function fetchAdminProcedure(id: string) {
@@ -559,7 +566,9 @@ export function fetchAdminFaults(params?: {
   if (params?.limit) search.set('limit', String(params.limit));
 
   const query = search.toString();
-  return adminRequest<AdminFaultsResponse>(`/faults${query ? `?${query}` : ''}`);
+  return adminRequest<AdminFaultsResponse>(
+    `/faults${query ? `?${query}` : ''}`,
+  );
 }
 
 export function fetchAdminFault(id: string) {
@@ -618,7 +627,7 @@ export interface AdminAuditEventItem {
   requestId: string | null;
   ipAddress: string | null;
   userAgent: string | null;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   createdAt: string;
   actor: {
     id: string;
@@ -667,7 +676,9 @@ export function fetchAdminAuditEvents(params?: {
   if (params?.limit) search.set('limit', String(params.limit));
 
   const query = search.toString();
-  return adminRequest<AdminAuditEventsResponse>(`/audit${query ? `?${query}` : ''}`);
+  return adminRequest<AdminAuditEventsResponse>(
+    `/audit${query ? `?${query}` : ''}`,
+  );
 }
 
 export function fetchAdminAuditActions() {
@@ -679,4 +690,3 @@ export function triggerAdminCleanup() {
     method: 'POST',
   });
 }
-

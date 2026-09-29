@@ -36,7 +36,9 @@ export class OriginGuard implements CanActivate {
       ) {
         return true;
       }
-    } catch {}
+    } catch {
+      /* Malformed origins are rejected below. */
+    }
 
     throw new ForbiddenException({
       code: 'INVALID_REQUEST_ORIGIN',

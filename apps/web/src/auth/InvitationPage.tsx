@@ -36,11 +36,11 @@ export function InvitationPage() {
   return (
     <AuthLayout
       title="Activate your account"
-      subtitle="Set a password to accept your FieldMate invitation."
+      subtitle="Choose a password for a new account, or enter your existing account password to join this organization."
     >
       <form className="auth-form" onSubmit={(event) => void submit(event)}>
         <label>
-          <span>NEW PASSWORD</span>
+          <span>PASSWORD</span>
           <input
             type="password"
             autoComplete="new-password"

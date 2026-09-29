@@ -1,7 +1,7 @@
 // FieldMate AI — Service Worker Offline Application Shell
 // Version: fieldmate-shell-v1.0.0
 
-const CACHE_NAME = 'fieldmate-shell-v1';
+const CACHE_NAME = 'fieldmate-shell-v2';
 
 // Static application shell assets required for offline rendering
 const APP_SHELL_ASSETS = [
@@ -38,7 +38,9 @@ self.addEventListener('activate', (event) => {
       .then((keys) => {
         return Promise.all(
           keys
-            .filter((key) => key !== CACHE_NAME)
+            .filter(
+              (key) => key.startsWith('fieldmate-shell-') && key !== CACHE_NAME,
+            )
             .map((oldKey) => {
               return caches.delete(oldKey);
             }),
@@ -61,56 +63,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Authentication endpoints: NEVER cache tokens or credentials
+  // Only public, same-origin shell assets may persist across sessions.
+  // API and authentication data always use the network, including /api/v1/auth/me.
   if (
-    url.pathname.startsWith('/api/auth') ||
-    url.pathname.includes('/token') ||
-    url.pathname.includes('/login') ||
-    url.pathname.includes('/logout')
+    url.origin !== self.location.origin ||
+    (!APP_SHELL_ASSETS.includes(url.pathname) &&
+      !url.pathname.startsWith('/assets/'))
   ) {
-    return;
-  }
-
-  // 3. Dynamic API Data (/api/...): Network-first with offline cache fallback
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(
-      fetch(req)
-        .then((response) => {
-          // If valid response, clone and cache read-only data
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(req, clone);
-            });
-          }
-          return response;
-        })
-        .catch(async () => {
-          // Network failed: attempt to retrieve cached read-only data
-          const cached = await caches.match(req);
-          if (cached) {
-            // Add custom header so frontend knows data is cached/stale
-            const headers = new Headers(cached.headers);
-            headers.set('X-FieldMate-Cached', 'true');
-            return new Response(cached.body, {
-              status: cached.status,
-              statusText: cached.statusText,
-              headers,
-            });
-          }
-          return new Response(
-            JSON.stringify({
-              error: 'Offline',
-              message: 'Network unavailable and no cached data exists.',
-              offline: true,
-            }),
-            {
-              status: 503,
-              headers: { 'Content-Type': 'application/json' },
-            },
-          );
-        }),
-    );
+    if (req.mode === 'navigate') {
+      event.respondWith(fetch(req).catch(() => caches.match('/index.html')));
+    }
     return;
   }
 

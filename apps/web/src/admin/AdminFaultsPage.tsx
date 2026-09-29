@@ -4,7 +4,6 @@ import {
   AlertCircle,
   AlertTriangle,
   Archive,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Edit2,
@@ -38,8 +37,10 @@ export function AdminFaultsPage() {
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingFault, setEditingFault] = useState<AdminFaultDefinitionItem | null>(null);
-  const [archivingFault, setArchivingFault] = useState<AdminFaultDefinitionItem | null>(null);
+  const [editingFault, setEditingFault] =
+    useState<AdminFaultDefinitionItem | null>(null);
+  const [archivingFault, setArchivingFault] =
+    useState<AdminFaultDefinitionItem | null>(null);
 
   // Procedures query for dropdown
   const proceduresQuery = useQuery({
@@ -88,7 +89,8 @@ export function AdminFaultsPage() {
           <span className="panel-kicker">KNOWLEDGE & DIAGNOSTICS</span>
           <h1 className="admin-page-title">Fault Codes & Diagnostics</h1>
           <p className="admin-page-desc">
-            Define equipment error codes, manufacturer diagnostics, symptoms, and link verified SOP procedures.
+            Define equipment error codes, manufacturer diagnostics, symptoms,
+            and link verified SOP procedures.
           </p>
         </div>
         <div className="admin-header-actions">
@@ -116,7 +118,10 @@ export function AdminFaultsPage() {
         </div>
 
         <div className="admin-kpi-card">
-          <div className="admin-kpi-icon-wrap" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171' }}>
+          <div
+            className="admin-kpi-icon-wrap"
+            style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171' }}
+          >
             <ShieldAlert size={20} />
           </div>
           <div>
@@ -140,7 +145,13 @@ export function AdminFaultsPage() {
         </div>
 
         <div className="admin-kpi-card">
-          <div className="admin-kpi-icon-wrap" style={{ background: 'rgba(100, 116, 139, 0.15)', color: '#94a3b8' }}>
+          <div
+            className="admin-kpi-icon-wrap"
+            style={{
+              background: 'rgba(100, 116, 139, 0.15)',
+              color: '#94a3b8',
+            }}
+          >
             <LinkIcon size={20} />
           </div>
           <div>
@@ -204,7 +215,17 @@ export function AdminFaultsPage() {
           }}
         />
 
-        <label className="admin-checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#8899aa', cursor: 'pointer' }}>
+        <label
+          className="admin-checkbox-label"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '13px',
+            color: '#8899aa',
+            cursor: 'pointer',
+          }}
+        >
           <input
             type="checkbox"
             checked={includeArchived}
@@ -250,31 +271,53 @@ export function AdminFaultsPage() {
               faults.map((fault) => {
                 const isArchived = Boolean(fault.archivedAt);
                 const safetyClass =
-                  fault.safetyLevel === 'critical' || fault.safetyLevel === 'high'
+                  fault.safetyLevel === 'critical' ||
+                  fault.safetyLevel === 'high'
                     ? 'safety-critical'
-                    : fault.safetyLevel === 'warning' || fault.safetyLevel === 'medium'
-                    ? 'safety-warning'
-                    : 'safety-standard';
+                    : fault.safetyLevel === 'warning' ||
+                        fault.safetyLevel === 'medium'
+                      ? 'safety-warning'
+                      : 'safety-standard';
 
                 return (
-                  <tr key={fault.id} style={isArchived ? { opacity: 0.55 } : undefined}>
+                  <tr
+                    key={fault.id}
+                    style={isArchived ? { opacity: 0.55 } : undefined}
+                  >
                     <td>
                       <div className="fault-code-badge">
                         <AlertTriangle size={13} />
                         <span>{fault.faultCode}</span>
                       </div>
                       {isArchived && (
-                        <span style={{ fontSize: '10px', color: '#f87171', display: 'block', marginTop: '4px' }}>
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            color: '#f87171',
+                            display: 'block',
+                            marginTop: '4px',
+                          }}
+                        >
                           (Archived)
                         </span>
                       )}
                     </td>
                     <td>
-                      <strong style={{ color: '#e2e8f0', display: 'block' }}>{fault.manufacturer}</strong>
-                      <span style={{ fontSize: '12px', color: '#7e92a4' }}>{fault.model}</span>
+                      <strong style={{ color: '#e2e8f0', display: 'block' }}>
+                        {fault.manufacturer}
+                      </strong>
+                      <span style={{ fontSize: '12px', color: '#7e92a4' }}>
+                        {fault.model}
+                      </span>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600, color: '#f1f5f9', marginBottom: '2px' }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          color: '#f1f5f9',
+                          marginBottom: '2px',
+                        }}
+                      >
                         {fault.title}
                       </div>
                       <div
@@ -297,17 +340,32 @@ export function AdminFaultsPage() {
                     </td>
                     <td>
                       {fault.procedure ? (
-                        <div className="linked-proc-badge" title={`SOP Key: ${fault.procedure.key}`}>
+                        <div
+                          className="linked-proc-badge"
+                          title={`SOP Key: ${fault.procedure.key}`}
+                        >
                           <FileText size={12} />
                           <span>{fault.procedure.title}</span>
                           {!fault.procedure.approved && (
-                            <span style={{ color: '#fbbf24', marginLeft: '4px', fontSize: '10px' }}>
+                            <span
+                              style={{
+                                color: '#fbbf24',
+                                marginLeft: '4px',
+                                fontSize: '10px',
+                              }}
+                            >
                               ({fault.procedure.status})
                             </span>
                           )}
                         </div>
                       ) : (
-                        <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
+                        <span
+                          style={{
+                            fontSize: '12px',
+                            color: '#64748b',
+                            fontStyle: 'italic',
+                          }}
+                        >
                           Unlinked
                         </span>
                       )}
@@ -351,7 +409,8 @@ export function AdminFaultsPage() {
       {pagination.totalPages > 1 && (
         <div className="pagination-bar">
           <div>
-            Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+            Showing page {pagination.page} of {pagination.totalPages} (
+            {pagination.total} total)
           </div>
           <div className="pagination-controls">
             <button
@@ -435,14 +494,22 @@ function FaultFormModal({
 }: FaultFormModalProps) {
   const isEditing = Boolean(initialData);
 
-  const [manufacturer, setManufacturer] = useState(initialData?.manufacturer ?? '');
+  const [manufacturer, setManufacturer] = useState(
+    initialData?.manufacturer ?? '',
+  );
   const [model, setModel] = useState(initialData?.model ?? '');
   const [faultCode, setFaultCode] = useState(initialData?.faultCode ?? '');
   const [title, setTitle] = useState(initialData?.title ?? '');
-  const [description, setDescription] = useState(initialData?.description ?? '');
-  const [safetyLevel, setSafetyLevel] = useState(initialData?.safetyLevel ?? 'warning');
+  const [description, setDescription] = useState(
+    initialData?.description ?? '',
+  );
+  const [safetyLevel, setSafetyLevel] = useState(
+    initialData?.safetyLevel ?? 'warning',
+  );
   const [source, setSource] = useState(initialData?.source ?? 'manual');
-  const [procedureId, setProcedureId] = useState(initialData?.procedureId ?? '');
+  const [procedureId, setProcedureId] = useState(
+    initialData?.procedureId ?? '',
+  );
   const [formError, setFormError] = useState<string | null>(null);
 
   const saveMutation = useMutation({
@@ -469,7 +536,7 @@ function FaultFormModal({
     onSuccess: () => {
       onSuccess();
     },
-    onError: (err: any) => {
+    onError: (err: Error & { code?: string }) => {
       setFormError(err.message || 'Failed to save fault definition.');
     },
   });
@@ -488,12 +555,19 @@ function FaultFormModal({
     if (procedureId) {
       const chosen = availableProcedures.find((p) => p.id === procedureId);
       if (chosen) {
-        if (chosen.manufacturer && chosen.manufacturer.toLowerCase() !== manufacturer.trim().toLowerCase()) {
+        if (
+          chosen.manufacturer &&
+          chosen.manufacturer.toLowerCase() !==
+            manufacturer.trim().toLowerCase()
+        ) {
           return setFormError(
             `Selected procedure specifies manufacturer "${chosen.manufacturer}", which does not match "${manufacturer.trim()}".`,
           );
         }
-        if (chosen.model && chosen.model.toLowerCase() !== model.trim().toLowerCase()) {
+        if (
+          chosen.model &&
+          chosen.model.toLowerCase() !== model.trim().toLowerCase()
+        ) {
           return setFormError(
             `Selected procedure specifies model "${chosen.model}", which does not match "${model.trim()}".`,
           );
@@ -513,7 +587,9 @@ function FaultFormModal({
         <div className="admin-modal-header">
           <div className="modal-title-wrap">
             <AlertTriangle size={18} className="modal-icon" />
-            <h2>{isEditing ? 'Edit Fault Definition' : 'Register Fault Code'}</h2>
+            <h2>
+              {isEditing ? 'Edit Fault Definition' : 'Register Fault Code'}
+            </h2>
           </div>
           <button type="button" className="modal-close-btn" onClick={onClose}>
             <X size={18} />
@@ -626,7 +702,8 @@ function FaultFormModal({
                 <option value="">None (Unlinked)</option>
                 {availableProcedures.map((proc) => (
                   <option key={proc.id} value={proc.id}>
-                    {proc.title} ({proc.key}) {!proc.approved ? `[${proc.status}]` : ''}
+                    {proc.title} ({proc.key}){' '}
+                    {!proc.approved ? `[${proc.status}]` : ''}
                   </option>
                 ))}
               </select>
@@ -634,7 +711,8 @@ function FaultFormModal({
           </div>
 
           <p className="form-help-text">
-            Linking a procedure ensures voice assistants immediately guide the field technician with verified resolution steps.
+            Linking a procedure ensures voice assistants immediately guide the
+            field technician with verified resolution steps.
           </p>
 
           <div className="modal-actions">
@@ -657,7 +735,9 @@ function FaultFormModal({
                   <span>Saving...</span>
                 </>
               ) : (
-                <span>{isEditing ? 'Save Changes' : 'Register Fault Code'}</span>
+                <span>
+                  {isEditing ? 'Save Changes' : 'Register Fault Code'}
+                </span>
               )}
             </button>
           </div>
@@ -677,7 +757,11 @@ interface ArchiveFaultModalProps {
   onSuccess: () => void;
 }
 
-function ArchiveFaultModal({ fault, onClose, onSuccess }: ArchiveFaultModalProps) {
+function ArchiveFaultModal({
+  fault,
+  onClose,
+  onSuccess,
+}: ArchiveFaultModalProps) {
   const [error, setError] = useState<string | null>(null);
 
   const archiveMutation = useMutation({
@@ -685,7 +769,7 @@ function ArchiveFaultModal({ fault, onClose, onSuccess }: ArchiveFaultModalProps
     onSuccess: () => {
       onSuccess();
     },
-    onError: (err: any) => {
+    onError: (err: Error & { code?: string }) => {
       setError(err.message || 'Failed to archive fault definition.');
     },
   });
@@ -715,10 +799,12 @@ function ArchiveFaultModal({ fault, onClose, onSuccess }: ArchiveFaultModalProps
           )}
           <p>
             Are you sure you want to archive fault code{' '}
-            <strong style={{ color: '#fbbf24' }}>{fault.faultCode}</strong> ({fault.manufacturer} {fault.model})?
+            <strong style={{ color: '#fbbf24' }}>{fault.faultCode}</strong> (
+            {fault.manufacturer} {fault.model})?
           </p>
           <p style={{ marginTop: '10px', fontSize: '12px', color: '#7e92a4' }}>
-            Archiving soft-deletes this fault definition. Field technicians will no longer be matched with this diagnostic code.
+            Archiving soft-deletes this fault definition. Field technicians will
+            no longer be matched with this diagnostic code.
           </p>
         </div>
 

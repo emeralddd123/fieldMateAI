@@ -206,17 +206,18 @@ export class AuthService {
         where: { email: { equals: invite.email, mode: 'insensitive' } },
       });
       if (existing?.status === 'disabled') throw invalidToken();
+      // An invitation grants organization membership, never control of an existing account.
+      if (
+        existing &&
+        !(await this.passwords.verify(existing.passwordHash, password))
+      )
+        throw new UnauthorizedException({
+          code: 'EXISTING_ACCOUNT_PASSWORD_REQUIRED',
+          message:
+            'Enter your existing account password to accept this invitation.',
+        });
       const user = existing
-        ? await tx.user.update({
-            where: { id: existing.id },
-            data: {
-              name: invite.name,
-              email: invite.email.toLowerCase(),
-              status: 'active',
-              passwordHash,
-              passwordChangedAt: new Date(),
-            },
-          })
+        ? existing
         : await tx.user.create({
             data: {
               name: invite.name,
@@ -262,10 +263,16 @@ export class AuthService {
             siteId: site.id,
           })),
         });
-      await tx.userInvite.update({
-        where: { id: invite.id },
+      const consumed = await tx.userInvite.updateMany({
+        where: {
+          id: invite.id,
+          acceptedAt: null,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
         data: { acceptedAt: new Date() },
       });
+      if (consumed.count !== 1) throw invalidToken();
       await this.auditForMemberships(
         tx,
         [{ id: membership.id, organizationId: invite.organizationId }],

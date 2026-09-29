@@ -16,6 +16,14 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   { languageOptions: { globals: globals.node } },
   {
+    files: ['apps/web/public/sw.js'],
+    languageOptions: { globals: globals.serviceworker },
+  },
+  {
+    files: ['scripts/record-mobile-walkthrough.mjs'],
+    languageOptions: { globals: globals.browser },
+  },
+  {
     files: ['apps/web/**/*.{ts,tsx}'],
     languageOptions: { globals: globals.browser },
     plugins: { 'react-hooks': reactHooks },

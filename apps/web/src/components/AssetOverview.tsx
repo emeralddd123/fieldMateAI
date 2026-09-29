@@ -14,7 +14,6 @@ import {
   Mic,
   RefreshCw,
   SlidersHorizontal,
-  Wrench,
   Zap,
 } from 'lucide-react';
 import type { Asset } from '@fieldmate/shared';
@@ -60,9 +59,15 @@ export function AssetOverview({
           <div className="mobile-bar-tag-row">
             <span className={`status-dot ${asset.status}`} />
             <strong className="mobile-bar-tag">{asset.assetTag}</strong>
-            <span className={`status-pill ${asset.status}`}>{asset.status}</span>
+            <span className={`status-pill ${asset.status}`}>
+              {asset.status}
+            </span>
             <span className="mobile-bar-time" title="Data freshness">
-              <Clock size={10} /> {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              <Clock size={10} />{' '}
+              {new Date().toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
             </span>
           </div>
           <span className="mobile-bar-name">{asset.name}</span>
@@ -87,7 +92,11 @@ export function AssetOverview({
         <div className="eyebrow-right">
           <span className="mono">{asset.assetTag}</span>
           <span className="asset-synced-badge" title="Data freshness">
-            <Clock size={11} /> {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <Clock size={11} />{' '}
+            {new Date().toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
           </span>
           {onOpenEquipmentSheet && (
             <button
@@ -201,9 +210,7 @@ export function AssetOverview({
           <div className="fault-banner-content">
             <strong>{primaryFault.title}</strong>
             {primaryFault.faultCode && (
-              <span className="fault-code-chip">
-                {primaryFault.faultCode}
-              </span>
+              <span className="fault-code-chip">{primaryFault.faultCode}</span>
             )}
             <p>{primaryFault.description}</p>
           </div>

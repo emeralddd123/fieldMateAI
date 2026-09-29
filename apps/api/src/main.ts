@@ -26,7 +26,8 @@ async function bootstrap() {
       callback: (err: Error | null, allow?: boolean) => void,
     ) => {
       if (!origin) return callback(null, true);
-      if (origin === new URL(env.FRONTEND_URL).origin) return callback(null, true);
+      if (origin === new URL(env.FRONTEND_URL).origin)
+        return callback(null, true);
       try {
         const u = new URL(origin);
         if (
@@ -38,7 +39,9 @@ async function bootstrap() {
         ) {
           return callback(null, true);
         }
-      } catch {}
+      } catch {
+        /* Malformed origins are rejected below. */
+      }
       callback(new Error('Not allowed by CORS'));
     },
     credentials: true,

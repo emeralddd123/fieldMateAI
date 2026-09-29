@@ -50,7 +50,7 @@ export async function seedMaintenance(tx: Prisma.TransactionClient) {
     parallelism: 1,
   });
   for (const user of users) {
-    const { role: userRole, ...userData } = user;
+    const userData = { id: user.id, name: user.name, email: user.email };
     await tx.user.upsert({
       where: { id: user.id },
       update: {

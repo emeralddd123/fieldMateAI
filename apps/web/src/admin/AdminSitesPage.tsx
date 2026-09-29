@@ -30,7 +30,9 @@ export function AdminSitesPage() {
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<AdminSiteItem | null>(null);
-  const [archivingSite, setArchivingSite] = useState<AdminSiteItem | null>(null);
+  const [archivingSite, setArchivingSite] = useState<AdminSiteItem | null>(
+    null,
+  );
 
   // Queries
   const sitesQuery = useQuery({
@@ -54,7 +56,8 @@ export function AdminSitesPage() {
           <span className="panel-kicker">INFRASTRUCTURE & LOCATIONS</span>
           <h1 className="admin-page-title">Sites Administration</h1>
           <p className="admin-page-desc">
-            Register and manage operating facilities, monitor machine density, and configure site scoping.
+            Register and manage operating facilities, monitor machine density,
+            and configure site scoping.
           </p>
         </div>
         <div className="admin-header-actions">
@@ -205,7 +208,10 @@ export function AdminSitesPage() {
                         <span className="site-tag" style={{ fontSize: 11 }}>
                           {site.code}
                         </span>
-                        <span className="admin-user-name" style={{ marginLeft: 6 }}>
+                        <span
+                          className="admin-user-name"
+                          style={{ marginLeft: 6 }}
+                        >
                           {site.name}
                         </span>
                       </div>
@@ -339,7 +345,7 @@ function CreateSiteModal({
     onSuccess: () => {
       onSuccess();
     },
-    onError: (err: any) => {
+    onError: (err: Error & { code?: string }) => {
       if (err.code === 'SITE_CODE_EXISTS') {
         setError(`Site code '${code.trim().toUpperCase()}' is already in use.`);
       } else {
@@ -402,7 +408,8 @@ function CreateSiteModal({
               required
             />
             <p className="form-help-text">
-              Unique identifier used in machine tags, reports, and site scoping. Automatically converted to uppercase.
+              Unique identifier used in machine tags, reports, and site scoping.
+              Automatically converted to uppercase.
             </p>
           </div>
 
@@ -475,9 +482,11 @@ function EditSiteModal({
     onSuccess: () => {
       onSuccess();
     },
-    onError: (err: any) => {
+    onError: (err: Error & { code?: string }) => {
       if (err.code === 'SITE_CODE_EXISTS') {
-        setError(`Site code '${code.trim().toUpperCase()}' is already registered by another facility.`);
+        setError(
+          `Site code '${code.trim().toUpperCase()}' is already registered by another facility.`,
+        );
       } else {
         setError(err.message || 'Failed to update site.');
       }
@@ -536,7 +545,8 @@ function EditSiteModal({
               required
             />
             <p className="form-help-text">
-              Unique uppercase code. Modifying this affects future resource assignments.
+              Unique uppercase code. Modifying this affects future resource
+              assignments.
             </p>
           </div>
 
@@ -600,7 +610,7 @@ function ArchiveSiteModal({
     onSuccess: () => {
       onSuccess();
     },
-    onError: (err: any) => {
+    onError: (err: Error & { code?: string }) => {
       setError(err.message || 'Failed to archive site.');
     },
   });
@@ -631,12 +641,16 @@ function ArchiveSiteModal({
 
           <p>
             Are you sure you want to archive facility{' '}
-            <strong>{site.name} ({site.code})</strong>?
+            <strong>
+              {site.name} ({site.code})
+            </strong>
+            ?
           </p>
           <p style={{ marginTop: 8, fontSize: 12, color: '#8899a8' }}>
-            Archiving removes this site and its {site.activeAssetCount ?? 0} machines
-            from technician work queues and voice search. All historical incidents,
-            measurements, and maintenance work logs are permanently retained for compliance.
+            Archiving removes this site and its {site.activeAssetCount ?? 0}{' '}
+            machines from technician work queues and voice search. All
+            historical incidents, measurements, and maintenance work logs are
+            permanently retained for compliance.
           </p>
 
           <div className="modal-actions" style={{ marginTop: 20 }}>

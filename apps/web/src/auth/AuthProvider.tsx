@@ -1,3 +1,4 @@
+import { clearPendingWrites } from '../voice/writeStorage';
 import { createContext, useContext, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isError: query.isError,
     login: async (email, password) => {
       const session = await loginRequest(email, password);
+      queryClient.clear();
       queryClient.setQueryData(['auth-session'], session);
       return session;
     },
@@ -43,10 +45,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await logoutRequest(all);
       } catch (err) {
-        console.warn('Backend sign-out request failed or network unavailable:', err);
+        console.warn(
+          'Backend sign-out request failed or network unavailable:',
+          err,
+        );
       } finally {
         // Clear all sensitive local drafts on sign-out
         clearAllTenantDrafts();
+        try {
+          clearPendingWrites(localStorage);
+        } catch {
+          /* Storage may be unavailable. */
+        }
         queryClient.clear();
         queryClient.setQueryData(['auth-session'], null);
       }

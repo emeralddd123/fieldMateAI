@@ -4,7 +4,6 @@ import {
   AlertCircle,
   AlertTriangle,
   Archive,
-  Building2,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -20,7 +19,6 @@ import {
 } from 'lucide-react';
 import {
   AdminAssetItem,
-  AdminComponentItem,
   archiveAdminAsset,
   createAdminAsset,
   fetchAdminAssets,
@@ -41,7 +39,9 @@ export function AdminAssetsPage() {
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<AdminAssetItem | null>(null);
-  const [archivingAsset, setArchivingAsset] = useState<AdminAssetItem | null>(null);
+  const [archivingAsset, setArchivingAsset] = useState<AdminAssetItem | null>(
+    null,
+  );
 
   // Sites query for filter dropdown and modal
   const sitesQuery = useQuery({
@@ -54,7 +54,14 @@ export function AdminAssetsPage() {
     queryKey: [
       'admin',
       'assets',
-      { search, siteFilter, statusFilter, equipmentTypeFilter, includeArchived, page },
+      {
+        search,
+        siteFilter,
+        statusFilter,
+        equipmentTypeFilter,
+        includeArchived,
+        page,
+      },
     ],
     queryFn: () =>
       fetchAdminAssets({
@@ -77,10 +84,14 @@ export function AdminAssetsPage() {
     totalPages: 1,
   };
 
-  const operationalCount = assets.filter((a) => a.status === 'operational').length;
+  const operationalCount = assets.filter(
+    (a) => a.status === 'operational',
+  ).length;
   const warningCount = assets.filter((a) => a.status === 'warning').length;
   const downCount = assets.filter((a) => a.status === 'down').length;
-  const maintenanceCount = assets.filter((a) => a.status === 'maintenance').length;
+  const maintenanceCount = assets.filter(
+    (a) => a.status === 'maintenance',
+  ).length;
 
   return (
     <div className="admin-page-container">
@@ -90,7 +101,8 @@ export function AdminAssetsPage() {
           <span className="panel-kicker">EQUIPMENT & SPECIFICATIONS</span>
           <h1 className="admin-page-title">Machines & Assets</h1>
           <p className="admin-page-desc">
-            Register industrial machinery, configure electrical operating specifications, and manage nested assemblies.
+            Register industrial machinery, configure electrical operating
+            specifications, and manage nested assemblies.
           </p>
         </div>
         <div className="admin-header-actions">
@@ -290,7 +302,10 @@ export function AdminAssetsPage() {
                           {asset.assetTag}
                         </span>
                         <div>
-                          <span className="admin-user-name" style={{ marginLeft: 6 }}>
+                          <span
+                            className="admin-user-name"
+                            style={{ marginLeft: 6 }}
+                          >
                             {asset.name}
                           </span>
                           <span
@@ -313,7 +328,13 @@ export function AdminAssetsPage() {
                     </td>
                     <td>
                       <div>
-                        <span style={{ fontSize: 13, color: '#e2ebf2', fontWeight: 500 }}>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: '#e2ebf2',
+                            fontWeight: 500,
+                          }}
+                        >
                           {asset.equipmentType}
                         </span>
                         <span
@@ -331,7 +352,13 @@ export function AdminAssetsPage() {
                       <StatusBadge status={asset.status} />
                     </td>
                     <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 3,
+                        }}
+                      >
                         {asset.nominalVoltageV !== null ? (
                           <span className="spec-badge">
                             <Zap size={11} />
@@ -346,7 +373,13 @@ export function AdminAssetsPage() {
                         ) : null}
                         {asset.nominalVoltageV === null &&
                           asset.nominalCurrentA === null && (
-                            <span style={{ fontSize: 11, color: '#55697a', fontStyle: 'italic' }}>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                color: '#55697a',
+                                fontStyle: 'italic',
+                              }}
+                            >
                               Unspecified
                             </span>
                           )}
@@ -412,7 +445,9 @@ export function AdminAssetsPage() {
                 type="button"
                 className="pagination-btn"
                 disabled={page >= pagination.totalPages}
-                onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                onClick={() =>
+                  setPage((p) => Math.min(pagination.totalPages, p + 1))
+                }
               >
                 <span>Next</span>
                 <ChevronRight size={14} />
@@ -530,14 +565,21 @@ function CreateAssetModal({
   const [model, setModel] = useState('');
   const [location, setLocation] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
-  const [status, setStatus] = useState<'operational' | 'warning' | 'down' | 'maintenance'>('operational');
+  const [status, setStatus] = useState<
+    'operational' | 'warning' | 'down' | 'maintenance'
+  >('operational');
   const [description, setDescription] = useState('');
   const [nominalVoltageV, setNominalVoltageV] = useState('');
   const [nominalCurrentA, setNominalCurrentA] = useState('');
   const [commissionedAt, setCommissionedAt] = useState('');
 
   const [components, setComponents] = useState<
-    { componentType: string; manufacturer: string; model: string; identifier?: string }[]
+    {
+      componentType: string;
+      manufacturer: string;
+      model: string;
+      identifier?: string;
+    }[]
   >([]);
 
   const [error, setError] = useState<string | null>(null);
@@ -574,15 +616,22 @@ function CreateAssetModal({
         status,
         nominalVoltageV: nominalVoltageV ? Number(nominalVoltageV) : undefined,
         nominalCurrentA: nominalCurrentA ? Number(nominalCurrentA) : undefined,
-        commissionedAt: commissionedAt ? new Date(commissionedAt).toISOString() : undefined,
-        components: components.filter((c) => c.componentType.trim() && c.manufacturer.trim() && c.model.trim()),
+        commissionedAt: commissionedAt
+          ? new Date(commissionedAt).toISOString()
+          : undefined,
+        components: components.filter(
+          (c) =>
+            c.componentType.trim() && c.manufacturer.trim() && c.model.trim(),
+        ),
       }),
     onSuccess: () => {
       onSuccess();
     },
-    onError: (err: any) => {
+    onError: (err: Error & { code?: string }) => {
       if (err.code === 'ASSET_TAG_EXISTS') {
-        setError(`Asset tag '${assetTag.trim().toUpperCase()}' is already in use.`);
+        setError(
+          `Asset tag '${assetTag.trim().toUpperCase()}' is already in use.`,
+        );
       } else {
         setError(err.message || 'Failed to create asset.');
       }
@@ -591,7 +640,15 @@ function CreateAssetModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!siteId || !assetTag.trim() || !name.trim() || !equipmentType.trim() || !manufacturer.trim() || !model.trim() || !location.trim()) {
+    if (
+      !siteId ||
+      !assetTag.trim() ||
+      !name.trim() ||
+      !equipmentType.trim() ||
+      !manufacturer.trim() ||
+      !model.trim() ||
+      !location.trim()
+    ) {
       setError('Please fill in all required machine identification fields.');
       return;
     }
@@ -601,7 +658,10 @@ function CreateAssetModal({
 
   return (
     <div className="admin-modal-backdrop" onClick={onClose}>
-      <div className="admin-modal-card wide-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="admin-modal-card wide-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="admin-modal-header">
           <div className="modal-title-wrap">
             <Cpu size={18} className="modal-icon" />
@@ -706,7 +766,7 @@ function CreateAssetModal({
               <select
                 className="admin-input"
                 value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
+                onChange={(e) => setStatus(e.target.value as typeof status)}
               >
                 <option value="operational">Operational</option>
                 <option value="warning">Warning</option>
@@ -805,7 +865,8 @@ function CreateAssetModal({
 
             {components.length === 0 ? (
               <p style={{ fontSize: 11, color: '#687e91', margin: '4px 0' }}>
-                No sub-assemblies defined. Click &ldquo;Add Component&rdquo; to attach governors, VFDs, alternators, or sensors.
+                No sub-assemblies defined. Click &ldquo;Add Component&rdquo; to
+                attach governors, VFDs, alternators, or sensors.
               </p>
             ) : (
               <div className="components-list">
@@ -816,7 +877,9 @@ function CreateAssetModal({
                       className="admin-input"
                       placeholder="Type (e.g. VFD)"
                       value={comp.componentType}
-                      onChange={(e) => updateComponent(idx, 'componentType', e.target.value)}
+                      onChange={(e) =>
+                        updateComponent(idx, 'componentType', e.target.value)
+                      }
                       required
                     />
                     <input
@@ -824,7 +887,9 @@ function CreateAssetModal({
                       className="admin-input"
                       placeholder="Manufacturer"
                       value={comp.manufacturer}
-                      onChange={(e) => updateComponent(idx, 'manufacturer', e.target.value)}
+                      onChange={(e) =>
+                        updateComponent(idx, 'manufacturer', e.target.value)
+                      }
                       required
                     />
                     <input
@@ -832,7 +897,9 @@ function CreateAssetModal({
                       className="admin-input"
                       placeholder="Model"
                       value={comp.model}
-                      onChange={(e) => updateComponent(idx, 'model', e.target.value)}
+                      onChange={(e) =>
+                        updateComponent(idx, 'model', e.target.value)
+                      }
                       required
                     />
                     <input
@@ -840,7 +907,9 @@ function CreateAssetModal({
                       className="admin-input"
                       placeholder="Identifier (optional)"
                       value={comp.identifier || ''}
-                      onChange={(e) => updateComponent(idx, 'identifier', e.target.value)}
+                      onChange={(e) =>
+                        updateComponent(idx, 'identifier', e.target.value)
+                      }
                     />
                     <button
                       type="button"
@@ -921,7 +990,13 @@ function EditAssetModal({
   );
 
   const [components, setComponents] = useState<
-    { id?: string; componentType: string; manufacturer: string; model: string; identifier?: string }[]
+    {
+      id?: string;
+      componentType: string;
+      manufacturer: string;
+      model: string;
+      identifier?: string;
+    }[]
   >(
     asset.components.map((c) => ({
       id: c.id,
@@ -966,15 +1041,22 @@ function EditAssetModal({
         status,
         nominalVoltageV: nominalVoltageV ? Number(nominalVoltageV) : undefined,
         nominalCurrentA: nominalCurrentA ? Number(nominalCurrentA) : undefined,
-        commissionedAt: commissionedAt ? new Date(commissionedAt).toISOString() : undefined,
-        components: components.filter((c) => c.componentType.trim() && c.manufacturer.trim() && c.model.trim()),
+        commissionedAt: commissionedAt
+          ? new Date(commissionedAt).toISOString()
+          : undefined,
+        components: components.filter(
+          (c) =>
+            c.componentType.trim() && c.manufacturer.trim() && c.model.trim(),
+        ),
       }),
     onSuccess: () => {
       onSuccess();
     },
-    onError: (err: any) => {
+    onError: (err: Error & { code?: string }) => {
       if (err.code === 'ASSET_TAG_EXISTS') {
-        setError(`Asset tag '${assetTag.trim().toUpperCase()}' is already registered by another machine.`);
+        setError(
+          `Asset tag '${assetTag.trim().toUpperCase()}' is already registered by another machine.`,
+        );
       } else {
         setError(err.message || 'Failed to update asset.');
       }
@@ -983,7 +1065,15 @@ function EditAssetModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!siteId || !assetTag.trim() || !name.trim() || !equipmentType.trim() || !manufacturer.trim() || !model.trim() || !location.trim()) {
+    if (
+      !siteId ||
+      !assetTag.trim() ||
+      !name.trim() ||
+      !equipmentType.trim() ||
+      !manufacturer.trim() ||
+      !model.trim() ||
+      !location.trim()
+    ) {
       setError('Please fill in all required machine identification fields.');
       return;
     }
@@ -993,7 +1083,10 @@ function EditAssetModal({
 
   return (
     <div className="admin-modal-backdrop" onClick={onClose}>
-      <div className="admin-modal-card wide-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="admin-modal-card wide-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="admin-modal-header">
           <div className="modal-title-wrap">
             <Cpu size={18} className="modal-icon" />
@@ -1093,7 +1186,7 @@ function EditAssetModal({
               <select
                 className="admin-input"
                 value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
+                onChange={(e) => setStatus(e.target.value as typeof status)}
               >
                 <option value="operational">Operational</option>
                 <option value="warning">Warning</option>
@@ -1200,7 +1293,9 @@ function EditAssetModal({
                       className="admin-input"
                       placeholder="Type (e.g. VFD)"
                       value={comp.componentType}
-                      onChange={(e) => updateComponent(idx, 'componentType', e.target.value)}
+                      onChange={(e) =>
+                        updateComponent(idx, 'componentType', e.target.value)
+                      }
                       required
                     />
                     <input
@@ -1208,7 +1303,9 @@ function EditAssetModal({
                       className="admin-input"
                       placeholder="Manufacturer"
                       value={comp.manufacturer}
-                      onChange={(e) => updateComponent(idx, 'manufacturer', e.target.value)}
+                      onChange={(e) =>
+                        updateComponent(idx, 'manufacturer', e.target.value)
+                      }
                       required
                     />
                     <input
@@ -1216,7 +1313,9 @@ function EditAssetModal({
                       className="admin-input"
                       placeholder="Model"
                       value={comp.model}
-                      onChange={(e) => updateComponent(idx, 'model', e.target.value)}
+                      onChange={(e) =>
+                        updateComponent(idx, 'model', e.target.value)
+                      }
                       required
                     />
                     <input
@@ -1224,7 +1323,9 @@ function EditAssetModal({
                       className="admin-input"
                       placeholder="Identifier"
                       value={comp.identifier || ''}
-                      onChange={(e) => updateComponent(idx, 'identifier', e.target.value)}
+                      onChange={(e) =>
+                        updateComponent(idx, 'identifier', e.target.value)
+                      }
                     />
                     <button
                       type="button"
@@ -1289,7 +1390,7 @@ function ArchiveAssetModal({
     onSuccess: () => {
       onSuccess();
     },
-    onError: (err: any) => {
+    onError: (err: Error & { code?: string }) => {
       setError(err.message || 'Failed to archive asset.');
     },
   });
@@ -1320,13 +1421,16 @@ function ArchiveAssetModal({
 
           <p>
             Are you sure you want to archive machine{' '}
-            <strong>{asset.name} ({asset.assetTag})</strong> at site{' '}
-            <strong>{asset.site.name}</strong>?
+            <strong>
+              {asset.name} ({asset.assetTag})
+            </strong>{' '}
+            at site <strong>{asset.site.name}</strong>?
           </p>
           <p style={{ marginTop: 8, fontSize: 12, color: '#8899a8' }}>
-            Archiving removes this machine from technician equipment lists and voice searches.
-            All {asset.incidentCount} historical incident records and related work logs remain
-            permanently preserved for maintenance compliance.
+            Archiving removes this machine from technician equipment lists and
+            voice searches. All {asset.incidentCount} historical incident
+            records and related work logs remain permanently preserved for
+            maintenance compliance.
           </p>
 
           <div className="modal-actions" style={{ marginTop: 20 }}>

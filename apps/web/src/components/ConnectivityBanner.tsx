@@ -7,27 +7,33 @@ interface ConnectivityBannerProps {
 }
 
 export function ConnectivityBanner({ onRefreshLive }: ConnectivityBannerProps) {
-  const { status, isOnline, isReconnecting, isStale, lastOnlineAt, checkConnection } =
-    useNetworkStatus();
+  const {
+    status,
+    isOnline,
+    isReconnecting,
+    isStale,
+    lastOnlineAt,
+    checkConnection,
+  } = useNetworkStatus();
 
   const [wasOffline, setWasOffline] = useState(false);
   const [showRestoredNotice, setShowRestoredNotice] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
-  // Detect transition from offline back to online
+  // Adjust transition state during render; the effect only owns the notice timer.
+  if (!isOnline && !wasOffline) {
+    setWasOffline(true);
+    setIsDismissed(false);
+    setShowRestoredNotice(false);
+  } else if (wasOffline && isOnline) {
+    setShowRestoredNotice(true);
+    setWasOffline(false);
+  }
   useEffect(() => {
-    if (!isOnline) {
-      setWasOffline(true);
-      setIsDismissed(false);
-    } else if (wasOffline && isOnline) {
-      setShowRestoredNotice(true);
-      setWasOffline(false);
-      const timer = setTimeout(() => {
-        setShowRestoredNotice(false);
-      }, 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [isOnline, wasOffline]);
+    if (!showRestoredNotice) return;
+    const timer = setTimeout(() => setShowRestoredNotice(false), 4000);
+    return () => clearTimeout(timer);
+  }, [showRestoredNotice]);
 
   // Don't render if online and no restored notice, or if dismissed while still offline
   if (status === 'online' && !showRestoredNotice) {
@@ -63,7 +69,8 @@ export function ConnectivityBanner({ onRefreshLive }: ConnectivityBannerProps) {
           <>
             <Wifi size={16} className="conn-icon-restored" />
             <span className="conn-message">
-              <strong>Back Online</strong> — live telemetry and equipment data synchronized.
+              <strong>Back Online</strong> — connection restored. Refresh to
+              load current equipment data.
             </span>
           </>
         ) : isReconnecting ? (
@@ -77,8 +84,8 @@ export function ConnectivityBanner({ onRefreshLive }: ConnectivityBannerProps) {
           <>
             <WifiOff size={16} className="conn-icon-offline" />
             <span className="conn-message">
-              <strong>Offline Mode</strong> — viewing cached equipment data. Writes and
-              status updates require an active connection.
+              <strong>Offline Mode</strong> — previously loaded data may be
+              stale. Writes and status updates require an active connection.
             </span>
             <button
               type="button"
@@ -86,7 +93,10 @@ export function ConnectivityBanner({ onRefreshLive }: ConnectivityBannerProps) {
               onClick={handleRetry}
               disabled={isReconnecting}
             >
-              <RefreshCw size={12} className={isReconnecting ? 'conn-icon-spin' : ''} />
+              <RefreshCw
+                size={12}
+                className={isReconnecting ? 'conn-icon-spin' : ''}
+              />
               <span>Retry</span>
             </button>
           </>
@@ -94,7 +104,8 @@ export function ConnectivityBanner({ onRefreshLive }: ConnectivityBannerProps) {
           <>
             <AlertTriangle size={15} className="conn-icon-stale" />
             <span className="conn-message">
-              <strong>Data May Be Stale</strong> — last updated at {formatLastTime(lastOnlineAt)}.
+              <strong>Data May Be Stale</strong> — last updated at{' '}
+              {formatLastTime(lastOnlineAt)}.
             </span>
             <button
               type="button"
@@ -102,7 +113,10 @@ export function ConnectivityBanner({ onRefreshLive }: ConnectivityBannerProps) {
               onClick={handleRetry}
               disabled={isReconnecting}
             >
-              <RefreshCw size={12} className={isReconnecting ? 'conn-icon-spin' : ''} />
+              <RefreshCw
+                size={12}
+                className={isReconnecting ? 'conn-icon-spin' : ''}
+              />
               <span>Refresh</span>
             </button>
           </>

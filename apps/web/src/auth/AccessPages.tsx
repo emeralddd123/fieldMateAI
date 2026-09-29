@@ -1,6 +1,5 @@
-import { Construction, ShieldX } from 'lucide-react';
+import { ShieldX } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { UserMenu } from './UserMenu';
 
 export function ForbiddenPage() {
   return (
@@ -14,4 +13,3 @@ export function ForbiddenPage() {
     </main>
   );
 }
-

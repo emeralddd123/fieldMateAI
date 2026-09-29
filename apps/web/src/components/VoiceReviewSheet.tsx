@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Activity,
   AlertOctagon,
@@ -22,8 +21,6 @@ import type { VoiceControlsState } from './VoiceControls';
 export function VoiceReviewSheet({ voice }: { voice: VoiceControlsState }) {
   const writePrompt = voice.writePrompt;
   const safetyPrompt = voice.safetyPrompt;
-  const recentNotices = voice.writeNotices.slice(-1);
-  const latestNotice = recentNotices[0];
 
   // If there's neither a pending write nor safety prompt, don't show the review sheet
   if (!writePrompt && !safetyPrompt) {
@@ -47,7 +44,9 @@ export function VoiceReviewSheet({ voice }: { voice: VoiceControlsState }) {
               <div className="sheet-badge-wrap">
                 <ShieldAlert size={22} className="safety-alert-icon" />
                 <div>
-                  <span className="review-eyebrow">SAFETY GATE CONFIRMATION</span>
+                  <span className="review-eyebrow">
+                    SAFETY GATE CONFIRMATION
+                  </span>
                   <h2>{safetyPrompt.title}</h2>
                 </div>
               </div>
@@ -69,21 +68,33 @@ export function VoiceReviewSheet({ voice }: { voice: VoiceControlsState }) {
               <div className="safety-checklist">
                 <div className="checklist-item">
                   <div className="checklist-bullet">1</div>
-                  <span>Equipment is fully stopped, de-energized, and zero energy verified.</span>
+                  <span>
+                    Equipment is fully stopped, de-energized, and zero energy
+                    verified.
+                  </span>
                 </div>
                 <div className="checklist-item">
                   <div className="checklist-bullet">2</div>
-                  <span>Lockout / Tagout (LOTO) padlocks and tags applied as per site policy.</span>
+                  <span>
+                    Lockout / Tagout (LOTO) padlocks and tags applied as per
+                    site policy.
+                  </span>
                 </div>
                 <div className="checklist-item">
                   <div className="checklist-bullet">3</div>
-                  <span>Mandatory PPE donned (safety goggles, arc flash, or protective gloves).</span>
+                  <span>
+                    Mandatory PPE donned (safety goggles, arc flash, or
+                    protective gloves).
+                  </span>
                 </div>
               </div>
 
               <div className="safety-source-note">
                 <small>Source: {safetyPrompt.source}</small>
-                <small>This confirmation applies only to this specific procedure execution.</small>
+                <small>
+                  This confirmation applies only to this specific procedure
+                  execution.
+                </small>
               </div>
             </div>
 
@@ -115,20 +126,26 @@ export function VoiceReviewSheet({ voice }: { voice: VoiceControlsState }) {
               <div className="sheet-badge-wrap">
                 <FileCheck size={22} className="write-icon" />
                 <div>
-                  <span className="review-eyebrow">CONFIRM MAINTENANCE WRITE</span>
+                  <span className="review-eyebrow">
+                    CONFIRM MAINTENANCE WRITE
+                  </span>
                   <h2>{writePrompt.title}</h2>
                 </div>
               </div>
             </div>
 
             <div className="review-sheet-body">
-              <ReviewDetailsContent title={writePrompt.title} details={writePrompt.details} />
+              <ReviewDetailsContent
+                title={writePrompt.title}
+                details={writePrompt.details}
+              />
 
               <div className="review-safety-notice">
                 <AlertTriangle size={15} />
                 <p>
-                  Confirming commits this record to the institutional plant database.
-                  Closing voice assistance after submission does not undo this save.
+                  Confirming commits this record to the institutional plant
+                  database. Closing voice assistance after submission does not
+                  undo this save.
                 </p>
               </div>
             </div>
@@ -203,16 +220,31 @@ export function WriteReceiptNotice({
   );
 }
 
-function ReviewDetailsContent({ title, details }: { title: string; details: string[] }) {
+function ReviewDetailsContent({
+  title,
+  details,
+}: {
+  title: string;
+  details: string[];
+}) {
   const lowerTitle = title.toLowerCase();
   const isNote = lowerTitle.includes('note');
-  const isIncident = lowerTitle.includes('incident') && !isNote && !lowerTitle.includes('escalat');
+  const isIncident =
+    lowerTitle.includes('incident') &&
+    !isNote &&
+    !lowerTitle.includes('escalat');
   const isMeasurement = lowerTitle.includes('measurement');
-  const isResolution = lowerTitle.includes('resolution') || lowerTitle.includes('repair');
+  const isResolution =
+    lowerTitle.includes('resolution') || lowerTitle.includes('repair');
 
   if (isNote) {
-    const incidentLine = details.find((d) => d.startsWith('Incident:'))?.replace(/^Incident:\s*/, '') ?? '';
-    const noteLine = details.find((d) => d.startsWith('Note:'))?.replace(/^Note:\s*/, '') ?? details.join('\n');
+    const incidentLine =
+      details
+        .find((d) => d.startsWith('Incident:'))
+        ?.replace(/^Incident:\s*/, '') ?? '';
+    const noteLine =
+      details.find((d) => d.startsWith('Note:'))?.replace(/^Note:\s*/, '') ??
+      details.join('\n');
 
     return (
       <div className="review-custom-card review-note-card">
@@ -243,23 +275,40 @@ function ReviewDetailsContent({ title, details }: { title: string; details: stri
   }
 
   if (isIncident) {
-    const titleVal = details.find((d) => d.startsWith('Title:'))?.replace(/^Title:\s*/, '') ?? '';
-    const descVal = details.find((d) => d.startsWith('Description:'))?.replace(/^Description:\s*/, '') ?? '';
-    const faultVal = details.find((d) => d.startsWith('Fault:'))?.replace(/^Fault:\s*/, '') ?? '';
-    const priorityVal = details.find((d) => d.startsWith('Priority:'))?.replace(/^Priority:\s*/, '') ?? 'medium';
-    const statusVal = details.find((d) => d.startsWith('Equipment status:'))?.replace(/^Equipment status:\s*/, '') ?? '';
+    const titleVal =
+      details.find((d) => d.startsWith('Title:'))?.replace(/^Title:\s*/, '') ??
+      '';
+    const descVal =
+      details
+        .find((d) => d.startsWith('Description:'))
+        ?.replace(/^Description:\s*/, '') ?? '';
+    const faultVal =
+      details.find((d) => d.startsWith('Fault:'))?.replace(/^Fault:\s*/, '') ??
+      '';
+    const priorityVal =
+      details
+        .find((d) => d.startsWith('Priority:'))
+        ?.replace(/^Priority:\s*/, '') ?? 'medium';
+    const statusVal =
+      details
+        .find((d) => d.startsWith('Equipment status:'))
+        ?.replace(/^Equipment status:\s*/, '') ?? '';
     const linkedReadings = details.filter((d) => d.startsWith('Link reading:'));
 
     return (
       <div className="review-custom-card review-incident-card">
         <div className="review-card-top">
           <div className="incident-pills-row">
-            <span className={`priority-chip priority-${priorityVal.toLowerCase()}`}>
+            <span
+              className={`priority-chip priority-${priorityVal.toLowerCase()}`}
+            >
               <AlertTriangle size={12} />
               <span>{priorityVal.toUpperCase()} PRIORITY</span>
             </span>
             {statusVal && (
-              <span className={`status-chip status-${statusVal.toLowerCase().includes('down') ? 'down' : 'warning'}`}>
+              <span
+                className={`status-chip status-${statusVal.toLowerCase().includes('down') ? 'down' : 'warning'}`}
+              >
                 <Activity size={12} />
                 <span>{statusVal.toUpperCase()}</span>
               </span>
@@ -286,7 +335,9 @@ function ReviewDetailsContent({ title, details }: { title: string; details: stri
 
         {linkedReadings.length > 0 && (
           <div className="incident-readings-block">
-            <span className="sub-label">ATTACHED VERIFICATION READINGS ({linkedReadings.length})</span>
+            <span className="sub-label">
+              ATTACHED VERIFICATION READINGS ({linkedReadings.length})
+            </span>
             <div className="readings-badges-list">
               {linkedReadings.map((r, i) => (
                 <span key={i} className="attached-reading-badge">
@@ -302,10 +353,22 @@ function ReviewDetailsContent({ title, details }: { title: string; details: stri
   }
 
   if (isMeasurement) {
-    const assetVal = details.find((d) => d.startsWith('Asset:'))?.replace(/^Asset:\s*/, '') ?? '';
-    const recordVal = details.find((d) => d.startsWith('Record:'))?.replace(/^Record:\s*/, '') ?? details[0] ?? '';
-    const attachVal = details.find((d) => d.startsWith('Attach to incident:'))?.replace(/^Attach to incident:\s*/, '') ?? '';
-    const noteVal = details.find((d) => d.startsWith('Notes:'))?.replace(/^Notes:\s*/, '') ?? '';
+    const assetVal =
+      details.find((d) => d.startsWith('Asset:'))?.replace(/^Asset:\s*/, '') ??
+      '';
+    const recordVal =
+      details
+        .find((d) => d.startsWith('Record:'))
+        ?.replace(/^Record:\s*/, '') ??
+      details[0] ??
+      '';
+    const attachVal =
+      details
+        .find((d) => d.startsWith('Attach to incident:'))
+        ?.replace(/^Attach to incident:\s*/, '') ?? '';
+    const noteVal =
+      details.find((d) => d.startsWith('Notes:'))?.replace(/^Notes:\s*/, '') ??
+      '';
 
     return (
       <div className="review-custom-card review-measurement-card">
@@ -329,7 +392,9 @@ function ReviewDetailsContent({ title, details }: { title: string; details: stri
         {attachVal && (
           <div className="measurement-attachment">
             <Tag size={12} />
-            <span>Linked to incident: <strong>{attachVal}</strong></span>
+            <span>
+              Linked to incident: <strong>{attachVal}</strong>
+            </span>
           </div>
         )}
 
@@ -343,10 +408,22 @@ function ReviewDetailsContent({ title, details }: { title: string; details: stri
   }
 
   if (isResolution) {
-    const incVal = details.find((d) => d.startsWith('Incident:'))?.replace(/^Incident:\s*/, '') ?? '';
-    const rootVal = details.find((d) => d.startsWith('Root cause:'))?.replace(/^Root cause:\s*/, '') ?? '';
-    const actionVal = details.find((d) => d.startsWith('Action taken:'))?.replace(/^Action taken:\s*/, '') ?? '';
-    const verifyVal = details.find((d) => d.startsWith('Verification:'))?.replace(/^Verification:\s*/, '') ?? '';
+    const incVal =
+      details
+        .find((d) => d.startsWith('Incident:'))
+        ?.replace(/^Incident:\s*/, '') ?? '';
+    const rootVal =
+      details
+        .find((d) => d.startsWith('Root cause:'))
+        ?.replace(/^Root cause:\s*/, '') ?? '';
+    const actionVal =
+      details
+        .find((d) => d.startsWith('Action taken:'))
+        ?.replace(/^Action taken:\s*/, '') ?? '';
+    const verifyVal =
+      details
+        .find((d) => d.startsWith('Verification:'))
+        ?.replace(/^Verification:\s*/, '') ?? '';
 
     return (
       <div className="review-custom-card review-resolution-card">

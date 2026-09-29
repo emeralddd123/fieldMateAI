@@ -1,32 +1,22 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  AlertOctagon,
   AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
   AudioLines,
   Check,
   CheckCircle2,
-  ChevronDown,
   Cpu,
   Ear,
   Eye,
   FileCheck,
-  Flame,
   Gauge,
   HardHat,
-  HelpCircle,
   Lock,
   Mic,
-  MicOff,
   Pause,
   Play,
   RotateCcw,
   ShieldAlert,
-  ShieldCheck,
   SkipBack,
-  SkipForward,
-  Sparkles,
   Volume2,
   VolumeX,
   Wrench,
@@ -41,7 +31,9 @@ interface BrowserSpeechRecognition {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
-  onresult: (event: any) => void;
+  onresult: (event: {
+    results: ArrayLike<ArrayLike<{ transcript: string; confidence: number }>>;
+  }) => void;
   onerror: () => void;
   onend: () => void;
   start: () => void;
@@ -85,7 +77,8 @@ const DEFAULT_PROCEDURES: Record<string, WorkModeProcedure> = {
   'vfd-undervoltage-check': {
     key: 'vfd-undervoltage-check',
     title: 'VFD Undervoltage Diagnostic Check',
-    summary: 'Approved procedure for investigating fault F0003 undervoltage trip on variable frequency drives.',
+    summary:
+      'Approved procedure for investigating fault F0003 undervoltage trip on variable frequency drives.',
     source: 'Demo SINAMICS G120 maintenance reference — simulated',
     safetyLevel: 'electrical',
     safetyConfirmationRequired: true,
@@ -94,56 +87,68 @@ const DEFAULT_PROCEDURES: Record<string, WorkModeProcedure> = {
         id: 'step-1',
         order: 1,
         title: 'Safe Isolation & Lockout Verification',
-        instruction: 'Confirm drive disconnect switch is OPEN. Apply personal lockout padlock and verify zero energy with a calibrated multimeter before opening enclosure.',
+        instruction:
+          'Confirm drive disconnect switch is OPEN. Apply personal lockout padlock and verify zero energy with a calibrated multimeter before opening enclosure.',
         type: 'safety',
         safetyLevel: 'electrical',
-        safetyNote: 'Arc-flash rated PPE, face shield, and Class 0 insulated gloves (1000V) required.',
+        safetyNote:
+          'Arc-flash rated PPE, face shield, and Class 0 insulated gloves (1000V) required.',
         requiresConfirmation: true,
-        acceptanceCriteria: 'Multimeter confirms 0.0V between L1-L2, L2-L3, L1-L3, and Phase-Ground.',
+        acceptanceCriteria:
+          'Multimeter confirms 0.0V between L1-L2, L2-L3, L1-L3, and Phase-Ground.',
       },
       {
         id: 'step-2',
         order: 2,
         title: 'Line Supply & Incoming Voltage Measurement',
-        instruction: 'Re-energize test feed under controlled procedure. Measure incoming 3-phase line voltage across terminals L1, L2, and L3.',
+        instruction:
+          'Re-energize test feed under controlled procedure. Measure incoming 3-phase line voltage across terminals L1, L2, and L3.',
         type: 'measurement',
         safetyLevel: 'electrical',
         safetyNote: 'Maintain safe boundary. High voltage present.',
-        acceptanceCriteria: 'Line-to-line voltage must be 400V ± 10% (360V – 440V) with phase imbalance under 2%.',
+        acceptanceCriteria:
+          'Line-to-line voltage must be 400V ± 10% (360V – 440V) with phase imbalance under 2%.',
       },
       {
         id: 'step-3',
         order: 3,
         title: 'Terminal Tightness & Connection Inspection',
-        instruction: 'De-energize drive. Inspect terminal lugs for heat discoloration, pitting, or loose torques on incoming and DC link connections.',
+        instruction:
+          'De-energize drive. Inspect terminal lugs for heat discoloration, pitting, or loose torques on incoming and DC link connections.',
         type: 'action',
         safetyLevel: 'mechanical',
-        acceptanceCriteria: 'Terminals torqued to 4.5 Nm per OEM specification without signs of thermal stress.',
+        acceptanceCriteria:
+          'Terminals torqued to 4.5 Nm per OEM specification without signs of thermal stress.',
       },
       {
         id: 'step-4',
         order: 4,
         title: 'Cooling Airflow & Heatsink Verification',
-        instruction: 'Inspect heatsink cooling fan free rotation and clean air intake filters on cabinet door.',
+        instruction:
+          'Inspect heatsink cooling fan free rotation and clean air intake filters on cabinet door.',
         type: 'verification',
         safetyLevel: 'none',
-        acceptanceCriteria: 'Fan rotates freely without bearing friction; filter mesh free of dust accumulation.',
+        acceptanceCriteria:
+          'Fan rotates freely without bearing friction; filter mesh free of dust accumulation.',
       },
       {
         id: 'step-5',
         order: 5,
         title: 'Controlled Restart & Verification',
-        instruction: 'Close and secure cabinet doors. Clear lockout and initiate controlled test run at 25% motor nominal speed.',
+        instruction:
+          'Close and secure cabinet doors. Clear lockout and initiate controlled test run at 25% motor nominal speed.',
         type: 'verification',
         safetyLevel: 'electrical',
-        acceptanceCriteria: 'Drive reaches ready status with no fault trip or abnormal noise.',
+        acceptanceCriteria:
+          'Drive reaches ready status with no fault trip or abnormal noise.',
       },
     ],
   },
   'routine-inspection': {
     key: 'routine-inspection',
     title: 'Daily Machine Operational Inspection',
-    summary: 'Standard pre-shift visual, thermal, and acoustic verification protocol.',
+    summary:
+      'Standard pre-shift visual, thermal, and acoustic verification protocol.',
     source: 'Plant Alpha Standard Operating Procedure (SOP-014)',
     safetyLevel: 'mechanical',
     safetyConfirmationRequired: false,
@@ -152,43 +157,52 @@ const DEFAULT_PROCEDURES: Record<string, WorkModeProcedure> = {
         id: 'step-1',
         order: 1,
         title: 'Visual Enclosure & Foundation Inspection',
-        instruction: 'Inspect machine frame, anchor bolts, and guard assemblies for cracks, loose fasteners, or excessive vibration movement.',
+        instruction:
+          'Inspect machine frame, anchor bolts, and guard assemblies for cracks, loose fasteners, or excessive vibration movement.',
         type: 'verification',
         safetyLevel: 'mechanical',
-        acceptanceCriteria: 'All 4 anchor bolts intact and secured; guards firmly mounted.',
+        acceptanceCriteria:
+          'All 4 anchor bolts intact and secured; guards firmly mounted.',
       },
       {
         id: 'step-2',
         order: 2,
         title: 'Shaft Seal & Leakage Check',
-        instruction: 'Check mechanical shaft seal and gland packing for abnormal liquid leakage or slurry weeping.',
+        instruction:
+          'Check mechanical shaft seal and gland packing for abnormal liquid leakage or slurry weeping.',
         type: 'verification',
         safetyLevel: 'none',
-        acceptanceCriteria: 'No continuous dripping or slurry buildup in catch basin.',
+        acceptanceCriteria:
+          'No continuous dripping or slurry buildup in catch basin.',
       },
       {
         id: 'step-3',
         order: 3,
         title: 'Bearing Temperature & Thermal Survey',
-        instruction: 'Take non-contact infrared thermal reading at drive-end (DE) and non-drive-end (NDE) bearing housings.',
+        instruction:
+          'Take non-contact infrared thermal reading at drive-end (DE) and non-drive-end (NDE) bearing housings.',
         type: 'measurement',
         safetyLevel: 'mechanical',
-        acceptanceCriteria: 'Bearing temperature must be under 75°C (167°F). Record temperature in log.',
+        acceptanceCriteria:
+          'Bearing temperature must be under 75°C (167°F). Record temperature in log.',
       },
       {
         id: 'step-4',
         order: 4,
         title: 'Acoustic & Vibration Assessment',
-        instruction: 'Listen for cavitation, gear mesh whining, or irregular metallic scraping during running operation.',
+        instruction:
+          'Listen for cavitation, gear mesh whining, or irregular metallic scraping during running operation.',
         type: 'verification',
         safetyLevel: 'none',
-        acceptanceCriteria: 'Acoustic signature smooth and continuous without cyclic knocking.',
+        acceptanceCriteria:
+          'Acoustic signature smooth and continuous without cyclic knocking.',
       },
       {
         id: 'step-5',
         order: 5,
         title: 'Log Reading & Clear For Production',
-        instruction: 'Record operational hour meter and confirm equipment is cleared for regular production shift.',
+        instruction:
+          'Record operational hour meter and confirm equipment is cleared for regular production shift.',
         type: 'action',
         safetyLevel: 'none',
         acceptanceCriteria: 'Shift supervisor log updated and signed off.',
@@ -207,10 +221,12 @@ const DEFAULT_PROCEDURES: Record<string, WorkModeProcedure> = {
         id: 'step-1',
         order: 1,
         title: 'Verify Safe Machine State',
-        instruction: 'Stop drive and lock out main switch. Ensure moving parts have come to complete rest before approaching grease fittings.',
+        instruction:
+          'Stop drive and lock out main switch. Ensure moving parts have come to complete rest before approaching grease fittings.',
         type: 'safety',
         safetyLevel: 'mechanical',
-        safetyNote: 'Rotating shaft hazard. Never grease unshielded rotating coupling.',
+        safetyNote:
+          'Rotating shaft hazard. Never grease unshielded rotating coupling.',
         requiresConfirmation: true,
         acceptanceCriteria: 'Equipment tagged and zero rotation confirmed.',
       },
@@ -218,25 +234,30 @@ const DEFAULT_PROCEDURES: Record<string, WorkModeProcedure> = {
         id: 'step-2',
         order: 2,
         title: 'Clean Zerk Fittings & Relief Port',
-        instruction: 'Wipe grease nipple clean with a lint-free cloth. Remove grease relief drain plug to allow old oxidized grease to escape.',
+        instruction:
+          'Wipe grease nipple clean with a lint-free cloth. Remove grease relief drain plug to allow old oxidized grease to escape.',
         type: 'action',
         safetyLevel: 'none',
-        acceptanceCriteria: 'Fitting clean and free of abrasive grit; purge port unobstructed.',
+        acceptanceCriteria:
+          'Fitting clean and free of abrasive grit; purge port unobstructed.',
       },
       {
         id: 'step-3',
         order: 3,
         title: 'Inject Specified Synthetic Grease',
-        instruction: 'Attach calibrated grease gun with ISO VG 220 synthetic grease. Pump 6 to 8 strokes (approx. 25 grams) slowly into housing.',
+        instruction:
+          'Attach calibrated grease gun with ISO VG 220 synthetic grease. Pump 6 to 8 strokes (approx. 25 grams) slowly into housing.',
         type: 'action',
         safetyLevel: 'none',
-        acceptanceCriteria: 'Specified grease grade only. Fresh grease emerges from purge port.',
+        acceptanceCriteria:
+          'Specified grease grade only. Fresh grease emerges from purge port.',
       },
       {
         id: 'step-4',
         order: 4,
         title: 'Clean Up & Reinstall Purge Plug',
-        instruction: 'Wipe excess purged grease. Reinstall drain plug finger-tight. Clear tools and return machine to service.',
+        instruction:
+          'Wipe excess purged grease. Reinstall drain plug finger-tight. Clear tools and return machine to service.',
         type: 'verification',
         safetyLevel: 'none',
         acceptanceCriteria: 'Surrounding area clean; drain plug secured.',
@@ -249,21 +270,24 @@ export function WorkModeView({
   isOpen,
   onClose,
   asset,
-  activeIncidents = [],
   voice,
   onRecordReading,
   onReportIncident,
 }: WorkModeViewProps) {
   // Mode setup state vs active task state
   const [isSetupOpen, setIsSetupOpen] = useState(true);
-  const [selectedProcKey, setSelectedProcKey] = useState<string>('vfd-undervoltage-check');
+  const [selectedProcKey, setSelectedProcKey] = useState<string>(
+    'vfd-undervoltage-check',
+  );
   const [audioFeedbackEnabled, setAudioFeedbackEnabled] = useState(true);
   const [isNoisyPlantMode, setIsNoisyPlantMode] = useState(true);
   const [wakeLockActive, setWakeLockActive] = useState(false);
 
   // Active task step state
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<Record<number, boolean>>({});
+  const [completedSteps, setCompletedSteps] = useState<Record<number, boolean>>(
+    {},
+  );
   const [isTaskPaused, setIsTaskPaused] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [isSpeakingStep, setIsSpeakingStep] = useState(false);
@@ -288,7 +312,9 @@ export function WorkModeView({
   const steps = procedure.steps;
   const currentStep = steps[currentStepIndex] ?? steps[0]!;
   const isLastStep = currentStepIndex === steps.length - 1;
-  const progressPercent = Math.round(((currentStepIndex + 1) / steps.length) * 100);
+  const progressPercent = Math.round(
+    ((currentStepIndex + 1) / steps.length) * 100,
+  );
 
   // Request screen wake-lock
   const requestWakeLock = useCallback(async () => {
@@ -311,7 +337,6 @@ export function WorkModeView({
     if (wakeLockRef.current) {
       void wakeLockRef.current.release();
       wakeLockRef.current = null;
-      setWakeLockActive(false);
     }
   }, []);
 
@@ -329,7 +354,11 @@ export function WorkModeView({
   // Text to speech helper
   const speakInstruction = useCallback(
     (text: string) => {
-      if (!audioFeedbackEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      if (
+        !audioFeedbackEnabled ||
+        typeof window === 'undefined' ||
+        !('speechSynthesis' in window)
+      ) {
         return;
       }
       try {
@@ -368,7 +397,9 @@ export function WorkModeView({
       setCurrentStepIndex(nextIdx);
       const nextStep = steps[nextIdx];
       if (nextStep) {
-        speakInstruction(`Step ${nextIdx + 1}. ${nextStep.title}. ${nextStep.instruction}`);
+        speakInstruction(
+          `Step ${nextIdx + 1}. ${nextStep.title}. ${nextStep.instruction}`,
+        );
       }
     } else {
       triggerHaptic([60, 40, 60]);
@@ -384,14 +415,18 @@ export function WorkModeView({
       setCurrentStepIndex(prevIdx);
       const prevStep = steps[prevIdx];
       if (prevStep) {
-        speakInstruction(`Step ${prevIdx + 1}. ${prevStep.title}. ${prevStep.instruction}`);
+        speakInstruction(
+          `Step ${prevIdx + 1}. ${prevStep.title}. ${prevStep.instruction}`,
+        );
       }
     }
   }, [currentStepIndex, steps, speakInstruction, stopSpeech]);
 
   const handleRepeatStep = useCallback(() => {
     triggerHaptic(30);
-    speakInstruction(`Step ${currentStepIndex + 1}. ${currentStep.title}. ${currentStep.instruction}`);
+    speakInstruction(
+      `Step ${currentStepIndex + 1}. ${currentStep.title}. ${currentStep.instruction}`,
+    );
   }, [currentStepIndex, currentStep, speakInstruction]);
 
   const handleTogglePause = useCallback(() => {
@@ -402,7 +437,9 @@ export function WorkModeView({
         stopSpeech();
         speakInstruction('Work mode paused.');
       } else {
-        speakInstruction(`Work mode resumed. Step ${currentStepIndex + 1}. ${currentStep.title}.`);
+        speakInstruction(
+          `Work mode resumed. Step ${currentStepIndex + 1}. ${currentStep.title}.`,
+        );
       }
       return next;
     });
@@ -515,7 +552,14 @@ export function WorkModeView({
         });
       }
     },
-    [handleNextStep, handlePrevStep, handleRepeatStep, handleTogglePause, isTaskPaused, speakInstruction],
+    [
+      handleNextStep,
+      handlePrevStep,
+      handleRepeatStep,
+      handleTogglePause,
+      isTaskPaused,
+      speakInstruction,
+    ],
   );
 
   // Setup Web Speech recognition for hands-free command interpretation
@@ -523,8 +567,16 @@ export function WorkModeView({
     if (!isOpen || isSetupOpen || isTaskPaused) return;
 
     const SpeechRec =
-      (window as unknown as { SpeechRecognition?: new () => BrowserSpeechRecognition }).SpeechRecognition ||
-      (window as unknown as { webkitSpeechRecognition?: new () => BrowserSpeechRecognition }).webkitSpeechRecognition;
+      (
+        window as unknown as {
+          SpeechRecognition?: new () => BrowserSpeechRecognition;
+        }
+      ).SpeechRecognition ||
+      (
+        window as unknown as {
+          webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
+        }
+      ).webkitSpeechRecognition;
 
     if (!SpeechRec) return;
 
@@ -534,11 +586,15 @@ export function WorkModeView({
       recognition.interimResults = false;
       recognition.lang = 'en-US';
 
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event: {
+        results: ArrayLike<
+          ArrayLike<{ transcript: string; confidence: number }>
+        >;
+      }) => {
         const lastResult = event.results[event.results.length - 1];
         if (lastResult && lastResult[0]) {
           const transcript = lastResult[0].transcript;
-          const confidence = lastResult[0].confidence || 0.85;
+          const confidence = lastResult[0].confidence ?? 0;
           interpretVoiceCommand(transcript, confidence);
         }
       };
@@ -567,6 +623,7 @@ export function WorkModeView({
     return () => {
       if (recognitionRef.current) {
         try {
+          recognitionRef.current.onend = () => {};
           recognitionRef.current.abort();
         } catch {
           // Ignored
@@ -579,6 +636,8 @@ export function WorkModeView({
   // Request Wake Lock on start
   useEffect(() => {
     if (isOpen && !isSetupOpen) {
+      // The wake-lock promise and release event report external device state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       void requestWakeLock();
     } else {
       releaseWakeLock();
@@ -642,11 +701,15 @@ export function WorkModeView({
                 <span>{asset.assetTag}</span>
               </div>
               <h3>{asset.name}</h3>
-              <p>{asset.location} · {asset.equipmentType}</p>
+              <p>
+                {asset.location} · {asset.equipmentType}
+              </p>
             </div>
 
             <div className="setup-section">
-              <label className="setup-label">Select Maintenance Task / Protocol</label>
+              <label className="setup-label">
+                Select Maintenance Task / Protocol
+              </label>
               <div className="setup-procedure-options">
                 {Object.entries(DEFAULT_PROCEDURES).map(([key, proc]) => (
                   <button
@@ -679,7 +742,9 @@ export function WorkModeView({
             </div>
 
             <div className="setup-section">
-              <label className="setup-label">Audio & Environmental Configuration</label>
+              <label className="setup-label">
+                Audio & Environmental Configuration
+              </label>
               <div className="setup-toggles-grid">
                 <button
                   type="button"
@@ -687,7 +752,11 @@ export function WorkModeView({
                   onClick={() => setAudioFeedbackEnabled((v) => !v)}
                 >
                   <div className="toggle-icon">
-                    {audioFeedbackEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                    {audioFeedbackEnabled ? (
+                      <Volume2 size={20} />
+                    ) : (
+                      <VolumeX size={20} />
+                    )}
                   </div>
                   <div>
                     <strong>Spoken Voice Guidance</strong>
@@ -718,7 +787,9 @@ export function WorkModeView({
               </div>
               <ul>
                 <li>Safety boots and high-visibility vest required.</li>
-                <li>Verify lock-out tags before mechanical or electrical work.</li>
+                <li>
+                  Verify lock-out tags before mechanical or electrical work.
+                </li>
                 <li>Qualified personnel required for 400V measurements.</li>
               </ul>
             </div>
@@ -784,7 +855,9 @@ export function WorkModeView({
               <span className="step-counter">
                 Step {currentStepIndex + 1} of {steps.length}
               </span>
-              <span className="percent-counter">{progressPercent}% complete</span>
+              <span className="percent-counter">
+                {progressPercent}% complete
+              </span>
             </div>
             <div className="progress-bar-track">
               <div
@@ -821,7 +894,10 @@ export function WorkModeView({
               <div className="task-paused-card">
                 <Pause size={44} />
                 <h2>Work Mode Paused</h2>
-                <p>Voice commands and step timers are on hold while you inspect the equipment.</p>
+                <p>
+                  Voice commands and step timers are on hold while you inspect
+                  the equipment.
+                </p>
                 <button
                   type="button"
                   className="resume-task-btn"
@@ -847,7 +923,9 @@ export function WorkModeView({
                   <h2 className="step-headline">{currentStep.title}</h2>
                 </div>
 
-                <p className="step-instruction-text">{currentStep.instruction}</p>
+                <p className="step-instruction-text">
+                  {currentStep.instruction}
+                </p>
 
                 {/* Safety Warning Box */}
                 {currentStep.safetyNote && (
@@ -865,7 +943,9 @@ export function WorkModeView({
                   <div className="step-criteria-box">
                     <CheckCircle2 size={16} className="criteria-icon" />
                     <div>
-                      <span className="criteria-label">VERIFICATION CRITERIA:</span>
+                      <span className="criteria-label">
+                        VERIFICATION CRITERIA:
+                      </span>
                       <p>{currentStep.acceptanceCriteria}</p>
                     </div>
                   </div>
@@ -881,7 +961,9 @@ export function WorkModeView({
                         voice.connect();
                       }
                       onRecordReading?.(
-                        currentStep.type === 'measurement' ? 'line_voltage' : 'vibration_rms',
+                        currentStep.type === 'measurement'
+                          ? 'line_voltage'
+                          : 'vibration_rms',
                         400,
                         'V',
                       );
@@ -913,7 +995,10 @@ export function WorkModeView({
           </main>
 
           {/* Large 5-Button Thumb Dock (Min 56px - 64px tap targets) */}
-          <nav className="work-mode-thumb-dock" aria-label="Work mode step controls">
+          <nav
+            className="work-mode-thumb-dock"
+            aria-label="Work mode step controls"
+          >
             {/* 1. Back Button */}
             <button
               type="button"
@@ -966,7 +1051,9 @@ export function WorkModeView({
               className={`dock-ctrl-btn dock-next-btn ${isLastStep ? 'is-finish' : ''}`}
               onClick={handleNextStep}
               disabled={isTaskPaused}
-              aria-label={isLastStep ? 'Complete procedure' : 'Mark step done and advance'}
+              aria-label={
+                isLastStep ? 'Complete procedure' : 'Mark step done and advance'
+              }
             >
               <Check size={26} />
               <span>{isLastStep ? 'Complete' : 'Done'}</span>
@@ -1000,8 +1087,10 @@ export function WorkModeView({
             </div>
             <h3>Exit Work Mode?</h3>
             <p>
-              You have completed {Object.keys(completedSteps).length} of {steps.length} steps on {asset.assetTag}.
-              Exiting will preserve your recorded measurements and return you to the standard workspace.
+              You have completed {Object.keys(completedSteps).length} of{' '}
+              {steps.length} steps on {asset.assetTag}. Exiting will preserve
+              your recorded measurements and return you to the standard
+              workspace.
             </p>
             <div className="exit-confirm-actions">
               <button

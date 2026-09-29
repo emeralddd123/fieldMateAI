@@ -1,3 +1,5 @@
+import { useAuth } from '../auth/AuthProvider';
+import { createWriteStorage } from './writeStorage';
 import { useQueryClient } from '@tanstack/react-query';
 import { VoiceWrites } from './writes';
 import type { WritePrompt, WriteNotice } from './writes';
@@ -19,6 +21,9 @@ import { createToolExecutor } from './tools';
 
 export function useVoiceSession(onAssetFound: (id: string) => void) {
   const queryClient = useQueryClient();
+  const { session: authSession } = useAuth();
+  const organizationId = authSession?.memberships[0]?.organization.id;
+  const userId = authSession?.user.id;
   const [writePrompt, setWritePrompt] = useState<WritePrompt | null>(null);
   const [writeNotices, setWriteNotices] = useState<WriteNotice[]>([]);
   const writeConfirmation = useRef<SafetyConfirmation<WritePrompt> | null>(
@@ -37,13 +42,12 @@ export function useVoiceSession(onAssetFound: (id: string) => void) {
   });
   const controller = useRef<VoiceSession | null>(null);
   useEffect(() => {
+    if (!organizationId || !userId) return;
+    const storage = createWriteStorage(localStorage, organizationId, userId);
     const approveWrite = new SafetyConfirmation<WritePrompt>(setWritePrompt);
     writeConfirmation.current = approveWrite;
     const writes = new VoiceWrites({
-      storage: {
-        getItem: (key) => localStorage.getItem(key),
-        setItem: (key, value) => localStorage.setItem(key, value),
-      },
+      storage,
       uuid: () => crypto.randomUUID(),
       preview: previewVoiceWrite,
       submit: submitVoiceWrite,
@@ -100,6 +104,7 @@ export function useVoiceSession(onAssetFound: (id: string) => void) {
     const hide = () => session.end();
     window.addEventListener('pagehide', hide);
     return () => {
+      storage.dispose();
       window.removeEventListener('pagehide', hide);
       session.dispose();
       safety.answer(false);
@@ -109,7 +114,7 @@ export function useVoiceSession(onAssetFound: (id: string) => void) {
       confirmation.current = null;
       controller.current = null;
     };
-  }, [onAssetFound, queryClient]);
+  }, [onAssetFound, queryClient, organizationId, userId]);
   return {
     ...state,
     safetyPrompt,

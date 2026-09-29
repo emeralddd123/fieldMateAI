@@ -66,7 +66,9 @@ export class VoiceService {
         ) {
           return true;
         }
-      } catch {}
+      } catch {
+        /* Malformed origins are rejected below. */
+      }
       return false;
     };
 

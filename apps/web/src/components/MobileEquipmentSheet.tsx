@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
-  Activity,
   AlertTriangle,
   Check,
   ChevronRight,
@@ -53,23 +52,26 @@ export function MobileEquipmentSheet({
     }
   });
 
-  // Track recent selection
-  useEffect(() => {
-    if (selectedAssetId) {
-      setRecent((prev) => {
-        const next = [
+  const [previousSelection, setPreviousSelection] = useState<
+    string | null | undefined
+  >(undefined);
+  if (selectedAssetId !== previousSelection) {
+    setPreviousSelection(selectedAssetId);
+    if (selectedAssetId)
+      setRecent(
+        [
           selectedAssetId,
-          ...prev.filter((id) => id !== selectedAssetId),
-        ].slice(0, 5);
-        try {
-          localStorage.setItem(RECENT_KEY, JSON.stringify(next));
-        } catch {
-          // ignore localStorage error
-        }
-        return next;
-      });
+          ...recent.filter((id) => id !== selectedAssetId),
+        ].slice(0, 5),
+      );
+  }
+  useEffect(() => {
+    try {
+      localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+    } catch {
+      /* Storage may be unavailable. */
     }
-  }, [selectedAssetId]);
+  }, [recent]);
 
   const toggleFavorite = (e: React.MouseEvent, assetId: string) => {
     e.stopPropagation();
@@ -231,7 +233,9 @@ export function MobileEquipmentSheet({
                 </div>
                 <div className="card-main-info">
                   <div className="card-tag-row">
-                    <strong className="card-tag">{currentAsset.assetTag}</strong>
+                    <strong className="card-tag">
+                      {currentAsset.assetTag}
+                    </strong>
                     <span className={`status-pill ${currentAsset.status}`}>
                       {currentAsset.status}
                     </span>
@@ -304,7 +308,9 @@ export function MobileEquipmentSheet({
                       className={`favorite-btn ${isFav ? 'favorited' : ''}`}
                       onClick={(e) => toggleFavorite(e, asset.id)}
                       title={isFav ? 'Remove favorite' : 'Add to favorites'}
-                      aria-label={isFav ? 'Remove favorite' : 'Add to favorites'}
+                      aria-label={
+                        isFav ? 'Remove favorite' : 'Add to favorites'
+                      }
                     >
                       <Star
                         size={17}
@@ -322,7 +328,9 @@ export function MobileEquipmentSheet({
               <div className="sheet-empty-state">
                 <Wrench size={32} />
                 <p>No equipment matching &ldquo;{search}&rdquo;</p>
-                <small>Try searching by tag, machine name, or bay location</small>
+                <small>
+                  Try searching by tag, machine name, or bay location
+                </small>
               </div>
             )}
           </div>

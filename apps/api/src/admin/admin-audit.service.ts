@@ -16,7 +16,10 @@ export class AdminAuditService implements OnModuleInit {
     this.cleanupInterval = setInterval(
       () => {
         this.purgeExpired().catch((err) =>
-          this.logger.error(`Periodic cleanup job failed: ${err.message}`, err.stack),
+          this.logger.error(
+            `Periodic cleanup job failed: ${err.message}`,
+            err.stack,
+          ),
         );
       },
       60 * 60 * 1000,
@@ -73,12 +76,11 @@ export class AdminAuditService implements OnModuleInit {
     ]);
 
     return {
-      events: events.map((e: any) => ({
+      events: events.map((e) => ({
         id: e.id,
         action: e.action,
         resourceType: e.resourceType,
         resourceId: e.resourceId,
-        targetMembershipId: e.targetMembershipId,
         requestId: e.requestId,
         ipAddress: e.ipAddress,
         userAgent: e.userAgent,
@@ -120,17 +122,18 @@ export class AdminAuditService implements OnModuleInit {
   async purgeExpired(access?: AccessContext) {
     const now = new Date();
 
-    const [purgedSessions, purgedResetTokens, purgedInvites] = await Promise.all([
-      this.prisma.authSession.deleteMany({
-        where: { expiresAt: { lt: now } },
-      }),
-      this.prisma.passwordResetToken.deleteMany({
-        where: { expiresAt: { lt: now } },
-      }),
-      this.prisma.userInvite.deleteMany({
-        where: { expiresAt: { lt: now }, acceptedAt: null },
-      }),
-    ]);
+    const [purgedSessions, purgedResetTokens, purgedInvites] =
+      await Promise.all([
+        this.prisma.authSession.deleteMany({
+          where: { expiresAt: { lt: now } },
+        }),
+        this.prisma.passwordResetToken.deleteMany({
+          where: { expiresAt: { lt: now } },
+        }),
+        this.prisma.userInvite.deleteMany({
+          where: { expiresAt: { lt: now }, acceptedAt: null },
+        }),
+      ]);
 
     const result = {
       purgedSessions: purgedSessions.count,
