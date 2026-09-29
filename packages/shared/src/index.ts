@@ -47,6 +47,7 @@ const measurementSchema = z.object({
 });
 const maintenanceRecordSchema = z.object({
   id: z.uuid(),
+  incidentId: z.uuid().nullable().optional(),
   faultCode: z.string().nullable(),
   symptom: z.string(),
   rootCause: z.string(),
