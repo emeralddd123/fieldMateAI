@@ -208,8 +208,12 @@ export async function previewVoiceWrite(
     return { title: 'Review measurement', details };
   } else if (request.name === 'create_incident') {
     const draft = request.args;
+    let titleToDisplay = draft.title?.trim() || '';
+    if (!titleToDisplay || ['new incident', 'incident'].includes(titleToDisplay.toLowerCase())) {
+      titleToDisplay = draft.fault_code ? `${draft.fault_code} Anomaly` : `${asset.name} Anomaly`;
+    }
     details.push(
-      `Title: ${draft.title}`,
+      `Title: ${titleToDisplay}`,
       `Description: ${draft.description}`,
       await describeIncidentFault(asset.id, draft.fault_code, signal),
       `Priority: ${draft.priority}`,
@@ -361,9 +365,13 @@ export async function submitVoiceWrite(
     return data;
   }
   if (request.name === 'create_incident') {
+    let finalTitle = request.args.title?.trim() || '';
+    if (!finalTitle || ['new incident', 'incident'].includes(finalTitle.toLowerCase())) {
+      finalTitle = request.args.fault_code ? `${request.args.fault_code} Anomaly` : 'Equipment Anomaly';
+    }
     const body = {
       assetId: request.args.asset_id,
-      title: request.args.title,
+      title: finalTitle,
       description: request.args.description,
       faultCode: request.args.fault_code,
       priority: request.args.priority,

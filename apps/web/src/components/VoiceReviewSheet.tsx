@@ -1,15 +1,19 @@
 import { useState } from 'react';
 import {
+  Activity,
   AlertOctagon,
   AlertTriangle,
   CheckCircle2,
   Cpu,
   FileCheck,
+  FileText,
   Gauge,
   Lock,
+  MessageSquare,
   RotateCcw,
   ShieldAlert,
   ShieldCheck,
+  Tag,
   Wrench,
   X,
 } from 'lucide-react';
@@ -118,17 +122,7 @@ export function VoiceReviewSheet({ voice }: { voice: VoiceControlsState }) {
             </div>
 
             <div className="review-sheet-body">
-              <div className="review-details-box">
-                <span className="review-box-title">RECORD DETAILS TO BE COMMITTED:</span>
-                <div className="details-list">
-                  {writePrompt.details.map((detail, index) => (
-                    <div key={index} className="detail-item">
-                      <span className="detail-bullet" />
-                      <span>{detail}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <ReviewDetailsContent title={writePrompt.title} details={writePrompt.details} />
 
               <div className="review-safety-notice">
                 <AlertTriangle size={15} />
@@ -205,6 +199,201 @@ export function WriteReceiptNotice({
           <span>Verify save status</span>
         </button>
       )}
+    </div>
+  );
+}
+
+function ReviewDetailsContent({ title, details }: { title: string; details: string[] }) {
+  const lowerTitle = title.toLowerCase();
+  const isNote = lowerTitle.includes('note');
+  const isIncident = lowerTitle.includes('incident') && !isNote && !lowerTitle.includes('escalat');
+  const isMeasurement = lowerTitle.includes('measurement');
+  const isResolution = lowerTitle.includes('resolution') || lowerTitle.includes('repair');
+
+  if (isNote) {
+    const incidentLine = details.find((d) => d.startsWith('Incident:'))?.replace(/^Incident:\s*/, '') ?? '';
+    const noteLine = details.find((d) => d.startsWith('Note:'))?.replace(/^Note:\s*/, '') ?? details.join('\n');
+
+    return (
+      <div className="review-custom-card review-note-card">
+        <div className="review-card-top">
+          <span className="review-card-badge note-badge">
+            <MessageSquare size={13} />
+            <span>FIELD NOTE / OBSERVATION</span>
+          </span>
+          {incidentLine && (
+            <span className="review-incident-ref" title={incidentLine}>
+              <Tag size={12} />
+              <strong>{incidentLine}</strong>
+            </span>
+          )}
+        </div>
+        <div className="review-note-bubble">
+          <span className="quote-mark">&ldquo;</span>
+          <p className="note-text-highlight">{noteLine}</p>
+        </div>
+        <div className="review-card-footer">
+          <span className="note-audit-tag">
+            <FileText size={12} />
+            <span>Appends to immutable incident logbook</span>
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (isIncident) {
+    const titleVal = details.find((d) => d.startsWith('Title:'))?.replace(/^Title:\s*/, '') ?? '';
+    const descVal = details.find((d) => d.startsWith('Description:'))?.replace(/^Description:\s*/, '') ?? '';
+    const faultVal = details.find((d) => d.startsWith('Fault:'))?.replace(/^Fault:\s*/, '') ?? '';
+    const priorityVal = details.find((d) => d.startsWith('Priority:'))?.replace(/^Priority:\s*/, '') ?? 'medium';
+    const statusVal = details.find((d) => d.startsWith('Equipment status:'))?.replace(/^Equipment status:\s*/, '') ?? '';
+    const linkedReadings = details.filter((d) => d.startsWith('Link reading:'));
+
+    return (
+      <div className="review-custom-card review-incident-card">
+        <div className="review-card-top">
+          <div className="incident-pills-row">
+            <span className={`priority-chip priority-${priorityVal.toLowerCase()}`}>
+              <AlertTriangle size={12} />
+              <span>{priorityVal.toUpperCase()} PRIORITY</span>
+            </span>
+            {statusVal && (
+              <span className={`status-chip status-${statusVal.toLowerCase().includes('down') ? 'down' : 'warning'}`}>
+                <Activity size={12} />
+                <span>{statusVal.toUpperCase()}</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="incident-title-block">
+          <h3>{titleVal || 'Equipment Incident'}</h3>
+          {faultVal && (
+            <div className="incident-fault-pill">
+              <Tag size={12} />
+              <span>{faultVal}</span>
+            </div>
+          )}
+        </div>
+
+        {descVal && (
+          <div className="incident-desc-block">
+            <span className="sub-label">SYMPTOM & OBSERVATIONS</span>
+            <p>{descVal}</p>
+          </div>
+        )}
+
+        {linkedReadings.length > 0 && (
+          <div className="incident-readings-block">
+            <span className="sub-label">ATTACHED VERIFICATION READINGS ({linkedReadings.length})</span>
+            <div className="readings-badges-list">
+              {linkedReadings.map((r, i) => (
+                <span key={i} className="attached-reading-badge">
+                  <Gauge size={12} />
+                  <span>{r.replace(/^Link reading:\s*/, '')}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (isMeasurement) {
+    const assetVal = details.find((d) => d.startsWith('Asset:'))?.replace(/^Asset:\s*/, '') ?? '';
+    const recordVal = details.find((d) => d.startsWith('Record:'))?.replace(/^Record:\s*/, '') ?? details[0] ?? '';
+    const attachVal = details.find((d) => d.startsWith('Attach to incident:'))?.replace(/^Attach to incident:\s*/, '') ?? '';
+    const noteVal = details.find((d) => d.startsWith('Notes:'))?.replace(/^Notes:\s*/, '') ?? '';
+
+    return (
+      <div className="review-custom-card review-measurement-card">
+        <div className="review-card-top">
+          <span className="review-card-badge measurement-badge">
+            <Gauge size={13} />
+            <span>TELEMETRY MEASUREMENT</span>
+          </span>
+          {assetVal && (
+            <span className="review-asset-pill">
+              <Cpu size={12} />
+              <span>{assetVal}</span>
+            </span>
+          )}
+        </div>
+
+        <div className="measurement-digital-display">
+          <span className="digital-value">{recordVal}</span>
+        </div>
+
+        {attachVal && (
+          <div className="measurement-attachment">
+            <Tag size={12} />
+            <span>Linked to incident: <strong>{attachVal}</strong></span>
+          </div>
+        )}
+
+        {noteVal && (
+          <div className="measurement-note">
+            <small>Note: {noteVal}</small>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (isResolution) {
+    const incVal = details.find((d) => d.startsWith('Incident:'))?.replace(/^Incident:\s*/, '') ?? '';
+    const rootVal = details.find((d) => d.startsWith('Root cause:'))?.replace(/^Root cause:\s*/, '') ?? '';
+    const actionVal = details.find((d) => d.startsWith('Action taken:'))?.replace(/^Action taken:\s*/, '') ?? '';
+    const verifyVal = details.find((d) => d.startsWith('Verification:'))?.replace(/^Verification:\s*/, '') ?? '';
+
+    return (
+      <div className="review-custom-card review-resolution-card">
+        <div className="review-card-top">
+          <span className="review-card-badge resolution-badge">
+            <Wrench size={13} />
+            <span>COMPLETED REPAIR RECORD</span>
+          </span>
+          {incVal && (
+            <span className="review-incident-ref">
+              <strong>{incVal}</strong>
+            </span>
+          )}
+        </div>
+
+        <div className="resolution-fields-grid">
+          <div className="resolution-field">
+            <span className="field-lbl">ROOT CAUSE</span>
+            <p>{rootVal || 'Diagnosed and verified'}</p>
+          </div>
+          <div className="resolution-field">
+            <span className="field-lbl">ACTION TAKEN</span>
+            <p>{actionVal || 'Repaired and restored'}</p>
+          </div>
+          {verifyVal && (
+            <div className="resolution-field full-width">
+              <span className="field-lbl">VERIFICATION</span>
+              <p>{verifyVal}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback to clean key-value pairs
+  return (
+    <div className="review-details-box">
+      <span className="review-box-title">RECORD DETAILS TO BE COMMITTED:</span>
+      <div className="details-list">
+        {details.map((detail, index) => (
+          <div key={index} className="detail-item">
+            <span className="detail-bullet" />
+            <span>{detail}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

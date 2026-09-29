@@ -137,9 +137,21 @@ export class IncidentsService {
             'Every reading must exist, belong to this asset, and be unassigned.',
           );
       }
+      const asset = await tx.asset.findUniqueOrThrow({
+        where: { id: dto.assetId },
+      });
+
+      let title = data.title?.trim() || '';
+      if (!title || ['new incident', 'incident'].includes(title.toLowerCase())) {
+        title = dto.faultCode
+          ? `${normalizeFaultCode(dto.faultCode)} Anomaly`
+          : `${asset.name} Anomaly`;
+      }
+
       const incident = await tx.incident.create({
         data: {
           ...data,
+          title,
           requestHash,
           faultCode: dto.faultCode ? normalizeFaultCode(dto.faultCode) : null,
           openedById: access.user.id,
@@ -148,9 +160,6 @@ export class IncidentsService {
       await tx.measurement.updateMany({
         where: { id: { in: measurementIds } },
         data: { incidentId: incident.id },
-      });
-      const asset = await tx.asset.findUniqueOrThrow({
-        where: { id: dto.assetId },
       });
       await tx.asset.update({
         where: { id: dto.assetId },

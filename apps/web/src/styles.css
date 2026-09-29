@@ -146,15 +146,19 @@ p {
 }
 .workspace {
   display: grid;
-  grid-template-columns: 242px minmax(0, 1fr);
-  min-height: calc(100vh - 88px);
+  grid-template-columns: 260px minmax(0, 1fr);
+  height: calc(100dvh - 88px);
+  max-height: calc(100dvh - 88px);
+  overflow: hidden;
 }
 .sidebar {
   background: #0d141d;
   border-right: 1px solid #202a35;
-  padding: 31px 16px 0;
+  padding: 24px 16px 16px;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 .sidebar-heading {
   display: flex;
@@ -197,8 +201,13 @@ p {
   color: #8493a4;
 }
 .asset-list {
-  display: grid;
-  gap: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
 }
 .asset-button {
   display: flex;
@@ -264,12 +273,14 @@ p {
 }
 .sidebar-bottom {
   margin-top: auto;
-  padding-top: 60px;
+  padding-top: 14px;
+  border-top: 1px solid #1c2734;
+  flex-shrink: 0;
 }
 .plant-health {
   display: flex;
   gap: 10px;
-  padding: 16px 7px;
+  padding: 10px 4px;
   align-items: center;
 }
 .health-icon {
@@ -286,20 +297,23 @@ p {
   color: #8494a6;
 }
 .sidebar-footer {
-  margin: 10px -16px 0;
+  margin: 8px -16px 0;
   border-top: 1px solid #202a35;
   font-size: 8px;
   color: #8291a3;
-  padding: 21px 18px;
+  padding: 12px 16px 8px;
   display: flex;
   gap: 7px;
   align-items: center;
 }
 .main-content {
-  padding: 33px 34px 14px;
+  padding: 24px 34px 64px;
   max-width: 1530px;
   width: 100%;
-  margin: auto;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 auto;
 }
 .page-heading {
   display: flex;
@@ -1251,48 +1265,67 @@ h1 {
 .conversation-panel {
   align-self: start;
   position: sticky;
-  top: 20px;
-  min-height: 420px;
+  top: 16px;
+  max-height: calc(100dvh - 140px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 .conversation-log {
-  max-height: 580px;
+  max-height: 380px;
+  min-height: 220px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   flex: 1;
-  padding: 12px 18px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .transcript-item {
-  margin: 13px 0;
-  padding: 12px;
-  border: 1px solid #2b3f4e;
-  border-radius: 6px;
-  background: #152635;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #233446;
+  border-radius: 8px;
+  background: #142230;
+  transition: border-color 0.15s ease;
 }
 .transcript-item strong {
   display: block;
-  color: #87c9df;
+  color: #38bdf8;
   font-size: 10px;
-  margin-bottom: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
 }
 .transcript-item p {
-  font-size: 12px;
-  line-height: 1.75;
-  color: #d6e1eb;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #e2e8f0;
   overflow-wrap: anywhere;
+  margin: 0;
 }
 .transcript-user {
-  background: #1e2c39;
+  background: #1c2b3a;
+  border-color: #2e455b;
 }
 .transcript-user strong {
-  color: #b9cad9;
+  color: #94a3b8;
 }
 .transcript-item small {
-  display: block;
-  margin-top: 7px;
-  color: #9db2c3;
-  font-size: 9px;
+  display: inline-block;
+  margin-top: 6px;
+  color: #38bdf8;
+  font-size: 10px;
+  font-weight: 600;
 }
 .conversation-panel .activity-footer {
   margin-top: auto;
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-top: 1px solid #1c2734;
 }
 .voice-actions button:disabled {
   opacity: 0.5;
@@ -1334,11 +1367,20 @@ h1 {
 
 .tool-activity {
   border-top: 1px solid #293745;
-  padding: 16px;
+  padding: 12px 16px;
+  max-height: 140px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #0c141d;
+  flex-shrink: 0;
 }
 .tool-activity h3 {
-  font-size: 12px;
-  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #7dd3fc;
+  margin: 0 0 8px;
 }
 .tool-activity p {
   display: grid;
@@ -1938,37 +1980,52 @@ h1 {
 .modal-notes-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 .modal-note-item {
-  background: #16202c;
-  border-left: 3px solid #38bdf8;
-  border-radius: 0 6px 6px 0;
-  padding: 10px 14px;
+  background: #141f2d;
+  border: 1px solid #23374d;
+  border-left: 4px solid #38bdf8;
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.modal-note-item:hover {
+  border-color: #38bdf8;
 }
 .note-item-meta {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
-  color: #64748b;
-  margin-bottom: 4px;
+  align-items: center;
+  font-size: 11px;
+  color: #718295;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 .note-author {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: #94a3b8;
+  gap: 6px;
+  color: #7dd3fc;
   font-weight: 600;
+  font-size: 11px;
 }
 .note-time {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  color: #8292a4;
+  font-size: 11px;
 }
 .note-content {
-  font-size: 12px;
-  color: #e2e8f0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #f1f5f9;
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Incidents Drawer (Table / Cards View) */
@@ -7225,6 +7282,277 @@ h1 {
 .review-safety-notice p {
   margin: 0;
   line-height: 1.4;
+}
+
+/* Custom Specialized Review Cards */
+.review-custom-card {
+  background: #090e15;
+  border: 1px solid #1e2c3c;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.review-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.review-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.review-card-badge.note-badge {
+  background: rgba(14, 165, 233, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+.review-card-badge.measurement-badge {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.review-card-badge.resolution-badge {
+  background: rgba(99, 102, 241, 0.12);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.review-incident-ref {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #94a3b8;
+  background: #141f2c;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #233446;
+}
+
+.review-asset-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #7dd3fc;
+  background: #102131;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #1e3a52;
+}
+
+/* Dedicated Field Note Review Card */
+.review-note-card {
+  border-left: 4px solid #38bdf8;
+  background: linear-gradient(180deg, #0d1622 0%, #090e15 100%);
+}
+
+.review-note-bubble {
+  position: relative;
+  background: #142130;
+  border: 1px solid #24374b;
+  border-radius: 10px;
+  padding: 16px 18px 16px 36px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.review-note-bubble .quote-mark {
+  position: absolute;
+  top: 6px;
+  left: 12px;
+  font-size: 28px;
+  font-family: Georgia, serif;
+  color: #38bdf8;
+  opacity: 0.6;
+  line-height: 1;
+}
+
+.note-text-highlight {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #f1f5f9;
+  font-weight: 500;
+  margin: 0;
+  word-break: break-word;
+}
+
+.review-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 6px;
+  border-top: 1px solid #162434;
+}
+
+.note-audit-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* Incident Review Card */
+.incident-pills-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.incident-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.incident-title-block h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0;
+}
+
+.incident-fault-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  padding: 3px 8px;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.incident-desc-block,
+.incident-readings-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sub-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.incident-desc-block p {
+  margin: 0;
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.5;
+  background: #111a26;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #1f2e40;
+}
+
+.readings-badges-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.attached-reading-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #38bdf8;
+  background: #142232;
+  border: 1px solid #20364c;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+/* Measurement Review Card */
+.measurement-digital-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #0f1925;
+  border: 1px solid #23374c;
+  border-radius: 10px;
+}
+
+.digital-value {
+  font-size: 26px;
+  font-family: monospace;
+  font-weight: 700;
+  color: #34d399;
+  letter-spacing: 1px;
+}
+
+.measurement-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.measurement-note {
+  font-size: 12px;
+  color: #64748b;
+  background: #111b27;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+/* Resolution Review Card */
+.resolution-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.resolution-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #111a26;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #1f2e40;
+}
+
+.resolution-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.field-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #818cf8;
+}
+
+.resolution-field p {
+  margin: 0;
+  font-size: 13px;
+  color: #e2e8f0;
 }
 
 .review-sheet-actions {
