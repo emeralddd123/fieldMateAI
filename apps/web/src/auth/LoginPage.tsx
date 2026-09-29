@@ -92,7 +92,7 @@ export function LoginPage() {
             {error}
           </p>
         )}
-        <button className="voice-button auth-submit" disabled={submitting}>
+        <button type="submit" className="voice-button auth-submit" disabled={submitting}>
           <LogIn size={17} /> {submitting ? 'Signing in…' : 'Sign in'}
         </button>
         <Link className="auth-text-link" to="/forgot-password">

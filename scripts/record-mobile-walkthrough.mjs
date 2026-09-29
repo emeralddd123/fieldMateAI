@@ -28,116 +28,114 @@ async function run() {
   const page = await context.newPage();
 
   console.log('Navigating to http://localhost:5173...');
-  await page.goto('http://localhost:5173');
-  await page.waitForTimeout(2000);
+  await page.goto('http://localhost:5173/login');
+  await page.waitForTimeout(1500);
 
-  // Check if we are on login page
-  const emailInput = await page.$('input[type="email"], input[name="email"], input#email');
-  if (emailInput) {
-    console.log('Logging in as demo technician...');
-    await emailInput.fill('technician@fieldmate.local');
-    const passwordInput = await page.$('input[type="password"]');
-    if (passwordInput) {
-      await passwordInput.fill('fieldmate-demo-2026');
-    }
-    const submitBtn = await page.$('button[type="submit"]');
-    if (submitBtn) {
-      await submitBtn.click();
-    }
-    await page.waitForTimeout(3000);
-  }
+  // 1. Authenticate as technician
+  console.log('Logging in as demo technician...');
+  await page.fill('input[type="email"]', 'technician@fieldmate.local');
+  await page.fill('input[type="password"]', 'fieldmate-demo-2026');
+  await page.waitForTimeout(500);
+  await page.click('button.auth-submit, button[type="submit"]');
 
-  // 1. Initial view: Technician Workspace
-  console.log('1. Viewing technician mobile workspace...');
+  console.log('Waiting for workspace navigation...');
+  await page.waitForURL('http://localhost:5173/', { timeout: 15000 });
+  console.log('Successfully arrived at workspace:', page.url());
   await page.waitForTimeout(2500);
 
-  // 2. Change equipment using the Mobile Equipment Sheet
-  console.log('2. Opening Mobile Equipment Sheet...');
+  // 2. View mobile technician dashboard & active equipment
+  console.log('Step 1: Viewing technician workspace for active equipment...');
+  await page.waitForTimeout(2000);
+
+  // 3. Open Mobile Equipment Sheet and switch machine
+  console.log('Step 2: Opening Mobile Equipment Sheet...');
   const changeBtn = await page.$('.mobile-change-machine-btn, button:has-text("Change")');
   if (changeBtn) {
     await changeBtn.click();
     await page.waitForTimeout(2000);
 
-    // Scroll through the equipment list in the sheet
-    const sheetList = await page.$('.sheet-asset-list, .asset-sheet-list, .mobile-sheet-content, .mobile-sheet-body');
-    if (sheetList) {
-      await sheetList.evaluate((el) => el.scrollBy({ top: 180, behavior: 'smooth' }));
-      await page.waitForTimeout(1500);
-    }
+    // Smoothly scroll equipment list in sheet
+    await page.evaluate(() => {
+      const el = document.querySelector('.sheet-equipment-list');
+      if (el) el.scrollBy({ top: 160, behavior: 'smooth' });
+    });
+    await page.waitForTimeout(1500);
 
-    // Select second asset (P-101)
-    const secondAsset = await page.$('button:has-text("P-101"), .sheet-asset-item:nth-child(2)');
-    if (secondAsset) {
-      console.log('Selecting P-101 Slurry Feed Pump...');
-      await secondAsset.click();
+    // Select another machine
+    console.log('Selecting next machine from equipment sheet...');
+    const nextCard = await page.$('.sheet-equipment-list .equipment-card:not(.active-card)');
+    if (nextCard) {
+      await nextCard.click();
       await page.waitForTimeout(2000);
     }
   }
 
-  // 3. Scroll through equipment overview, fault codes, telemetry, and procedures
-  console.log('3. Inspecting equipment telemetry & specifications...');
+  // 4. Scroll through machine specs, fault procedures, and live telemetry
+  console.log('Step 3: Inspecting machine specs, active fault guidance & telemetry...');
   await page.evaluate(() => window.scrollBy({ top: 380, behavior: 'smooth' }));
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(2200);
 
   await page.evaluate(() => window.scrollBy({ top: 400, behavior: 'smooth' }));
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(2200);
 
-  // 4. Open Incidents Register
-  console.log('4. Opening Incidents Register Drawer...');
+  // Scroll back to top
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  await page.waitForTimeout(1500);
+
+  // 5. Open Plant Incidents Register
+  console.log('Step 4: Opening Incidents Register Drawer...');
   const incidentsNavBtn = await page.$('.mobile-nav-item:has-text("Incidents"), button[aria-label*="Incident"], button:has-text("Incidents")');
   if (incidentsNavBtn) {
     await incidentsNavBtn.click();
     await page.waitForTimeout(2000);
 
-    // Click first incident to view details modal
-    const incidentCard = await page.$('.drawer-incident-card, .incident-item, .incident-drawer-list button, button:has-text("INC-")');
+    // Click first incident to view details modal with note cards
+    const incidentCard = await page.$('.drawer-incident-card');
     if (incidentCard) {
-      console.log('Opening Incident Detail Modal & reviewing note cards...');
+      console.log('Opening Incident Detail Modal to inspect note cards...');
       await incidentCard.click();
       await page.waitForTimeout(2500);
 
-      // Scroll inside modal to review notes
-      const modalScroll = await page.$('.modal-body, .incident-detail-content, .incident-modal-content');
-      if (modalScroll) {
-        await modalScroll.evaluate((el) => el.scrollBy({ top: 300, behavior: 'smooth' }));
-        await page.waitForTimeout(2000);
-      }
+      // Scroll inside modal to show formatted notes
+      await page.evaluate(() => {
+        const el = document.querySelector('.modal-body, .modal-scroll-area, .incident-modal-layout');
+        if (el) el.scrollBy({ top: 300, behavior: 'smooth' });
+      });
+      await page.waitForTimeout(2000);
 
       // Close modal
-      const closeBtn = await page.$('.modal-close, button[aria-label="Close modal"], button[aria-label="Close"]');
+      const closeBtn = await page.$('.modal-close-btn, button[aria-label="Close incident details"]');
       if (closeBtn) {
         await closeBtn.click();
         await page.waitForTimeout(1500);
       }
     }
 
-    // Close incidents drawer if still open
-    const closeDrawerBtn = await page.$('.drawer-close, button[aria-label="Close drawer"], .drawer-header button');
+    // Close incidents drawer
+    const closeDrawerBtn = await page.$('.drawer-close-btn, button[aria-label="Close incidents register"]');
     if (closeDrawerBtn) {
       await closeDrawerBtn.click();
       await page.waitForTimeout(1500);
     }
   }
 
-  // 5. Scroll back up and demonstrate Mobile Voice Assistant
-  console.log('5. Demonstrating Mobile Voice Assistant...');
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
-  await page.waitForTimeout(1500);
-
-  const voiceNavBtn = await page.$('.mobile-nav-voice-btn, button[aria-label*="voice"], button[aria-label*="Voice"]');
+  // 6. Demonstrate Mobile Voice Copilot
+  console.log('Step 5: Activating Mobile Voice Assistant...');
+  const voiceNavBtn = await page.$('.mobile-nav-voice-btn');
   if (voiceNavBtn) {
     await voiceNavBtn.click();
     await page.waitForTimeout(3000);
 
     // Close voice sheet
-    const closeVoiceBtn = await page.$('.voice-sheet-close, button[aria-label="Close voice sheet"], .sheet-handle-bar, button[aria-label="Close"]');
+    const closeVoiceBtn = await page.$('.voice-head-btn.close-btn, button[aria-label="Minimize voice session"]');
     if (closeVoiceBtn) {
       await closeVoiceBtn.click();
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(1800);
     }
   }
 
-  // Final view of the dashboard
+  // Wrap up view
+  console.log('Wrapping up walkthrough...');
   await page.waitForTimeout(2000);
 
   const video = page.video();
@@ -149,7 +147,7 @@ async function run() {
   const finalVideoPath = path.join(ARTIFACT_DIR, 'fieldmate_mobile_technician_walkthrough.webm');
   if (fs.existsSync(videoPath)) {
     fs.renameSync(videoPath, finalVideoPath);
-    console.log('Walkthrough video recorded successfully at:', finalVideoPath);
+    console.log('Walkthrough video successfully recorded at:', finalVideoPath);
   }
 }
 
