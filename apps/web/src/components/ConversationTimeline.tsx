@@ -1,5 +1,13 @@
 import { useEffect, useRef } from 'react';
-import { AudioLines, Radio } from 'lucide-react';
+import {
+  AudioLines,
+  Radio,
+  Mic,
+  MicOff,
+  PhoneOff,
+  RefreshCw,
+  Loader2,
+} from 'lucide-react';
 import { voiceLabels, type VoiceControlsState } from './VoiceControls';
 
 export function ConversationTimeline({ voice }: { voice: VoiceControlsState }) {
@@ -7,6 +15,11 @@ export function ConversationTimeline({ voice }: { voice: VoiceControlsState }) {
   useEffect(() => {
     if (scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;
   }, [voice.transcript, voice.tools]);
+
+  const isActive = !['disconnected', 'error'].includes(voice.status);
+  const isConnecting = voice.status === 'connecting';
+  const isError = voice.status === 'error';
+
   return (
     <aside
       className="activity-panel conversation-panel"
@@ -14,10 +27,50 @@ export function ConversationTimeline({ voice }: { voice: VoiceControlsState }) {
     >
       <div className="activity-heading">
         <h2>
-          <Radio size={16} />
+          <Radio size={16} className={isActive ? 'pulse-icon' : ''} />
           Live conversation
         </h2>
-        <span className="subtle-tag">{voice.status}</span>
+        <div className="activity-heading-actions">
+          {isActive ? (
+            <div className="timeline-header-controls">
+              <button
+                type="button"
+                className={`timeline-ctrl-btn ${voice.muted ? 'is-muted' : ''}`}
+                onClick={voice.toggleMute}
+                disabled={isConnecting || voice.status === 'ending'}
+                title={voice.muted ? 'Unmute microphone' : 'Mute microphone'}
+                aria-pressed={voice.muted}
+                aria-label={voice.muted ? 'Unmute microphone' : 'Mute microphone'}
+              >
+                {voice.muted ? <MicOff size={13} /> : <Mic size={13} />}
+              </button>
+              <button
+                type="button"
+                className="timeline-ctrl-btn end-btn"
+                onClick={voice.end}
+                disabled={voice.status === 'ending'}
+                title="End session"
+                aria-label="End voice session"
+              >
+                <PhoneOff size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="timeline-header-start-btn"
+              onClick={voice.connect}
+              disabled={isConnecting}
+              title={isError ? 'Retry voice session' : 'Start voice session'}
+            >
+              {isError ? <RefreshCw size={12} /> : <Mic size={12} />}
+              <span>{isError ? 'Retry' : 'Start'}</span>
+            </button>
+          )}
+          <span className={`subtle-tag ${isActive ? 'tag-active' : ''}`}>
+            {voice.status}
+          </span>
+        </div>
       </div>
       <div
         className="conversation-log"
@@ -52,6 +105,30 @@ export function ConversationTimeline({ voice }: { voice: VoiceControlsState }) {
               Start a voice session to talk with FieldMate. Your words and
               responses will appear here.
             </p>
+            <button
+              type="button"
+              className="session-start-cta-btn"
+              onClick={voice.connect}
+              disabled={isConnecting || voice.status === 'ending'}
+              title="Start voice session"
+            >
+              {isConnecting ? (
+                <>
+                  <Loader2 size={16} className="spin-icon" />
+                  <span>Connecting…</span>
+                </>
+              ) : isError ? (
+                <>
+                  <RefreshCw size={16} />
+                  <span>Retry voice session</span>
+                </>
+              ) : (
+                <>
+                  <Mic size={16} />
+                  <span>Start voice session</span>
+                </>
+              )}
+            </button>
           </div>
         )}
       </div>
@@ -82,7 +159,17 @@ export function ConversationTimeline({ voice }: { voice: VoiceControlsState }) {
         <span
           className={`status-dot ${voice.status === 'error' ? 'warning' : 'operational'}`}
         />
-        {voiceLabels[voice.status]}
+        <span className="activity-footer-label">{voiceLabels[voice.status]}</span>
+        {!isActive && (
+          <button
+            type="button"
+            className="activity-footer-quick-link"
+            onClick={voice.connect}
+            title="Start voice session"
+          >
+            Start voice
+          </button>
+        )}
       </div>
     </aside>
   );
