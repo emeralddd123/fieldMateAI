@@ -37,7 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isError: query.isError,
     login: async (email, password) => {
       const session = await loginRequest(email, password);
-      queryClient.clear();
+      queryClient.removeQueries({
+        predicate: (cachedQuery) => cachedQuery.queryKey[0] !== 'auth-session',
+      });
       queryClient.setQueryData(['auth-session'], session);
       return session;
     },
@@ -57,7 +59,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch {
           /* Storage may be unavailable. */
         }
-        queryClient.clear();
+        queryClient.removeQueries({
+          predicate: (cachedQuery) => cachedQuery.queryKey[0] !== 'auth-session',
+        });
         queryClient.setQueryData(['auth-session'], null);
       }
     },

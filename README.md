@@ -166,6 +166,14 @@ pnpm db:seed
 pnpm dev
 ```
 
+## VPS deployment
+
+The production Compose stack exposes the application through automatic HTTPS,
+keeps PostgreSQL and the API off public host ports, and enables secure mobile
+microphone access for the AssemblyAI voice workflow. Follow
+[docs/vps-deployment.md](docs/vps-deployment.md) after pointing a domain at the
+VPS.
+
 ---
 
 ## Validation & Test Suite

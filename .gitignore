@@ -21,6 +21,9 @@ build/
 !.env.example
 !.env.*.example
 
+# Production deployment secrets
+.env.production
+
 # Generated Prisma clients; keep schemas, migrations, and seeds trackable
 **/generated/prisma/
 
