@@ -68,3 +68,36 @@ docker compose --env-file .env.production -f compose.production.yml down
 
 Never add `-v` to that command on the VPS because it deletes the database and
 Caddy certificate volumes.
+
+## Automatic deployment from `main`
+
+The CI workflow validates every pull request and push. After validation passes,
+the production job deploys a push to `main` only when the repository variable
+`ENABLE_DEPLOYMENT` is set to `true`. Keep it unset during the first GitHub push
+and VPS bootstrap.
+
+Create a GitHub environment named `production`. If desired, add required
+reviewers to that environment so a maintainer must approve each deployment.
+Configure these repository or environment variables:
+
+| Variable               | Value                               |
+| ---------------------- | ----------------------------------- |
+| `ENABLE_DEPLOYMENT`    | `true` after the first manual setup |
+| `VPS_HOST`             | `162.35.26.123`                     |
+| `VPS_USERNAME`         | `usman`                             |
+| `VPS_PORT`             | `22`                                |
+| `VPS_DEPLOY_PATH`      | `/home/usman/fieldMateAI`           |
+| `VPS_HOST_FINGERPRINT` | The VPS SSH host-key SHA256 value   |
+
+Add `VPS_PASSWORD` as a `production` environment secret. Never store the VPS
+password in a repository variable, workflow file, or `.env.production`.
+
+The deployment job connects using the verified host fingerprint, backs up the
+current database, fetches the merged commit, permits only a fast-forward update
+of the VPS `main` branch, verifies the exact commit SHA, rebuilds the containers,
+and runs the internal health check. Deployments are serialized so two merges
+cannot update production concurrently.
+
+Password SSH is supported for the initial deployment. After launch, replace it
+with a dedicated deployment key and disable SSH password authentication on the
+VPS.

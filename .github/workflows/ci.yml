@@ -24,3 +24,39 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm build
+
+  deploy-production:
+    name: Deploy production
+    needs: validate
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      vars.ENABLE_DEPLOYMENT == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: fieldmate-production
+      cancel-in-progress: false
+    steps:
+      - name: Deploy merged commit to VPS
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          DEPLOY_PATH: ${{ vars.VPS_DEPLOY_PATH }}
+          DEPLOY_SHA: ${{ github.sha }}
+        with:
+          host: ${{ vars.VPS_HOST }}
+          username: ${{ vars.VPS_USERNAME }}
+          port: ${{ vars.VPS_PORT }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          fingerprint: ${{ vars.VPS_HOST_FINGERPRINT }}
+          envs: DEPLOY_PATH,DEPLOY_SHA
+          command_timeout: 30m
+          script: |
+            set -eu
+            cd "$DEPLOY_PATH"
+            test "$(git branch --show-current)" = "main"
+            ./scripts/backup-vps.sh
+            git fetch --prune origin main
+            git merge --ff-only "$DEPLOY_SHA"
+            test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
+            ./scripts/deploy-vps.sh
