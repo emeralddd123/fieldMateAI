@@ -98,6 +98,10 @@ of the VPS `main` branch, verifies the exact commit SHA, rebuilds the containers
 and runs the internal health check. Deployments are serialized so two merges
 cannot update production concurrently.
 
+The workflow can also be started manually from **Actions → CI → Run workflow**.
+Manual runs execute the same validation, backup, exact-commit verification,
+deployment, and health-check sequence as a merge to `main`.
+
 Password SSH is supported for the initial deployment. After launch, replace it
 with a dedicated deployment key and disable SSH password authentication on the
 VPS.

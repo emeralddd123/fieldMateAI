@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -30,10 +31,11 @@ jobs:
     name: Deploy production
     needs: validate
     if: >-
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')) &&
       vars.ENABLE_DEPLOYMENT == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     environment: production
     concurrency:
       group: fieldmate-production
