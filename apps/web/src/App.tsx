@@ -510,6 +510,10 @@ function TechnicianWorkspace() {
           asset={selected}
           activeIncidents={incidents.data ?? []}
           voice={voice}
+          onResolveIncident={(incidentId) => {
+            setIsWorkModeOpen(false);
+            setViewIncidentId(incidentId);
+          }}
         />
       )}
 

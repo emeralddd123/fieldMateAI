@@ -8878,6 +8878,87 @@ h1 {
   gap: 16px;
 }
 
+.work-mode-complete-card {
+  width: min(100%, 520px);
+  margin: auto;
+  padding: 28px 22px;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #10251f 0%, #0d1720 70%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.work-mode-complete-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.work-mode-complete-label {
+  color: #6ee7b7;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.work-mode-complete-card h2,
+.work-mode-complete-card p {
+  margin: 0;
+}
+
+.work-mode-complete-card h2 {
+  color: #f8fafc;
+  font-size: 21px;
+}
+
+.work-mode-complete-card p {
+  color: #a8b6c7;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.work-mode-complete-actions {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.complete-repair-handoff-btn,
+.return-workspace-btn {
+  min-height: 48px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.complete-repair-handoff-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #052e25;
+  background: #34d399;
+  border: 1px solid #6ee7b7;
+}
+
+.return-workspace-btn {
+  color: #dbe7f3;
+  background: #162332;
+  border: 1px solid #2b4055;
+}
+
 .step-header {
   display: flex;
   flex-direction: column;

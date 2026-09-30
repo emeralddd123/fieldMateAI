@@ -70,6 +70,7 @@ export interface WorkModeViewProps {
   voice: VoiceControlsState;
   onRecordReading?: (readingType: string, value: number, unit: string) => void;
   onReportIncident?: (title: string, description: string) => void;
+  onResolveIncident?: (incidentId: string) => void;
 }
 
 // Built-in verified maintenance protocols for common plant equipment
@@ -271,8 +272,10 @@ export function WorkModeView({
   onClose,
   asset,
   voice,
+  activeIncidents = [],
   onRecordReading,
   onReportIncident,
+  onResolveIncident,
 }: WorkModeViewProps) {
   // Mode setup state vs active task state
   const [isSetupOpen, setIsSetupOpen] = useState(true);
@@ -291,6 +294,7 @@ export function WorkModeView({
   const [isTaskPaused, setIsTaskPaused] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [isSpeakingStep, setIsSpeakingStep] = useState(false);
+  const [isProcedureComplete, setIsProcedureComplete] = useState(false);
 
   // Constrained command recognition feedback
   const [lastRecognizedCommand, setLastRecognizedCommand] = useState<{
@@ -312,6 +316,11 @@ export function WorkModeView({
   const steps = procedure.steps;
   const currentStep = steps[currentStepIndex] ?? steps[0]!;
   const isLastStep = currentStepIndex === steps.length - 1;
+  const activeIncident = activeIncidents.find(
+    (incident) =>
+      incident.assetId === asset.id &&
+      !['resolved', 'closed'].includes(incident.status),
+  );
   const progressPercent = Math.round(
     ((currentStepIndex + 1) / steps.length) * 100,
   );
@@ -403,9 +412,12 @@ export function WorkModeView({
       }
     } else {
       triggerHaptic([60, 40, 60]);
+      setIsProcedureComplete(true);
+      setIsTaskPaused(false);
+      releaseWakeLock();
       speakInstruction('Work mode procedure completed. All steps verified.');
     }
-  }, [currentStepIndex, steps, speakInstruction, stopSpeech]);
+  }, [currentStepIndex, releaseWakeLock, steps, speakInstruction, stopSpeech]);
 
   const handlePrevStep = useCallback(() => {
     stopSpeech();
@@ -564,7 +576,7 @@ export function WorkModeView({
 
   // Setup Web Speech recognition for hands-free command interpretation
   useEffect(() => {
-    if (!isOpen || isSetupOpen || isTaskPaused) return;
+    if (!isOpen || isSetupOpen || isTaskPaused || isProcedureComplete) return;
 
     const SpeechRec =
       (
@@ -605,7 +617,7 @@ export function WorkModeView({
 
       recognition.onend = () => {
         // Auto-restart if Work Mode is still active
-        if (isOpen && !isSetupOpen && !isTaskPaused) {
+        if (isOpen && !isSetupOpen && !isTaskPaused && !isProcedureComplete) {
           try {
             recognition.start();
           } catch {
@@ -631,7 +643,13 @@ export function WorkModeView({
         recognitionRef.current = null;
       }
     };
-  }, [isOpen, isSetupOpen, isTaskPaused, interpretVoiceCommand]);
+  }, [
+    isOpen,
+    isProcedureComplete,
+    isSetupOpen,
+    isTaskPaused,
+    interpretVoiceCommand,
+  ]);
 
   // Request Wake Lock on start
   useEffect(() => {
@@ -653,6 +671,7 @@ export function WorkModeView({
     setCurrentStepIndex(0);
     setCompletedSteps({});
     setIsTaskPaused(false);
+    setIsProcedureComplete(false);
     triggerHaptic([40, 20, 40]);
     speakInstruction(
       `Starting work mode for ${asset.assetTag}. Step 1. ${currentStep.title}. ${currentStep.instruction}`,
@@ -890,7 +909,44 @@ export function WorkModeView({
 
           {/* Main Large Step Card */}
           <main className="work-mode-main-step">
-            {isTaskPaused ? (
+            {isProcedureComplete ? (
+              <div className="work-mode-complete-card" role="status">
+                <span className="work-mode-complete-icon">
+                  <CheckCircle2 size={40} />
+                </span>
+                <span className="work-mode-complete-label">
+                  Procedure complete
+                </span>
+                <h2>{procedure.title}</h2>
+                <p>
+                  All {steps.length} steps have been completed for{' '}
+                  {asset.assetTag}. Voice commands and the screen wake lock are
+                  now off.
+                </p>
+                <div className="work-mode-complete-actions">
+                  {activeIncident && onResolveIncident && (
+                    <button
+                      type="button"
+                      className="complete-repair-handoff-btn"
+                      onClick={() => {
+                        handleExitClean();
+                        onResolveIncident(activeIncident.id);
+                      }}
+                    >
+                      <Wrench size={17} />
+                      Complete Repair · {activeIncident.incidentNumber}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="return-workspace-btn"
+                    onClick={handleExitClean}
+                  >
+                    Return to Workspace
+                  </button>
+                </div>
+              </div>
+            ) : isTaskPaused ? (
               <div className="task-paused-card">
                 <Pause size={44} />
                 <h2>Work Mode Paused</h2>
@@ -995,81 +1051,87 @@ export function WorkModeView({
           </main>
 
           {/* Large 5-Button Thumb Dock (Min 56px - 64px tap targets) */}
-          <nav
-            className="work-mode-thumb-dock"
-            aria-label="Work mode step controls"
-          >
-            {/* 1. Back Button */}
-            <button
-              type="button"
-              className="dock-ctrl-btn dock-back-btn"
-              onClick={handlePrevStep}
-              disabled={currentStepIndex === 0 || isTaskPaused}
-              aria-label="Go to previous step"
+          {!isProcedureComplete && (
+            <nav
+              className="work-mode-thumb-dock"
+              aria-label="Work mode step controls"
             >
-              <SkipBack size={22} />
-              <span>Back</span>
-            </button>
+              {/* 1. Back Button */}
+              <button
+                type="button"
+                className="dock-ctrl-btn dock-back-btn"
+                onClick={handlePrevStep}
+                disabled={currentStepIndex === 0 || isTaskPaused}
+                aria-label="Go to previous step"
+              >
+                <SkipBack size={22} />
+                <span>Back</span>
+              </button>
 
-            {/* 2. Repeat Button */}
-            <button
-              type="button"
-              className="dock-ctrl-btn dock-repeat-btn"
-              onClick={handleRepeatStep}
-              disabled={isTaskPaused}
-              aria-label="Repeat current step audio"
-            >
-              <RotateCcw size={22} />
-              <span>Repeat</span>
-            </button>
+              {/* 2. Repeat Button */}
+              <button
+                type="button"
+                className="dock-ctrl-btn dock-repeat-btn"
+                onClick={handleRepeatStep}
+                disabled={isTaskPaused}
+                aria-label="Repeat current step audio"
+              >
+                <RotateCcw size={22} />
+                <span>Repeat</span>
+              </button>
 
-            {/* 3. Central Listening / Voice Push-To-Talk Button */}
-            <button
-              type="button"
-              className={`dock-ctrl-btn dock-voice-central ${isSpeakingStep ? 'is-speaking' : 'is-listening'}`}
-              onClick={() => {
-                if (isSpeakingStep) {
-                  stopSpeech();
-                } else {
-                  handleRepeatStep();
+              {/* 3. Central Listening / Voice Push-To-Talk Button */}
+              <button
+                type="button"
+                className={`dock-ctrl-btn dock-voice-central ${isSpeakingStep ? 'is-speaking' : 'is-listening'}`}
+                onClick={() => {
+                  if (isSpeakingStep) {
+                    stopSpeech();
+                  } else {
+                    handleRepeatStep();
+                  }
+                }}
+                aria-label="Voice guidance status"
+              >
+                <div className="voice-pulse-ring" />
+                <div className="voice-central-inner">
+                  {isSpeakingStep ? <Volume2 size={28} /> : <Mic size={28} />}
+                </div>
+                <span className="voice-central-label">
+                  {isSpeakingStep ? 'Speaking' : 'Listening'}
+                </span>
+              </button>
+
+              {/* 4. Done / Next Step Button */}
+              <button
+                type="button"
+                className={`dock-ctrl-btn dock-next-btn ${isLastStep ? 'is-finish' : ''}`}
+                onClick={handleNextStep}
+                disabled={isTaskPaused}
+                aria-label={
+                  isLastStep
+                    ? 'Complete procedure'
+                    : 'Mark step done and advance'
                 }
-              }}
-              aria-label="Voice guidance status"
-            >
-              <div className="voice-pulse-ring" />
-              <div className="voice-central-inner">
-                {isSpeakingStep ? <Volume2 size={28} /> : <Mic size={28} />}
-              </div>
-              <span className="voice-central-label">
-                {isSpeakingStep ? 'Speaking' : 'Listening'}
-              </span>
-            </button>
+              >
+                <Check size={26} />
+                <span>{isLastStep ? 'Complete' : 'Done'}</span>
+              </button>
 
-            {/* 4. Done / Next Step Button */}
-            <button
-              type="button"
-              className={`dock-ctrl-btn dock-next-btn ${isLastStep ? 'is-finish' : ''}`}
-              onClick={handleNextStep}
-              disabled={isTaskPaused}
-              aria-label={
-                isLastStep ? 'Complete procedure' : 'Mark step done and advance'
-              }
-            >
-              <Check size={26} />
-              <span>{isLastStep ? 'Complete' : 'Done'}</span>
-            </button>
-
-            {/* 5. Pause / Resume Button */}
-            <button
-              type="button"
-              className={`dock-ctrl-btn dock-pause-btn ${isTaskPaused ? 'is-paused' : ''}`}
-              onClick={handleTogglePause}
-              aria-label={isTaskPaused ? 'Resume procedure' : 'Pause procedure'}
-            >
-              {isTaskPaused ? <Play size={22} /> : <Pause size={22} />}
-              <span>{isTaskPaused ? 'Resume' : 'Pause'}</span>
-            </button>
-          </nav>
+              {/* 5. Pause / Resume Button */}
+              <button
+                type="button"
+                className={`dock-ctrl-btn dock-pause-btn ${isTaskPaused ? 'is-paused' : ''}`}
+                onClick={handleTogglePause}
+                aria-label={
+                  isTaskPaused ? 'Resume procedure' : 'Pause procedure'
+                }
+              >
+                {isTaskPaused ? <Play size={22} /> : <Pause size={22} />}
+                <span>{isTaskPaused ? 'Resume' : 'Pause'}</span>
+              </button>
+            </nav>
+          )}
         </div>
       )}
 
