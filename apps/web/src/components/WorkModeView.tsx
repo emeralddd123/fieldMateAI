@@ -1076,7 +1076,7 @@ export function WorkModeView({
       {/* Exit Confirmation Dialog */}
       {showExitConfirm && (
         <div
-          className="mobile-sheet-backdrop"
+          className="mobile-sheet-backdrop exit-confirm-backdrop"
           role="alertdialog"
           aria-modal="true"
           aria-label="Exit Work Mode confirmation"

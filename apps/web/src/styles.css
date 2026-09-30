@@ -9164,6 +9164,13 @@ h1 {
 }
 
 /* Exit Confirmation Sheet */
+.exit-confirm-backdrop {
+  z-index: 1300;
+  align-items: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px
+    max(16px, env(safe-area-inset-bottom));
+}
+
 .exit-confirm-sheet {
   background: #0f1723;
   border: 1.5px solid #233446;
@@ -9176,6 +9183,9 @@ h1 {
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
