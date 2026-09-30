@@ -7135,8 +7135,7 @@ h1 {
     padding: 10px 14px;
     background: #0d151f;
     border-bottom: 1px solid #1f2e3d;
-    position: sticky;
-    top: 54px;
+    position: static;
     z-index: 70;
   }
 
