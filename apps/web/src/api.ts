@@ -60,22 +60,38 @@ export async function fetchAssets() {
 }
 
 export async function fetchMaintenance(assetId: string) {
-  const responses = await Promise.all([
-    apiFetch(`${baseUrl}/assets/${assetId}/history?limit=10`, {
-      signal: AbortSignal.timeout(10_000),
-    }),
-    apiFetch(`${baseUrl}/assets/${assetId}/measurements?limit=6`, {
-      signal: AbortSignal.timeout(10_000),
-    }),
-  ]);
-  if (responses.some((response) => !response.ok))
-    throw new Error('Maintenance records are unavailable. Please retry.');
-  const [history, measurements] = await Promise.all(
-    responses.map((response) => response.json()),
+  const encodedAssetId = encodeURIComponent(assetId);
+  const historyResponse = await apiFetch(
+    `${baseUrl}/assets/${encodedAssetId}/history?limit=10`,
+    {
+      signal: AbortSignal.timeout(15_000),
+      cache: 'no-store',
+    },
   );
+  if (!historyResponse.ok)
+    throw new Error('Maintenance records are unavailable. Please retry.');
+
+  const history = await historyResponse.json();
+  const measurements = await apiFetch(
+    `${baseUrl}/assets/${encodedAssetId}/measurements?limit=6`,
+    {
+      signal: AbortSignal.timeout(15_000),
+      cache: 'no-store',
+    },
+  )
+    .then(async (response) => {
+      if (!response.ok) return null;
+      return response.json();
+    })
+    .catch(() => null);
+
   return {
     history: maintenanceHistorySchema.parse(history).data,
-    measurements: measurementsResponseSchema.parse(measurements).data,
+    // Measurements enrich the graph but should never make repair history
+    // disappear when a mobile connection drops one of the requests.
+    measurements: measurements
+      ? measurementsResponseSchema.parse(measurements).data
+      : [],
   };
 }
 
@@ -209,8 +225,13 @@ export async function previewVoiceWrite(
   } else if (request.name === 'create_incident') {
     const draft = request.args;
     let titleToDisplay = draft.title?.trim() || '';
-    if (!titleToDisplay || ['new incident', 'incident'].includes(titleToDisplay.toLowerCase())) {
-      titleToDisplay = draft.fault_code ? `${draft.fault_code} Anomaly` : `${asset.name} Anomaly`;
+    if (
+      !titleToDisplay ||
+      ['new incident', 'incident'].includes(titleToDisplay.toLowerCase())
+    ) {
+      titleToDisplay = draft.fault_code
+        ? `${draft.fault_code} Anomaly`
+        : `${asset.name} Anomaly`;
     }
     details.push(
       `Title: ${titleToDisplay}`,
@@ -366,8 +387,13 @@ export async function submitVoiceWrite(
   }
   if (request.name === 'create_incident') {
     let finalTitle = request.args.title?.trim() || '';
-    if (!finalTitle || ['new incident', 'incident'].includes(finalTitle.toLowerCase())) {
-      finalTitle = request.args.fault_code ? `${request.args.fault_code} Anomaly` : 'Equipment Anomaly';
+    if (
+      !finalTitle ||
+      ['new incident', 'incident'].includes(finalTitle.toLowerCase())
+    ) {
+      finalTitle = request.args.fault_code
+        ? `${request.args.fault_code} Anomaly`
+        : 'Equipment Anomaly';
     }
     const body = {
       assetId: request.args.asset_id,
@@ -678,12 +704,15 @@ export async function submitIncidentEscalation(
   reason: string,
   severity: 'supervisor_review' | 'urgent' = 'supervisor_review',
 ): Promise<{ id: string; reason: string; severity: string; status: string }> {
-  const response = await apiFetch(`${baseUrl}/incidents/${incidentId}/escalate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reason, severity }),
-    signal: AbortSignal.timeout(12_000),
-  });
+  const response = await apiFetch(
+    `${baseUrl}/incidents/${incidentId}/escalate`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason, severity }),
+      signal: AbortSignal.timeout(12_000),
+    },
+  );
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new Error(body?.error?.message ?? 'Failed to escalate incident.');

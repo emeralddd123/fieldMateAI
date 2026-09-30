@@ -254,6 +254,30 @@ export function MobileMoreSheet({
   const user = session?.user;
   const membership = session?.memberships[0];
 
+  useEffect(() => {
+    const body = document.body;
+    const scrollPosition = window.scrollY;
+    const previousStyles = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+    };
+
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollPosition}px`;
+    body.style.width = '100%';
+
+    return () => {
+      body.style.overflow = previousStyles.overflow;
+      body.style.position = previousStyles.position;
+      body.style.top = previousStyles.top;
+      body.style.width = previousStyles.width;
+      window.scrollTo(0, scrollPosition);
+    };
+  }, []);
+
   const initials = user?.name
     ? user.name
         .split(/\s+/)

@@ -38,6 +38,7 @@ export function MaintenancePanel({
     queryKey: ['maintenance', assetId],
     queryFn: () => fetchMaintenance(assetId),
     refetchInterval: 5000,
+    retry: 2,
   });
   if (query.isPending)
     return (
@@ -48,7 +49,7 @@ export function MaintenancePanel({
   if (query.isError)
     return (
       <section className="maintenance-panel" role="alert">
-        <p>{query.error.message}</p>
+        <p>Equipment memory could not be loaded.</p>
         <button
           className="secondary-button"
           onClick={() => void query.refetch()}
